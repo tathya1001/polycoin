@@ -1,0 +1,22 @@
+.radio-button:checked+.radio-tile {
+    background-color: #3e88ff;
+
+    /* Change background color to red when radio button is checked */
+}
+
+.radio-tile {
+    background-color: transparent;
+    /* Change background color to red when radio button is checked */
+}
+
+.color-button:checked+.color-tile {
+    /* background-color: red; */
+    border-width: 4px;
+    box-sizing: border-box;
+    border-spacing: 2px;
+    border-color: white;
+}
+
+.color-tile {
+    background-color: transparent;
+}
