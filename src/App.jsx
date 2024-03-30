@@ -2,19 +2,19 @@ import { useState } from "react";
 import { Routes, Route } from "react-router-dom";
 
 //pages
-import Register from "./pages/RegisterNew.jsx";
-import Login from "./pages/LoginNew.jsx";
-import Home from "./pages/HomeNew.jsx";
-import Settings from "./pages/Settings.jsx";
-import Credit from "./pages/Credit.jsx";
-import Debit from "./pages/Debit.jsx";
+import Register from "./pages/RegisterPage.jsx";
+import Login from "./pages/LoginPage.jsx";
+import Home from "./pages/HomePage.jsx";
+import Settings from "./pages/SettingsPage.jsx";
+import Credit from "./pages/AddCreditPage.jsx";
+import Debit from "./pages/AddDebitPage.jsx";
 
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./App.css";
 
-import Category from "./pages/CategoryNew.jsx";
-import Log from "./pages/LogNew.jsx";
-import Income from "./pages/Income.jsx";
+import Category from "./pages/AddCategoryPage.jsx";
+import Log from "./pages/AddExpensePage.jsx";
+import Income from "./pages/AddIncomePage.jsx";
 
 function App() {
   const [count, setCount] = useState(0);
@@ -23,10 +23,10 @@ function App() {
     <>
       {/* <MyNavbar /> */}
       <Routes>
-        <Route path="/" element={<Home></Home>} />
+        <Route path="/" element={<Home />} />
         <Route path="/settings" element={<Settings />} />
-        <Route path="/register" element={<Register></Register>} />
-        <Route path="/login" element={<Login></Login>} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/create/credit" element={<Credit />} />
         <Route path="/create/debit" element={<Debit />} />
         <Route path="/create/category" element={<Category />} />

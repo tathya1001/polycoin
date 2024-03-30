@@ -10,7 +10,7 @@ function Welcome(props) {
   const currentDate = new Date();
   const hours = currentDate.getHours();
 
-  console.log(hours);
+  // console.log(hours);
 
   let hourOfDay;
 

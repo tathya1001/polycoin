@@ -62,7 +62,6 @@ const Home = () => {
         const logsData = await firebase.listAllLogs(firebase.user.uid);
         setLogs(logsData.docs);
 
-        // Calculate total transaction value
         let total = 0;
         logsData.docs.forEach((log) => {
           if (log.data().categoryid == 1) {
@@ -87,7 +86,7 @@ const Home = () => {
   }, [firebase.user]);
 
   if (!firebase.user) {
-    return <Navigate to="/login" />; // Redirect the user to the login page
+    return <Navigate to="/login" />;
   }
 
   //for horizontal scrolling

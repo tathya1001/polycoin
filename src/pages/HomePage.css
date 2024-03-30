@@ -1,17 +1,13 @@
 .card-container {
     display: flex;
-    /* overflow-x: auto; */
     padding-bottom: 15px;
-    /* Add some bottom padding to ensure the last card is fully visible */
 }
 
 .card-container>* {
     flex: 0 0 auto;
     margin-right: 15px;
-    /* Adjust the right margin as needed */
 }
 
-/* Optional: Hide scrollbar */
 .card-container::-webkit-scrollbar {
     display: none;
 }
