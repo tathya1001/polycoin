@@ -28,12 +28,12 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 const FirebaseContext = createContext(null);
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCJe8X6Pj4fniPexjesp5OFXfAXxt4-1qA",
-  authDomain: "polycoin1001.firebaseapp.com",
-  projectId: "polycoin1001",
-  storageBucket: "polycoin1001.appspot.com",
-  messagingSenderId: "821457758505",
-  appId: "1:821457758505:web:cdca7274094434d310ef38",
+  apiKey: "AIzaSyDwuN6OQYQOsMeTt_jXAJZZM44oY-OVol0",
+  authDomain: "expense-79cae.firebaseapp.com",
+  projectId: "expense-79cae",
+  storageBucket: "expense-79cae.appspot.com",
+  messagingSenderId: "1040077984787",
+  appId: "1:1040077984787:web:74e601f081fba759fd5be6"
 };
 
 export const useFirebase = () => useContext(FirebaseContext);

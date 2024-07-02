@@ -4,8 +4,6 @@ import { useFirebase } from "../context/Firebase";
 const AddButton = ({ link, height }) => {
   const firebase = useFirebase();
 
-  const [books, setBooks] = useState([]);
-
   return (
     <a
       style={{ height: height }}
