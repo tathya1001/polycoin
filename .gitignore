@@ -1,0 +1,11 @@
+# Secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+db.sqlite3
+
+# Node / Next.js
+node_modules/
+.next/
