@@ -30,9 +30,11 @@ MIN_DATE = date(2000, 1, 1)
 MAX_DATE = date(2100, 12, 31)
 MAX_CATEGORIES = 20
 MAX_MERCHANT_LENGTH = 60
+LIMIT_RANGE = (1, 50)  # how many x values a bar or pie keeps before folding the rest
+BINS_RANGE = (5, 50)
 
 # Which fields each chart may use for x, and whether it may split into a colour series.
-# Served to the frontend later so the editor can grey out invalid combinations.
+# Served to the frontend through catalogue(), so the editor can grey out invalid combinations.
 CHART_RULES = {
     "kpi": {"x": (), "color": False},
     "bar": {"x": ("date", *CATEGORICAL), "color": True},
@@ -179,13 +181,43 @@ def validate_encoding(raw: dict) -> dict:
 
     # --- options ---
     spec["sort"] = _choice(_default(raw.get("sort"), "measure_desc"), SORTS, "sort")
-    spec["limit"] = _int_in_range(raw.get("limit"), 1, 50, "limit", 10)
-    spec["bins"] = _int_in_range(raw.get("bins"), 5, 50, "bins", 20)
+    spec["limit"] = _int_in_range(raw.get("limit"), *LIMIT_RANGE, "limit", 10)
+    spec["bins"] = _int_in_range(raw.get("bins"), *BINS_RANGE, "bins", 20)
     compare = _bool(raw.get("compare"), "compare")
     if compare and chart != "kpi":
         raise _bad("Only a KPI can compare with the previous period.")
     spec["compare"] = compare
     return spec
+
+
+def catalogue() -> dict:
+    """Everything the panel editor needs for its dropdowns, built from the same constants the
+    validator uses, so the frontend never hard-codes a rule that could drift out of date."""
+    return {
+        "version": SPEC_VERSION,
+        "dimensions": [
+            {"id": name, "granularities": list(GRANULARITIES) if name == "date" else []}
+            for name in DIMENSIONS
+        ],
+        "measures": [
+            {"id": name, "aggs": list(allowed_aggs(name)), "default_agg": default_agg(name)}
+            for name in MEASURES
+        ],
+        "charts": {
+            chart: {"x": list(rules["x"]), "color": rules["color"]}
+            for chart, rules in CHART_RULES.items()
+        },
+        "sorts": list(SORTS),
+        "orientations": list(ORIENTATIONS),
+        "txn_types": list(TXN_TYPES),
+        "date_presets": list(DATE_PRESETS),
+        "limits": {
+            "limit": list(LIMIT_RANGE),
+            "bins": list(BINS_RANGE),
+            "categories": MAX_CATEGORIES,
+            "merchant_contains": MAX_MERCHANT_LENGTH,
+        },
+    }
 
 
 # --- filters ------------------------------------------------------------------

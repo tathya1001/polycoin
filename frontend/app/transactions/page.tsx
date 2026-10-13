@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { readError } from "@/lib/errors";
 import type { Category, Page, Transaction } from "@/lib/types";
@@ -14,17 +15,29 @@ function money(value: string | null) {
   return Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2 });
 }
 
-export default function Transactions() {
+// useSearchParams needs a Suspense boundary, or the production build refuses to prerender.
+export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<main className="p-6 text-gray-500">Loading...</main>}>
+      <Transactions />
+    </Suspense>
+  );
+}
+
+function Transactions() {
+  // A dashboard chart click opens this page as /transactions?from=..&to=..&type=..&category=..
+  // so the filters start from the URL. After that they are ordinary page state.
+  const searchParams = useSearchParams();
   const [data, setData] = useState<Page<Transaction> | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
-  const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [type, setType] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [from, setFrom] = useState(() => searchParams.get("from") ?? "");
+  const [to, setTo] = useState(() => searchParams.get("to") ?? "");
+  const [type, setType] = useState(() => searchParams.get("type") ?? "");
+  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get("category") ?? "");
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");

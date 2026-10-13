@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { readError } from "@/lib/errors";
+import { recall, remember } from "@/lib/storage";
 import type {
   ApplyResult,
   Category,
@@ -17,24 +18,6 @@ const PREVIEW_URL = "/api/ai/categorize/preview/";
 const APPLY_URL = "/api/ai/categorize/apply/";
 
 const MODEL_KEY = "polycoin.ai.model";
-
-// localStorage can be missing or throw (private windows, blocked site data): it is a
-// convenience here, never something the page depends on.
-function recall(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function remember(key: string, value: string) {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    // ignore: the choice just won't survive a reload
-  }
-}
 
 function money(value: string) {
   return Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2 });

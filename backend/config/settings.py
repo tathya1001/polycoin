@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "vault",
     "categories",
     "transactions",
+    "insights",
 ]
 
 
@@ -128,6 +129,7 @@ REST_FRAMEWORK = {
         "import": "10/hour",
         "ai": "20/hour",
         "ai_light": "120/hour",
+        "insights": "600/hour",
     },
 }
 
@@ -170,3 +172,6 @@ AI_MIN_SCORE = float(os.environ.get("AI_MIN_SCORE", "0.45"))  # best cosine scor
 AI_MIN_MARGIN = float(os.environ.get("AI_MIN_MARGIN", "0.05"))  # best must beat runner-up by this
 AI_BLEND_FULL_AT = int(os.environ.get("AI_BLEND_FULL_AT", "10"))  # examples at which the blend maxes out
 AI_BLEND_MAX_WEIGHT = float(os.environ.get("AI_BLEND_MAX_WEIGHT", "0.7"))  # max pull toward the user's examples
+
+# Insights decrypts rows in Python, so one request must never load an unbounded number of them.
+INSIGHTS_MAX_ROWS = int(os.environ.get("INSIGHTS_MAX_ROWS", "50000"))
