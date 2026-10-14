@@ -7,7 +7,7 @@ from core.models import OwnedModel, TimeStampedModel
 
 MAX_DASHBOARDS_PER_USER = 20
 MAX_PANELS_PER_DASHBOARD = 30
-GRID_COLUMNS = 12  # react-grid-layout's column count; a panel's w and x must fit inside it
+GRID_COLUMNS = 12  # the dashboard grid's column count (frontend/lib/grid.ts); w and x must fit
 MIN_PANEL_HEIGHT = 2
 MAX_PANEL_HEIGHT = 30
 

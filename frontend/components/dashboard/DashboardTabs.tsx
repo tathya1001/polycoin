@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { LayoutTemplate, Plus, X } from "lucide-react";
+import { cn } from "@/lib/cn";
 import type { DashboardSummary } from "@/lib/types";
+import { Button } from "@/components/ui/Button";
+import { useConfirm } from "@/components/ui/Confirm";
+import { Input } from "@/components/ui/Field";
+import { Popover } from "@/components/ui/Popover";
 
 const MAX_NAME = 60; // DashboardSerializer.name max_length
 
@@ -16,14 +22,13 @@ type Props = {
   onDelete: (id: string) => void;
 };
 
-// One tab per dashboard, like Tableau's sheet tabs. Double-click a tab to rename it.
+// One tab per dashboard, like the sheet tabs of a spreadsheet. Double-click a tab to rename it.
 export default function DashboardTabs(props: Props) {
   const { dashboards, activeId, editing, canCreate, onSelect, onCreate, onRename, onDelete } = props;
+  const confirm = useConfirm();
   const [renaming, setRenaming] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
-  const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   function startRename(dashboard: DashboardSummary) {
     setRenaming(dashboard.id);
@@ -37,107 +42,123 @@ export default function DashboardTabs(props: Props) {
     setRenaming(null);
   }
 
-  function create(event: FormEvent, template: "overview" | null) {
-    event.preventDefault();
+  function create(event: FormEvent | null, template: "overview" | null, close: () => void) {
+    event?.preventDefault();
     onCreate(newName.trim() || (template ? "Overview" : "New dashboard"), template);
-    setCreating(false);
+    close();
     setNewName("");
   }
 
-  const doomed = dashboards.find((d) => d.id === confirmDelete);
+  async function askDelete(dashboard: DashboardSummary) {
+    const ok = await confirm({
+      title: `Delete "${dashboard.name}"?`,
+      message: "The dashboard and all its panels are deleted. This can't be undone.",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (ok) onDelete(dashboard.id);
+  }
 
   return (
-    <div className="flex flex-col gap-2">
-      <div role="tablist" className="flex flex-wrap items-end gap-1 border-b border-gray-200 dark:border-gray-800">
-        {dashboards.map((dashboard) => {
-          const active = dashboard.id === activeId;
-          return (
-            <div
-              key={dashboard.id}
-              className={`-mb-px flex items-center gap-1 rounded-t-md border px-3 py-1.5 text-sm ${
-                active
-                  ? "border-gray-200 border-b-background bg-background font-medium dark:border-gray-800"
-                  : "border-transparent text-gray-500 hover:text-current"
-              }`}
+    <div role="tablist" aria-label="Dashboards" className="flex flex-wrap items-end gap-1.5 border-b-[1.5px] border-ink">
+      {dashboards.map((dashboard) => {
+        const active = dashboard.id === activeId;
+        return (
+          <div
+            key={dashboard.id}
+            className={cn(
+              "mb-[-1.5px] flex h-10 items-center gap-1.5 rounded-t-md border-[1.5px] px-4 text-sm transition-colors duration-150",
+              active
+                ? "border-ink border-b-surface bg-surface font-semibold"
+                : "border-transparent text-ink-2 hover:bg-wash hover:text-ink",
+            )}
+          >
+            {renaming === dashboard.id ? (
+              <input
+                autoFocus
+                value={draftName}
+                maxLength={MAX_NAME}
+                onChange={(e) => setDraftName(e.target.value)}
+                onBlur={finishRename}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") finishRename();
+                  if (e.key === "Escape") setRenaming(null);
+                }}
+                className="w-40 border-b-[1.5px] border-ink bg-transparent outline-none"
+                aria-label="Dashboard name"
+              />
+            ) : (
+              <button
+                role="tab"
+                aria-selected={active}
+                onClick={() => onSelect(dashboard.id)}
+                onDoubleClick={() => startRename(dashboard)}
+                title="Double-click to rename"
+                className="h-full"
+              >
+                {dashboard.name}
+              </button>
+            )}
+            {active && editing && renaming !== dashboard.id && (
+              <button
+                onClick={() => askDelete(dashboard)}
+                className="grid size-5 place-items-center rounded-full text-muted hover:bg-[#fee2e2] hover:text-neg"
+                aria-label={`Delete ${dashboard.name}`}
+                title="Delete this dashboard"
+              >
+                <X size={13} aria-hidden />
+              </button>
+            )}
+          </div>
+        );
+      })}
+
+      <div className="mb-1 ml-1">
+        <Popover
+          trigger={(p) => (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Plus size={15} />}
+              disabled={!canCreate}
+              title={canCreate ? "New dashboard" : "You have the maximum number of dashboards"}
+              onClick={p.onClick}
+              aria-expanded={p["aria-expanded"]}
+              aria-haspopup={p["aria-haspopup"]}
             >
-              {renaming === dashboard.id ? (
-                <input
-                  autoFocus
-                  value={draftName}
-                  maxLength={MAX_NAME}
-                  onChange={(e) => setDraftName(e.target.value)}
-                  onBlur={finishRename}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") finishRename();
-                    if (e.key === "Escape") setRenaming(null);
-                  }}
-                  className="w-40 border-b border-gray-400 bg-transparent outline-none"
-                  aria-label="Dashboard name"
-                />
-              ) : (
-                <button
-                  role="tab"
-                  aria-selected={active}
-                  onClick={() => onSelect(dashboard.id)}
-                  onDoubleClick={() => startRename(dashboard)}
-                  title="Double-click to rename"
-                >
-                  {dashboard.name}
-                </button>
-              )}
-              {active && editing && renaming !== dashboard.id && (
-                <button
-                  onClick={() => setConfirmDelete(dashboard.id)}
-                  className="ml-1 text-gray-400 hover:text-red-600"
-                  aria-label={`Delete ${dashboard.name}`}
-                  title="Delete this dashboard"
-                >
-                  ×
-                </button>
-              )}
-            </div>
-          );
-        })}
-        <button
-          onClick={() => setCreating((open) => !open)}
-          disabled={!canCreate}
-          className="mb-1 ml-1 rounded px-2 py-1 text-sm text-gray-500 hover:bg-gray-100 hover:text-current disabled:opacity-40 dark:hover:bg-gray-900"
-          title={canCreate ? "New dashboard" : "You have the maximum number of dashboards"}
+              New
+            </Button>
+          )}
+          className="w-72"
         >
-          + New
-        </button>
+          {(close) => (
+            <form onSubmit={(e) => create(e, null, close)} className="space-y-3">
+              <Input
+                dense
+                autoFocus
+                value={newName}
+                maxLength={MAX_NAME}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="Dashboard name"
+                aria-label="New dashboard name"
+              />
+              <div className="flex flex-col gap-2">
+                <Button type="submit" size="sm">
+                  Blank dashboard
+                </Button>
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon={<LayoutTemplate size={15} />}
+                  onClick={() => create(null, "overview", close)}
+                >
+                  From the Overview template
+                </Button>
+              </div>
+            </form>
+          )}
+        </Popover>
       </div>
-
-      {creating && (
-        <form
-          onSubmit={(e) => create(e, null)}
-          className="flex flex-wrap items-center gap-2 rounded-md border border-gray-200 p-2 text-sm dark:border-gray-800"
-        >
-          <input
-            autoFocus
-            value={newName}
-            maxLength={MAX_NAME}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Dashboard name"
-            className="border p-1"
-          />
-          <button type="submit" className="border px-3 py-1">Blank</button>
-          <button type="button" onClick={(e) => create(e, "overview")} className="bg-black px-3 py-1 text-white dark:bg-white dark:text-black">
-            From the Overview template
-          </button>
-          <button type="button" onClick={() => setCreating(false)} className="underline">Cancel</button>
-        </form>
-      )}
-
-      {doomed && (
-        <div className="flex flex-wrap items-center gap-3 rounded-md border border-red-200 bg-red-50 p-2 text-sm dark:border-red-900 dark:bg-red-950">
-          <span>Delete “{doomed.name}” and all its panels? This can&apos;t be undone.</span>
-          <button className="text-red-600 underline" onClick={() => { setConfirmDelete(null); onDelete(doomed.id); }}>
-            Delete
-          </button>
-          <button className="underline" onClick={() => setConfirmDelete(null)}>Cancel</button>
-        </div>
-      )}
     </div>
   );
 }

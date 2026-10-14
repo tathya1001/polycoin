@@ -1,6 +1,10 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import type { Category } from "@/lib/types";
+import { Button } from "@/components/ui/Button";
+import { Checkbox } from "@/components/ui/Field";
+import { Popover } from "@/components/ui/Popover";
 
 const MAX_SELECTED = 20; // spec.MAX_CATEGORIES
 
@@ -11,14 +15,14 @@ type Props = {
   label?: string;
 };
 
-// A dropdown of checkboxes. <details> gives open / close and keyboard support for free.
+// A button that opens a checklist of categories (with their colour dots).
 export default function CategoryPicker({ categories, selected, onChange, label = "Categories" }: Props) {
   const chosen = new Set(selected);
   const summary =
     selected.length === 0
       ? "All categories"
       : selected.length === 1
-        ? categories.find((c) => c.id === selected[0])?.name ?? "1 category"
+        ? (categories.find((c) => c.id === selected[0])?.name ?? "1 category")
         : `${selected.length} categories`;
 
   function toggle(id: string) {
@@ -29,22 +33,39 @@ export default function CategoryPicker({ categories, selected, onChange, label =
   }
 
   return (
-    <div className="flex flex-col gap-1 text-sm">
-      <span className="text-xs text-gray-500">{label}</span>
-      <details className="relative">
-        <summary className="cursor-pointer list-none border p-1 pr-6">{summary} ▾</summary>
-        <div className="absolute left-0 top-full z-30 mt-1 max-h-64 w-56 overflow-auto rounded-md border border-gray-200 bg-background p-2 shadow-lg dark:border-gray-800">
-          <button className="mb-1 text-xs underline" onClick={() => onChange([])}>
-            All categories
-          </button>
-          {categories.map((category) => (
-            <label key={category.id} className="flex items-center gap-2 py-0.5">
-              <input type="checkbox" checked={chosen.has(category.id)} onChange={() => toggle(category.id)} />
-              {category.name}
-            </label>
-          ))}
-        </div>
-      </details>
-    </div>
+    <Popover
+      trigger={(p) => (
+        <Button
+          size="sm"
+          aria-label={`${label}: ${summary}`}
+          onClick={p.onClick}
+          aria-expanded={p["aria-expanded"]}
+          aria-haspopup={p["aria-haspopup"]}
+        >
+          {summary}
+          <ChevronDown size={14} aria-hidden />
+        </Button>
+      )}
+      className="max-h-72 w-60 overflow-auto"
+    >
+      <button type="button" className="mb-2 text-xs font-medium underline underline-offset-2" onClick={() => onChange([])}>
+        All categories
+      </button>
+      <div className="flex flex-col gap-1.5">
+        {categories.map((category) => (
+          <Checkbox
+            key={category.id}
+            checked={chosen.has(category.id)}
+            onChange={() => toggle(category.id)}
+            label={
+              <span className="flex items-center gap-2">
+                <span aria-hidden className="size-2.5 rounded-full border border-ink" style={{ backgroundColor: category.color }} />
+                {category.name}
+              </span>
+            }
+          />
+        ))}
+      </div>
+    </Popover>
   );
 }

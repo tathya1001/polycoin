@@ -3,7 +3,7 @@ from rest_framework import serializers
 from django.db import transaction
 from vault.services import create_user_key
 from categories.services import seed_default_categories
-from .models import User
+from .models import User, UserPreferences
 
 
 class RegisterSerializer(serializers.Serializer):
@@ -34,3 +34,24 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ("id", "email", "date_joined")
         read_only_fields = fields
+
+class PreferencesSerializer(serializers.ModelSerializer):
+    """Whitelisted by construction: only the fields listed here can ever be written, and
+    `font` and `chart_quality` are ChoiceFields, so only the values listed in UserPreferences
+    are accepted."""
+
+    class Meta:
+        model = UserPreferences
+        fields = ("font", "chart_quality")
+
+
+class DeleteDataSerializer(serializers.Serializer):
+    """Erasing data needs the account password again, even though the user is signed in:
+    a stolen session, or a stranger at an unlocked laptop, must not be able to wipe it."""
+
+    password = serializers.CharField(write_only=True, trim_whitespace=False)
+
+    def validate_password(self, value):
+        if not self.context["request"].user.check_password(value):
+            raise serializers.ValidationError("Incorrect password.")
+        return value

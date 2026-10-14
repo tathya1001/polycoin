@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+from .colors import is_hex_color, next_color
 from .models import MAX_KEYWORDS_PER_CATEGORY, Category, CategoryKeyword
 
 
@@ -30,11 +31,27 @@ class KeywordSerializer(serializers.ModelSerializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     keywords = KeywordSerializer(many=True, read_only=True)
+    # Declared by hand so lower case ("#ff7a1a") is accepted and normalised in validate_color;
+    # the model's own validator would reject it before validate_color ever ran.
+    color = serializers.CharField(max_length=7, required=False)
 
     class Meta:
         model = Category
-        fields = ("id", "name", "is_default", "keywords")
+        fields = ("id", "name", "is_default", "color", "keywords")
         read_only_fields = ("id", "is_default")  # clients can't mint a second "default"
+
+    def validate_color(self, value):
+        value = value.upper()
+        if not is_hex_color(value):
+            raise serializers.ValidationError("Use a colour like #2A78D6.")
+        return value
+
+    def create(self, validated_data):
+        # A new category takes the first palette colour the user is not using yet.
+        if "color" not in validated_data:
+            mine = Category.objects.filter(user=validated_data["user"])
+            validated_data["color"] = next_color(mine.values_list("color", flat=True))
+        return super().create(validated_data)
 
     def validate_name(self, value):
         user = self.context["request"].user

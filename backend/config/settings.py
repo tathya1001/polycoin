@@ -130,6 +130,7 @@ REST_FRAMEWORK = {
         "ai": "20/hour",
         "ai_light": "120/hour",
         "insights": "600/hour",
+        "destructive": "5/hour",  # erasing all data; also caps password guessing through it
     },
 }
 

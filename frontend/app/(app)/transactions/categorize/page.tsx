@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { PartyPopper, Play, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { readError } from "@/lib/errors";
 import { recall, remember } from "@/lib/storage";
@@ -12,16 +13,19 @@ import type {
   EmbeddingModel,
   Proposal,
 } from "@/lib/types";
+import { Button, buttonClass } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState, ErrorNote, Loading } from "@/components/ui/Feedback";
+import { Checkbox, Field, Select } from "@/components/ui/Field";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { MoneyCell, Table, Td, Th, Tr } from "@/components/ui/Table";
+import { useToast } from "@/components/ui/Toast";
 
 const MODELS_URL = "/api/ai/models/";
 const PREVIEW_URL = "/api/ai/categorize/preview/";
 const APPLY_URL = "/api/ai/categorize/apply/";
 
 const MODEL_KEY = "polycoin.ai.model";
-
-function money(value: string) {
-  return Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2 });
-}
 
 // Why a row isn't pre-selected; null for rows the AI is confident about.
 function reasonFor(p: Proposal): string | null {
@@ -32,6 +36,7 @@ function reasonFor(p: Proposal): string | null {
 }
 
 export default function Categorize() {
+  const toast = useToast();
   const [models, setModels] = useState<EmbeddingModel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [model, setModel] = useState("");
@@ -155,6 +160,7 @@ export default function Categorize() {
       }
       const data: ApplyResult = await res.json();
       setResult(data);
+      toast.success(`Categorised ${data.applied} transactions.`);
       // Rows the server applied leave the table; skipped ones stay so nothing disappears unseen.
       const skipped = new Set(data.skipped.map((s) => s.transaction));
       const done = new Set(selected.map((r) => r.transaction).filter((id) => !skipped.has(id)));
@@ -168,156 +174,146 @@ export default function Categorize() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-4 p-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Categorize with AI</h1>
-        <Link href="/transactions" className="text-sm underline">Transactions</Link>
-      </div>
+    <>
+      <PageHeader
+        title="Categorize with AI"
+        subtitle="Runs on the Ollama installed on your own machine. Nothing is sent anywhere else, and nothing changes until you press Apply. What you approve counts as your own choice and helps categorise the rest."
+      />
 
-      <p className="text-xs text-gray-500">
-        Runs on the Ollama installed on your own machine. Nothing is sent anywhere else, and nothing
-        is changed until you press Apply. What you approve counts as your own choice and helps
-        categorise the rest.
-      </p>
-
-      {loadingSetup && <p className="text-gray-500">Loading...</p>}
-      {setupError && <p className="text-red-600">{setupError}</p>}
+      {loadingSetup && <Loading />}
+      {setupError && <ErrorNote className="mb-4">{setupError}</ErrorNote>}
 
       {!loadingSetup && !setupError && (
-        <section className="flex flex-wrap items-end gap-3 text-sm">
-          <label className="flex flex-col gap-1">
-            Embedding model
-            <select className="border p-1" value={model} onChange={(e) => changeModel(e.target.value)}>
+        <Card className="mb-5 flex flex-wrap items-end gap-3 p-4!">
+          <Field label="Embedding model" className="w-64">
+            <Select dense className="w-full" value={model} onChange={(e) => changeModel(e.target.value)}>
               {models.map((m) => (
-                <option key={m.name} value={m.name}>{m.name}</option>
+                <option key={m.name} value={m.name}>
+                  {m.name}
+                </option>
               ))}
-            </select>
-          </label>
-          <button
+            </Select>
+          </Field>
+          <Button
+            variant="primary"
+            loading={running}
+            disabled={!model || applying}
+            icon={preview ? <RefreshCw size={16} /> : <Play size={16} />}
             onClick={runPreview}
-            disabled={!model || running || applying}
-            className="bg-black text-white px-4 py-2 disabled:opacity-50"
           >
-            {running ? "Working..." : preview ? "Run again" : "Run preview"}
-          </button>
-        </section>
+            {running ? "Working…" : preview ? "Run again" : "Run preview"}
+          </Button>
+        </Card>
       )}
 
-      {stale && !running && (
-        <p className="text-sm text-gray-500">
-          The model changed since this preview. Run again to use it.
-        </p>
-      )}
-      {error && <p className="text-red-600">{error}</p>}
+      {stale && !running && <p className="mb-3 text-sm text-ink-2">The model changed since this preview. Run again to use it.</p>}
+      {error && <ErrorNote className="mb-4">{error}</ErrorNote>}
 
       {preview && (
-        <section className="flex flex-col gap-2">
-          <p className="text-sm">
-            {preview.considered} uncategorised scored: {preview.proposed} proposed,{" "}
-            {preview.skipped} left for you.
+        <section className="space-y-3">
+          <p className="text-sm text-ink-2">
+            <strong className="text-ink">{preview.considered}</strong> uncategorised scored:{" "}
+            <strong className="text-ink">{preview.proposed}</strong> proposed, {preview.skipped} left for you.
             {preview.capped && " More remain: apply these, then run again to continue."}
           </p>
 
-          {result && (
-            <p className="text-sm text-green-700">
-              Applied {result.applied}.
-              {result.skipped.length > 0 &&
-                ` ${result.skipped.length} skipped (changed since the preview). Run again to refresh.`}
-            </p>
+          {result && result.skipped.length > 0 && (
+            <ErrorNote>{result.skipped.length} skipped (changed since the preview). Run again to refresh.</ErrorNote>
           )}
 
           {rows.length > 0 ? (
             <>
-              <div className="flex flex-wrap items-center gap-4 text-sm">
-                <button
-                  className="underline"
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  size="sm"
                   onClick={() => setChecked(new Set(rows.filter((r) => choice[r.transaction]).map((r) => r.transaction)))}
                 >
                   Select all with a category
-                </button>
-                <button className="underline" onClick={() => setChecked(new Set())}>
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setChecked(new Set())}>
                   Select none
-                </button>
+                </Button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="p-2"><span className="sr-only">Apply</span></th>
-                      <th className="p-2">Date</th>
-                      <th className="p-2">Name</th>
-                      <th className="p-2 text-right">Amount</th>
-                      <th className="p-2">Category</th>
-                      <th className="p-2 text-right">Score</th>
-                      <th className="p-2">Note</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => {
-                      const id = row.transaction;
-                      const reason = reasonFor(row);
-                      return (
-                        <tr key={id} className="border-b">
-                          <td className="p-2">
-                            <input
-                              type="checkbox"
-                              aria-label={`Apply to ${row.name}`}
-                              checked={checked.has(id)}
-                              disabled={!choice[id]}
-                              onChange={() => toggle(id)}
-                            />
-                          </td>
-                          <td className="p-2 whitespace-nowrap">{row.date}</td>
-                          <td className="p-2">{row.name}</td>
-                          <td className={`p-2 text-right whitespace-nowrap ${row.txn_type === "credit" ? "text-green-600" : "text-red-600"}`}>
-                            {row.txn_type === "credit" ? "+" : "-"}{money(row.amount)}
-                          </td>
-                          <td className="p-2">
-                            <select
-                              className="border p-1"
-                              value={choice[id] ?? ""}
-                              onChange={(e) => pick(id, e.target.value)}
-                            >
-                              <option value="">(choose)</option>
-                              {choosable.map((c) => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                              ))}
-                            </select>
-                          </td>
-                          <td
-                            className="p-2 text-right whitespace-nowrap"
-                            title={
-                              row.runner_up_name && row.runner_up_score !== null
-                                ? `Runner-up: ${row.runner_up_name} (${row.runner_up_score.toFixed(2)})`
-                                : undefined
-                            }
+              <Table>
+                <thead>
+                  <Tr className="hover:bg-transparent">
+                    <Th>
+                      <span className="sr-only">Apply</span>
+                    </Th>
+                    <Th>Date</Th>
+                    <Th>Name</Th>
+                    <Th align="right">Amount</Th>
+                    <Th>Category</Th>
+                    <Th align="right">Score</Th>
+                    <Th>Note</Th>
+                  </Tr>
+                </thead>
+                <tbody>
+                  {rows.map((row) => {
+                    const id = row.transaction;
+                    const reason = reasonFor(row);
+                    return (
+                      <Tr key={id}>
+                        <Td>
+                          <Checkbox
+                            aria-label={`Apply to ${row.name}`}
+                            checked={checked.has(id)}
+                            disabled={!choice[id]}
+                            onChange={() => toggle(id)}
+                          />
+                        </Td>
+                        <Td className="whitespace-nowrap text-ink-2">{row.date}</Td>
+                        <Td className="font-medium">{row.name}</Td>
+                        <MoneyCell value={row.amount} type={row.txn_type} />
+                        <Td>
+                          <Select
+                            dense
+                            value={choice[id] ?? ""}
+                            aria-label={`Category for ${row.name}`}
+                            onChange={(e) => pick(id, e.target.value)}
                           >
-                            {row.score !== null ? row.score.toFixed(2) : ""}
-                          </td>
-                          <td className="p-2 text-gray-500">{reason}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            <option value="">(choose)</option>
+                            {choosable.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </Td>
+                        <Td
+                          align="right"
+                          className="whitespace-nowrap text-ink-2"
+                          title={
+                            row.runner_up_name && row.runner_up_score !== null
+                              ? `Runner-up: ${row.runner_up_name} (${row.runner_up_score.toFixed(2)})`
+                              : undefined
+                          }
+                        >
+                          {row.score !== null ? row.score.toFixed(2) : ""}
+                        </Td>
+                        <Td className="text-muted">{reason}</Td>
+                      </Tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
 
-              <button
-                onClick={apply}
-                disabled={selected.length === 0 || applying || running}
-                className="self-start bg-black text-white px-4 py-2 disabled:opacity-50"
-              >
-                {applying ? "Applying..." : `Apply ${selected.length} selected`}
-              </button>
+              <Button variant="primary" loading={applying} disabled={selected.length === 0 || running} onClick={apply}>
+                {applying ? "Applying…" : `Apply ${selected.length} selected`}
+              </Button>
             </>
           ) : (
-            <p className="p-4 text-center text-gray-500">
-              Nothing left to categorise here. <Link href="/transactions" className="underline">View transactions</Link>.
-            </p>
+            <EmptyState icon={<PartyPopper size={22} aria-hidden />} title="All done here">
+              Nothing left to categorise in this batch.
+              <br />
+              <Link href="/transactions" className={buttonClass("secondary", "sm", "mt-3")}>
+                View transactions
+              </Link>
+            </EmptyState>
           )}
         </section>
       )}
-    </main>
+    </>
   );
 }

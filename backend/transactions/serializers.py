@@ -97,3 +97,22 @@ class TransactionSerializer(serializers.ModelSerializer):
         # appeared in the bank statement, so re-importing the same file still dedupes.
         instance.save()
         return instance
+
+
+MAX_BULK_TRANSACTIONS = 200  # one drop onto a bucket; a page shows 50
+
+
+class BulkCategorySerializer(serializers.Serializer):
+    """POST /api/transactions/bulk-category/: move many transactions into one category
+    (dropping rows onto a bucket on the Transactions page)."""
+
+    transactions = serializers.ListField(
+        child=serializers.UUIDField(), min_length=1, max_length=MAX_BULK_TRANSACTIONS
+    )
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.none())
+
+    def get_fields(self):
+        fields = super().get_fields()
+        # Only the caller's own categories exist as far as this request is concerned.
+        fields["category"].queryset = Category.objects.filter(user=self.context["request"].user)
+        return fields

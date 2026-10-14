@@ -1,3 +1,5 @@
+import type { FontChoice } from "@/lib/fonts";
+
 // A word or phrase that helps the AI recognise a category. The category's own name is
 // always used too, so it is not listed here.
 export type Keyword = { id: string; term: string };
@@ -6,6 +8,7 @@ export type Category = {
   id: string;
   name: string;
   is_default: boolean;
+  color: string; // "#RRGGBB": the default colour of this category in every chart
   keywords: Keyword[];
 };
 
@@ -147,6 +150,9 @@ export type PanelConfig = {
   compare: boolean;
   stacked: boolean;
   orientation: "vertical" | "horizontal";
+  // The user's colour overrides: raw series value (a category name, "credit"...) -> "#RRGGBB".
+  // The key "_" colours a chart that has a single series.
+  series_colors: Record<string, string>;
   filters: PanelFilters;
 };
 
@@ -188,3 +194,13 @@ export type QueryResult = {
 
 export type QueryError = { error: { code: string; detail: string } };
 export type QueryOutcome = QueryResult | QueryError;
+
+// --- Preferences (Settings page) ---
+
+export type { FontChoice } from "@/lib/fonts";
+
+// "quality": charts are sharp vector graphics (SVG). "performance": a pixel canvas, faster
+// for charts with thousands of points.
+export type ChartQuality = "quality" | "performance";
+
+export type Preferences = { font: FontChoice; chart_quality: ChartQuality };

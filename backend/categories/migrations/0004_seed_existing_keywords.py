@@ -2,15 +2,15 @@ from django.db import migrations
 
 # Frozen copy on purpose: migrations must not change if services.py later does.
 KEYWORDS = {
-    "food": ["restaurant", "food delivery", "cafe", "dining", "swiggy", "zomato"],
-    "groceries": ["supermarket", "grocery", "vegetables", "bigbasket", "blinkit", "zepto"],
-    "transport": ["taxi", "cab", "metro", "bus", "train", "fuel", "petrol", "uber", "ola"],
-    "shopping": ["online shopping", "clothes", "electronics", "amazon", "flipkart"],
+    "food": ["restaurant", "food delivery", "cafe", "dining", "takeaway", "lunch"],
+    "groceries": ["supermarket", "grocery", "vegetables", "fruits", "provisions", "milk"],
+    "transport": ["taxi", "cab", "metro", "bus", "train", "fuel", "petrol", "parking"],
+    "shopping": ["online shopping", "clothes", "electronics", "footwear", "mall"],
     "bills": ["electricity", "water", "mobile recharge", "internet", "gas", "utility bill"],
     "rent": ["house rent", "rent payment", "landlord"],
     "salary": ["salary credit", "payroll", "income"],
     "transfer": ["bank transfer", "money transfer", "sent to friend", "self transfer"],
-    "entertainment": ["movies", "streaming", "netflix", "spotify", "games"],
+    "entertainment": ["movies", "streaming", "music", "concert", "games"],
     "health": ["hospital", "pharmacy", "doctor", "medicine", "insurance"],
 }
 

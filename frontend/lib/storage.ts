@@ -16,3 +16,15 @@ export function remember(key: string, value: string) {
     // ignore: the choice just won't survive a reload
   }
 }
+
+// Forget every remembered value whose key starts with `prefix` (e.g. the dashboards the user
+// had open, after their data was erased).
+export function forgetAll(prefix: string) {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith(prefix)) localStorage.removeItem(key);
+    }
+  } catch {
+    // ignore: nothing to forget
+  }
+}

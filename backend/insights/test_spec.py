@@ -7,12 +7,15 @@ from insights.spec import (
     DEFAULT_PRESET,
     MAX_CATEGORIES,
     MAX_DATE,
+    MAX_SERIES_COLORS,
+    MAX_SERIES_KEY_LENGTH,
     MIN_DATE,
     SpecError,
     resolve_period,
     validate_date_filter,
     validate_encoding,
     validate_filters,
+    validate_series_colors,
     validate_spec,
 )
 
@@ -305,6 +308,56 @@ def test_validate_spec_surfaces_encoding_and_filter_errors():
     rejected(validate_spec, full(orientation="diagonal"))
     rejected(validate_spec, [])
     rejected(validate_spec, None)
+
+
+# --- series_colors ------------------------------------------------------------
+
+
+def test_series_colors_default_to_empty():
+    assert validate_spec(enc())["series_colors"] == {}
+    assert validate_series_colors(None) == {}
+
+
+def test_series_colors_are_kept_and_upper_cased():
+    spec = validate_spec(enc(series_colors={"Food": "#ff7a1a", "_": "#2A78D6"}))
+    assert spec["series_colors"] == {"Food": "#FF7A1A", "_": "#2A78D6"}
+
+
+def test_series_colors_survive_validating_twice():
+    once = validate_spec(enc(series_colors={"Food": "#ff7a1a"}))
+    assert validate_spec(once) == once
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"Food": "orange"},  # not hex
+        {"Food": "#FFF"},  # short form
+        {"Food": "#GGGGGG"},
+        {"Food": "FF7A1A"},  # no leading #
+        {"Food": "#FF7A1A" + chr(10)},  # trailing newline must not slip past a "$"
+        {"Food": 255},
+        {"Food": None},
+        {"": "#FF7A1A"},  # empty key
+        {"x" * (MAX_SERIES_KEY_LENGTH + 1): "#FF7A1A"},
+        ["#FF7A1A"],  # not an object
+        "#FF7A1A",
+    ],
+)
+def test_bad_series_colors_are_rejected(bad):
+    rejected(validate_spec, enc(series_colors=bad))
+
+
+def test_series_colors_have_an_entry_limit():
+    ok = {f"k{i}": "#112233" for i in range(MAX_SERIES_COLORS)}
+    assert len(validate_spec(enc(series_colors=ok))["series_colors"]) == MAX_SERIES_COLORS
+    rejected(validate_spec, enc(series_colors={**ok, "one-too-many": "#112233"}))
+
+
+def test_the_catalogue_publishes_the_series_colors_limit():
+    from insights.spec import catalogue
+
+    assert catalogue()["limits"]["series_colors"] == MAX_SERIES_COLORS
 
 
 # --- resolve_period -----------------------------------------------------------

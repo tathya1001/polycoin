@@ -8,6 +8,8 @@ so a config written by an older version can never reach the engine unchecked.
 import uuid
 from datetime import date, timedelta
 
+from categories.colors import is_hex_color
+
 from .engine import DIMENSIONS, GRANULARITIES, MEASURES, add_months
 
 SPEC_VERSION = 1
@@ -19,7 +21,7 @@ ORIENTATIONS = ("vertical", "horizontal")
 TXN_TYPES = ("credit", "debit")
 SPEC_KEYS = (
     "v", "chart", "x", "y", "color", "sort", "limit", "bins", "compare",
-    "stacked", "orientation", "filters",
+    "stacked", "orientation", "series_colors", "filters",
 )  # fmt: skip
 
 DATE_PRESETS = (
@@ -32,6 +34,8 @@ MAX_CATEGORIES = 20
 MAX_MERCHANT_LENGTH = 60
 LIMIT_RANGE = (1, 50)  # how many x values a bar or pie keeps before folding the rest
 BINS_RANGE = (5, 50)
+MAX_SERIES_COLORS = 50  # colour overrides one panel may carry
+MAX_SERIES_KEY_LENGTH = 100  # a category name, "credit", a merchant...
 
 # Which fields each chart may use for x, and whether it may split into a colour series.
 # Served to the frontend through catalogue(), so the editor can grey out invalid combinations.
@@ -216,6 +220,7 @@ def catalogue() -> dict:
             "bins": list(BINS_RANGE),
             "categories": MAX_CATEGORIES,
             "merchant_contains": MAX_MERCHANT_LENGTH,
+            "series_colors": MAX_SERIES_COLORS,
         },
     }
 
@@ -274,6 +279,32 @@ def validate_filters(raw) -> dict:
     }
 
 
+# --- series colours -----------------------------------------------------------
+
+
+def validate_series_colors(raw) -> dict:
+    """The user's colour overrides: {series value: "#RRGGBB"}.
+
+    The key is the raw value of the thing being coloured (a category name, "credit", a month),
+    or "_" for a chart with a single series. Colours are stored upper case. The keys are only
+    ever looked up by the frontend, never used as a field name or query, but they are bounded
+    so a panel config can't grow without limit.
+    """
+    raw = _default(raw, {})
+    if not isinstance(raw, dict):
+        raise _bad("series_colors must be an object.")
+    if len(raw) > MAX_SERIES_COLORS:
+        raise _bad(f"series_colors can have at most {MAX_SERIES_COLORS} entries.")
+    clean = {}
+    for key, color in raw.items():
+        if not isinstance(key, str) or not 0 < len(key) <= MAX_SERIES_KEY_LENGTH:
+            raise _bad(f"series_colors keys must be 1 to {MAX_SERIES_KEY_LENGTH} characters.")
+        if not isinstance(color, str) or not is_hex_color(color.upper()):
+            raise _bad("series_colors values must be colours like #2A78D6.")
+        clean[key] = color.upper()
+    return clean
+
+
 # --- the whole spec -----------------------------------------------------------
 
 
@@ -294,6 +325,7 @@ def validate_spec(raw: dict) -> dict:
     spec["orientation"] = _choice(
         _default(raw.get("orientation"), "vertical"), ORIENTATIONS, "orientation"
     )
+    spec["series_colors"] = validate_series_colors(raw.get("series_colors"))
     return spec
 
 

@@ -1,9 +1,12 @@
 import uuid
 
+from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.functions import Lower
 
 from core.models import OwnedModel, TimeStampedModel
+
+from .colors import HEX_COLOR, OTHERS_COLOR
 
 MAX_KEYWORDS_PER_CATEGORY = 30  # bounds the label text we embed for the category
 MAX_KEYWORD_LENGTH = 60
@@ -12,6 +15,12 @@ MAX_KEYWORD_LENGTH = 60
 class Category(OwnedModel):
     name = models.CharField(max_length=50)
     is_default = models.BooleanField(default=False)  # True only for "Others"
+    # "#RRGGBB" in upper case: the default colour of this category in every chart.
+    color = models.CharField(
+        max_length=7,
+        default=OTHERS_COLOR,
+        validators=[RegexValidator(HEX_COLOR.pattern, "Use a colour like #2A78D6.")],
+    )
 
     class Meta:
         ordering = ["-is_default", "name"]  # Others first, then A-Z

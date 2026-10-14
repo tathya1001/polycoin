@@ -5,7 +5,7 @@ import { useMemo } from "react";
 import { isError } from "@/lib/insights";
 import type { PanelConfig, QueryOutcome } from "@/lib/types";
 import KpiPanel from "./KpiPanel";
-import { isEmptyResult, toOption, type ChartKeys } from "./toOption";
+import { isEmptyResult, toOption, type CategoryColors, type ChartKeys } from "./toOption";
 
 // ECharts needs the browser, so it is only loaded on the client, and only once a chart shows.
 const EChart = dynamic(() => import("./EChart"), {
@@ -16,7 +16,7 @@ const EChart = dynamic(() => import("./EChart"), {
 function Message({ children, tone = "muted" }: { children: React.ReactNode; tone?: "muted" | "error" }) {
   return (
     <div className="flex h-full items-center justify-center p-2 text-center text-sm">
-      <p className={tone === "error" ? "text-red-600" : "text-gray-500"}>{children}</p>
+      <p className={tone === "error" ? "font-medium text-neg" : "text-muted"}>{children}</p>
     </div>
   );
 }
@@ -25,15 +25,16 @@ type Props = {
   config: PanelConfig | null;
   outcome: QueryOutcome | undefined; // undefined: not queried yet
   loading: boolean;
+  categoryColors?: CategoryColors; // each category's default colour
   // A click on the chart, already translated into the backend's raw x / colour values.
   onPick?: (picked: { x: ChartKeys["x"][number]; color?: ChartKeys["colors"][number] }) => void;
 };
 
 // What goes inside a panel: the chart, or a loading / empty / error message instead.
-export default function PanelBody({ config, outcome, loading, onPick }: Props) {
+export default function PanelBody({ config, outcome, loading, categoryColors, onPick }: Props) {
   const built = useMemo(
-    () => (config && outcome && !isError(outcome) ? toOption(config, outcome) : null),
-    [config, outcome],
+    () => (config && outcome && !isError(outcome) ? toOption(config, outcome, categoryColors) : null),
+    [config, outcome, categoryColors],
   );
 
   if (!config) return <Message tone="error">This panel&apos;s settings no longer work. Edit it to fix them.</Message>;

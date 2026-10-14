@@ -2,8 +2,10 @@ import json
 import uuid
 
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 from django.utils.dateparse import parse_date
 from rest_framework import mixins, status, viewsets
+from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import MultiPartParser
@@ -23,7 +25,7 @@ from .importer import (
     read_rows,
 )
 from .models import Transaction
-from .serializers import TransactionSerializer
+from .serializers import BulkCategorySerializer, TransactionSerializer
 from .services import create_transaction
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -48,7 +50,8 @@ class TransactionViewSet(
     queryset = Transaction.objects.select_related("category")
     serializer_class = TransactionSerializer
     pagination_class = TransactionPagination
-    http_method_names = ["get", "patch", "delete", "head", "options"]  # no PUT
+    # No PUT. POST only reaches the bulk-category action: there is no create.
+    http_method_names = ["get", "post", "patch", "delete", "head", "options"]
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -78,6 +81,27 @@ class TransactionViewSet(
                 raise ValidationError({"category": "Not a valid id."})
 
         return qs  # Meta.ordering already gives -date
+
+    @action(detail=False, methods=["post"], url_path="bulk-category")
+    def bulk_category(self, request):
+        """Put many transactions into one category in a single request and one SQL UPDATE.
+
+        Ids that aren't the caller's (or don't exist) are reported back as "missing", never
+        updated, and never distinguished from each other, so nothing leaks about other users.
+        """
+        serializer = BulkCategorySerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        ids = set(serializer.validated_data["transactions"])
+        category = serializer.validated_data["category"]
+
+        mine = Transaction.objects.filter(user=request.user, id__in=ids)
+        found = set(mine.values_list("id", flat=True))
+        # .update() skips auto_now, so set updated_at by hand.
+        updated = mine.update(category=category, updated_at=timezone.now())
+        return Response(
+            {"updated": updated, "missing": sorted(str(i) for i in ids - found)},
+            status=status.HTTP_200_OK,
+        )
 
 
 # --- Excel import -------------------------------------------------------------

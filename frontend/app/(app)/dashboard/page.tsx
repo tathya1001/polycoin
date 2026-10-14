@@ -14,12 +14,18 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Check, LayoutDashboard, Pencil, Plus, RefreshCw } from "lucide-react";
 import PanelBody from "@/components/charts/PanelBody";
 import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import FilterBar from "@/components/dashboard/FilterBar";
 import PanelEditor from "@/components/dashboard/PanelEditor";
 import PanelFrame from "@/components/dashboard/PanelFrame";
+import { Button, IconButton } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { EmptyState, ErrorNote, Loading, Spinner } from "@/components/ui/Feedback";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { useToast } from "@/components/ui/Toast";
 import { apiFetch } from "@/lib/api";
 import { readError } from "@/lib/errors";
 import type { Box } from "@/lib/grid";
@@ -27,6 +33,7 @@ import {
   DASHBOARDS_URL,
   DEFAULT_DASHBOARD_FILTERS,
   FIELDS_URL,
+  categoryColorMap,
   QUERY_URL,
   dashboardUrl,
   defaultConfig,
@@ -71,6 +78,7 @@ function savedFilters(id: string): PanelFilters {
 
 export default function DashboardPage() {
   const router = useRouter();
+  const toast = useToast();
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
@@ -297,6 +305,7 @@ export default function DashboardPage() {
     if (!res.ok) return readError(res, "Could not save the panel.");
     setEditor(null);
     await loadDetail(detail.id);
+    toast.success(editor.panel ? "Panel saved." : "Panel added.");
     return null;
   }
 
@@ -307,15 +316,17 @@ export default function DashboardPage() {
       method: "POST",
       body: JSON.stringify({ title, config: panel.config }), // no position: it goes at the bottom
     });
-    if (!res.ok) return setError(await readError(res, "Could not duplicate the panel."));
+    if (!res.ok) return toast.error(await readError(res, "Could not duplicate the panel."));
     await loadDetail(detail.id);
+    toast.success("Panel duplicated.");
   }
 
   async function deletePanel(panel: Panel) {
     if (!detail) return;
     const res = await apiFetch(panelUrl(detail.id, panel.id), { method: "DELETE" });
-    if (!res.ok) return setError(await readError(res, "Could not delete the panel."));
+    if (!res.ok) return toast.error(await readError(res, "Could not delete the panel."));
     setDetail({ ...detail, panels: detail.panels.filter((p) => p.id !== panel.id) });
+    toast.success("Panel deleted.");
   }
 
   // A click on a bar or slice opens the transactions behind it.
@@ -334,26 +345,68 @@ export default function DashboardPage() {
 
   // --- render -----------------------------------------------------------------
 
+  const categoryColors = useMemo(() => categoryColorMap(categories), [categories]);
   const panelsById = useMemo(() => new Map((detail?.panels ?? []).map((p) => [p.id, p])), [detail]);
   const boxes = useMemo<Box[]>(
     () => (detail?.panels ?? []).map(({ id, x, y, w, h }) => ({ id, x, y, w, h })),
     [detail],
   );
 
-  if (loading) {
-    return <main className="p-6 text-gray-500">Loading…</main>;
-  }
+  if (loading) return <Loading />;
 
   if (!catalogue) {
-    return <main className="p-6 text-red-600">{error ?? "Could not load your dashboards."}</main>;
+    return <ErrorNote>{error ?? "Could not load your dashboards."}</ErrorNote>;
   }
 
+  const activeName = dashboards.find((d) => d.id === activeId)?.name;
+
   return (
-    <main className="mx-auto flex w-full max-w-350 flex-1 flex-col gap-4 p-4">
+    <>
       {dashboards.length === 0 ? (
         <Welcome onCreate={createDashboard} />
       ) : (
         <>
+          <PageHeader
+            title={activeName ?? "Dashboard"}
+            subtitle={editing ? "Editing: drag, resize and recolour panels. Changes save automatically." : undefined}
+            actions={
+              <>
+                {querying && (
+                  <span className="flex items-center gap-1.5 text-sm text-ink-2">
+                    <Spinner size={15} /> Updating…
+                  </span>
+                )}
+                <IconButton
+                  label="Refresh every panel"
+                  variant="secondary"
+                  icon={<RefreshCw size={16} />}
+                  onClick={() => setRefreshTick((tick) => tick + 1)}
+                />
+                {editing && (
+                  <Button
+                    icon={<Plus size={16} />}
+                    onClick={() => setEditor({ panel: null, title: "", config: defaultConfig("bar") })}
+                    disabled={(detail?.panels.length ?? 0) >= MAX_PANELS}
+                    title={`Up to ${MAX_PANELS} panels per dashboard`}
+                  >
+                    Panel
+                  </Button>
+                )}
+                <Button
+                  variant={editing ? "primary" : "secondary"}
+                  icon={editing ? <Check size={16} /> : <Pencil size={16} />}
+                  aria-pressed={editing}
+                  onClick={() => {
+                    if (editing) flushLayout();
+                    setEditing((on) => !on);
+                  }}
+                >
+                  {editing ? "Done" : "Edit"}
+                </Button>
+              </>
+            }
+          />
+
           <DashboardTabs
             dashboards={dashboards}
             activeId={activeId}
@@ -365,74 +418,45 @@ export default function DashboardPage() {
             onDelete={deleteDashboard}
           />
 
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="my-4">
             <FilterBar filters={filters} categories={categories} onChange={changeFilters} />
-            <div className="flex items-center gap-2 text-sm">
-              {querying && <span className="text-gray-500">Updating…</span>}
-              <button
-                onClick={() => setRefreshTick((tick) => tick + 1)}
-                className="border px-3 py-1.5"
-                title="Run every panel again"
-              >
-                Refresh
-              </button>
-              {editing && (
-                <button
-                  onClick={() =>
-                    setEditor({ panel: null, title: "", config: defaultConfig("bar") })
-                  }
-                  disabled={(detail?.panels.length ?? 0) >= MAX_PANELS}
-                  className="border px-3 py-1.5 disabled:opacity-40"
-                  title={`Up to ${MAX_PANELS} panels per dashboard`}
-                >
-                  + Add panel
-                </button>
-              )}
-              <button
-                onClick={() => {
-                  if (editing) flushLayout();
-                  setEditing((on) => !on);
-                }}
-                aria-pressed={editing}
-                className="bg-black px-3 py-1.5 text-white dark:bg-white dark:text-black"
-              >
-                {editing ? "Done" : "Edit"}
-              </button>
-            </div>
           </div>
 
           {error && (
-            <div className="flex flex-wrap items-center gap-3 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
+            <ErrorNote className="mb-4 flex flex-wrap items-center gap-3">
               <span>{error}</span>
               {filtersRejected && (
-                <button className="underline" onClick={resetFilters}>Reset filters</button>
+                <button className="underline" onClick={resetFilters}>
+                  Reset filters
+                </button>
               )}
-              <button className="ml-auto underline" onClick={() => setError(null)}>Dismiss</button>
-            </div>
-          )}
-
-          {editing && detail && detail.panels.length > 0 && (
-            <p className="text-xs text-gray-500">
-              Drag a panel by its title to move it, or by its bottom-right corner to resize it.
-              Other panels make room. Changes save automatically.
-            </p>
+              <button className="ml-auto underline" onClick={() => setError(null)}>
+                Dismiss
+              </button>
+            </ErrorNote>
           )}
 
           {!detail ? (
-            <p className="text-gray-500">Loading…</p>
+            <Loading />
           ) : detail.panels.length === 0 ? (
-            <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-gray-300 p-10 text-center dark:border-gray-700">
-              <p>This dashboard has no panels yet.</p>
-              <button
-                onClick={() => {
-                  setEditing(true);
-                  setEditor({ panel: null, title: "", config: defaultConfig("bar") });
-                }}
-                className="bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black"
-              >
-                Add your first panel
-              </button>
-            </div>
+            <EmptyState
+              icon={<LayoutDashboard size={22} aria-hidden />}
+              title="This dashboard has no panels yet"
+              action={
+                <Button
+                  variant="primary"
+                  icon={<Plus size={16} />}
+                  onClick={() => {
+                    setEditing(true);
+                    setEditor({ panel: null, title: "", config: defaultConfig("bar") });
+                  }}
+                >
+                  Add your first panel
+                </Button>
+              }
+            >
+              A panel is one chart or number. Pick what goes on each axis, then drag and resize it.
+            </EmptyState>
           ) : (
             <DashboardGrid
               boxes={boxes}
@@ -455,6 +479,7 @@ export default function DashboardPage() {
                       config={panel.config}
                       outcome={results[panel.id]}
                       loading={querying}
+                      categoryColors={categoryColors}
                       onPick={editing ? undefined : (picked) => drillDown(panel, picked)}
                     />
                   </PanelFrame>
@@ -477,31 +502,30 @@ export default function DashboardPage() {
           onSave={savePanel}
         />
       )}
-    </main>
+    </>
   );
 }
 
 // First visit: no dashboards yet. The template gives instant value; blank is for builders.
 function Welcome({ onCreate }: { onCreate: (name: string, template: "overview" | null) => void }) {
   return (
-    <section className="mx-auto mt-10 flex max-w-lg flex-col items-center gap-4 rounded-xl border border-gray-200 p-8 text-center dark:border-gray-800">
-      <h1 className="text-2xl font-semibold">Where did my money go?</h1>
-      <p className="text-gray-500">
-        Build dashboards of charts from your transactions, like Tableau: add panels, pick a
-        chart and what goes on each axis, then drag and resize them. Start from a ready-made
-        overview, or from an empty canvas.
-      </p>
-      <div className="flex flex-wrap justify-center gap-3">
-        <button
-          onClick={() => onCreate("Overview", "overview")}
-          className="bg-black px-4 py-2 text-white dark:bg-white dark:text-black"
-        >
-          Start with the Overview
-        </button>
-        <button onClick={() => onCreate("My dashboard", null)} className="border px-4 py-2">
-          Blank dashboard
-        </button>
-      </div>
+    <section className="mx-auto mt-10 max-w-xl">
+      <Card className="flex flex-col items-center gap-4 p-8! text-center">
+        <span className="grid size-14 place-items-center rounded-full border-[1.5px] border-ink bg-canvas">
+          <LayoutDashboard size={26} strokeWidth={1.75} aria-hidden />
+        </span>
+        <h1 className="text-[28px] font-semibold tracking-tight">Where did my money go?</h1>
+        <p className="text-ink-2">
+          Build dashboards of charts from your transactions, add panels, pick a chart and what goes
+          on each axis, then drag and resize them. Start from a ready-made overview, or from an empty canvas.
+        </p>
+        <div className="flex flex-wrap justify-center gap-3">
+          <Button variant="primary" onClick={() => onCreate("Overview", "overview")}>
+            Start with the Overview
+          </Button>
+          <Button onClick={() => onCreate("My dashboard", null)}>Blank dashboard</Button>
+        </div>
+      </Card>
     </section>
   );
 }

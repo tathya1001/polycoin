@@ -1,7 +1,12 @@
 "use client";
 
+import { CalendarDays, ChevronDown, Check } from "lucide-react";
+import { cn } from "@/lib/cn";
 import { PRESET_LABELS, todayLocal } from "@/lib/insights";
 import type { Category, DatePreset, PanelFilters } from "@/lib/types";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Field";
+import { Popover } from "@/components/ui/Popover";
 import CategoryPicker from "./CategoryPicker";
 
 const PRESETS: DatePreset[] = [
@@ -14,14 +19,26 @@ const PRESETS: DatePreset[] = [
   "custom",
 ];
 
+const MONEY_OPTIONS: { value: "" | "debit" | "credit"; label: string }[] = [
+  { value: "", label: "In and out" },
+  { value: "debit", label: "Money out" },
+  { value: "credit", label: "Money in" },
+];
+
 type Props = {
   filters: PanelFilters;
   categories: Category[];
   onChange: (next: PanelFilters) => void;
 };
 
-// The dashboard's filters (Tableau's dashboard filters): they apply to every panel, except
-// where a panel pins its own. Changing one re-runs every panel in a single request.
+function dateSummary(date: PanelFilters["date"]): string {
+  if (date.preset === "custom" && date.from && date.to) return `${date.from} → ${date.to}`;
+  return PRESET_LABELS[date.preset];
+}
+
+// The dashboard's filters, shown as pills that open a popover.
+// They apply to every panel, except where a panel pins its own. Changing one re-runs every
+// panel in a single request.
 export default function FilterBar({ filters, categories, onChange }: Props) {
   const date = filters.date;
 
@@ -32,54 +49,108 @@ export default function FilterBar({ filters, categories, onChange }: Props) {
     onChange({ ...filters, date: { preset, from: `${today.slice(0, 8)}01`, to: today } });
   }
 
+  const moneyLabel = MONEY_OPTIONS.find((o) => o.value === (filters.type ?? ""))?.label ?? "In and out";
+
   return (
-    <div className="flex flex-wrap items-end gap-3 text-sm">
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-gray-500">Date range</span>
-        <select className="border p-1" value={date.preset} onChange={(e) => setPreset(e.target.value as DatePreset)}>
+    <div className="flex flex-wrap items-center gap-2">
+      <Popover
+        trigger={(p) => (
+          <Button
+            size="sm"
+            icon={<CalendarDays size={15} />}
+            aria-label={`Date range: ${dateSummary(date)}`}
+            onClick={p.onClick}
+            aria-expanded={p["aria-expanded"]}
+            aria-haspopup={p["aria-haspopup"]}
+          >
+            {dateSummary(date)}
+            <ChevronDown size={14} aria-hidden />
+          </Button>
+        )}
+        className="w-60"
+      >
+        <ul className="flex flex-col gap-0.5">
           {PRESETS.map((preset) => (
-            <option key={preset} value={preset}>{PRESET_LABELS[preset]}</option>
+            <li key={preset}>
+              <button
+                type="button"
+                onClick={() => setPreset(preset)}
+                aria-pressed={date.preset === preset}
+                className={cn(
+                  "flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-left text-sm hover:bg-wash",
+                  date.preset === preset && "font-semibold",
+                )}
+              >
+                {PRESET_LABELS[preset]}
+                {date.preset === preset && <Check size={15} aria-hidden />}
+              </button>
+            </li>
           ))}
-        </select>
-      </label>
+        </ul>
+        {date.preset === "custom" && (
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-hairline pt-3">
+            <label className="space-y-1 text-xs font-medium">
+              From
+              <Input
+                dense
+                type="date"
+                value={date.from ?? ""}
+                max={date.to}
+                onChange={(e) => e.target.value && onChange({ ...filters, date: { ...date, from: e.target.value } })}
+              />
+            </label>
+            <label className="space-y-1 text-xs font-medium">
+              To
+              <Input
+                dense
+                type="date"
+                value={date.to ?? ""}
+                min={date.from}
+                onChange={(e) => e.target.value && onChange({ ...filters, date: { ...date, to: e.target.value } })}
+              />
+            </label>
+          </div>
+        )}
+      </Popover>
 
-      {date.preset === "custom" && (
-        <>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-gray-500">From</span>
-            <input
-              type="date"
-              className="border p-1"
-              value={date.from ?? ""}
-              max={date.to}
-              onChange={(e) => e.target.value && onChange({ ...filters, date: { ...date, from: e.target.value } })}
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="text-xs text-gray-500">To</span>
-            <input
-              type="date"
-              className="border p-1"
-              value={date.to ?? ""}
-              min={date.from}
-              onChange={(e) => e.target.value && onChange({ ...filters, date: { ...date, to: e.target.value } })}
-            />
-          </label>
-        </>
-      )}
-
-      <label className="flex flex-col gap-1">
-        <span className="text-xs text-gray-500">Money</span>
-        <select
-          className="border p-1"
-          value={filters.type ?? ""}
-          onChange={(e) => onChange({ ...filters, type: (e.target.value || null) as PanelFilters["type"] })}
-        >
-          <option value="">In and out</option>
-          <option value="debit">Money out</option>
-          <option value="credit">Money in</option>
-        </select>
-      </label>
+      <Popover
+        trigger={(p) => (
+          <Button
+            size="sm"
+            aria-label={`Money: ${moneyLabel}`}
+            onClick={p.onClick}
+            aria-expanded={p["aria-expanded"]}
+            aria-haspopup={p["aria-haspopup"]}
+          >
+            {moneyLabel}
+            <ChevronDown size={14} aria-hidden />
+          </Button>
+        )}
+        className="w-44"
+      >
+        {(close) => (
+          <ul className="flex flex-col gap-0.5">
+            {MONEY_OPTIONS.map((option) => (
+              <li key={option.value}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange({ ...filters, type: (option.value || null) as PanelFilters["type"] });
+                    close();
+                  }}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-left text-sm hover:bg-wash",
+                    (filters.type ?? "") === option.value && "font-semibold",
+                  )}
+                >
+                  {option.label}
+                  {(filters.type ?? "") === option.value && <Check size={15} aria-hidden />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Popover>
 
       <CategoryPicker
         categories={categories}

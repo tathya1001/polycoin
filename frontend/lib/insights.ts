@@ -1,6 +1,7 @@
 // Plain logic for the dashboard page: API paths, labels, formatting, the editor's spec
 // building and chart click-through. No React, so it stays easy to read and to test.
 
+import { money } from "@/lib/format";
 import type {
   Agg,
   Catalogue,
@@ -40,16 +41,6 @@ export const CHART_LABELS: Record<ChartType, string> = {
   pie: "Pie",
   donut: "Donut",
   histogram: "Histogram",
-};
-
-export const CHART_ICONS: Record<ChartType, string> = {
-  kpi: "123",
-  bar: "▮▮",
-  line: "╱╲",
-  area: "◢◣",
-  pie: "◔",
-  donut: "◯",
-  histogram: "▁▃▇",
 };
 
 export const DIMENSION_LABELS: Record<Dimension, string> = {
@@ -146,12 +137,6 @@ function bucketEnd(start: string, granularity: Granularity): string {
 
 // --- formatting -----------------------------------------------------------------
 
-// Money arrives as a decimal string ("1234.50"). Number() is only for display.
-export function money(value: Cell): string {
-  if (value === null || value === "") return "–";
-  return `₹${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 export function isCountLike(config: Pick<PanelConfig, "y">): boolean {
   return config.y.measure === "count" || config.y.agg === "count";
 }
@@ -180,6 +165,11 @@ export function formatLabel(value: Cell, field: Dimension | undefined, granulari
   return String(value);
 }
 
+// Category name (lower case) -> colour: what the charts use as each category's default colour.
+export function categoryColorMap(categories: Category[]): Map<string, string> {
+  return new Map(categories.map((c) => [c.name.toLowerCase(), c.color]));
+}
+
 // --- building specs in the editor --------------------------------------------------
 
 export const EMPTY_FILTERS: PanelFilters = {
@@ -206,6 +196,7 @@ export function defaultConfig(chart: ChartType): PanelConfig {
     compare: false,
     stacked: false,
     orientation: "vertical",
+    series_colors: {},
     filters: EMPTY_FILTERS,
   };
   if (chart === "kpi") return { ...base, compare: true };

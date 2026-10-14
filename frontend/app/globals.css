@@ -1,26 +1,177 @@
 @import "tailwindcss";
 
+/* Polycoin design tokens: "soft neo-brutalist". Black-and-white chrome, colourful charts.
+   Light only for now. A dark theme later is one extra block under [data-theme="dark"]
+   that redefines the --color-* tokens below. */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --app-font: var(--font-geist-sans), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Settings > Appearance sets data-font on <html>; no attribute means Geist. One rule per font in
+   lib/fonts.ts (the variables come from app/fonts.ts). */
+html[data-font="inter"] {
+  --app-font: var(--font-inter), system-ui, sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html[data-font="space-grotesk"] {
+  --app-font: var(--font-space-grotesk), system-ui, sans-serif;
+}
+
+html[data-font="plex-sans"] {
+  --app-font: var(--font-plex-sans), system-ui, sans-serif;
+}
+
+html[data-font="geologica"] {
+  --app-font: var(--font-geologica), system-ui, sans-serif;
+}
+
+html[data-font="source-serif"] {
+  --app-font: var(--font-source-serif), Georgia, "Times New Roman", serif;
+}
+
+html[data-font="instrument-serif"] {
+  --app-font: var(--font-instrument-serif), Georgia, "Times New Roman", serif;
+}
+
+html[data-font="bitter"] {
+  --app-font: var(--font-bitter), Georgia, "Times New Roman", serif;
+}
+
+html[data-font="crimson-pro"] {
+  --app-font: var(--font-crimson-pro), Georgia, "Times New Roman", serif;
+}
+
+html[data-font="spectral"] {
+  --app-font: var(--font-spectral), Georgia, "Times New Roman", serif;
+}
+
+html[data-font="plex-mono"] {
+  --app-font: var(--font-plex-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+html[data-font="xanh-mono"] {
+  --app-font: var(--font-xanh-mono), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+html[data-font="vt323"] {
+  --app-font: var(--font-vt323), ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+/* Some fonts have small letters for their size (a low x-height; Geist is 0.53), so the whole UI
+   looks tiny in them. font-size-adjust scales the letters toward a common x-height without
+   touching the layout. Values come from measuring each font in the browser. */
+html[data-font="vt323"] {
+  font-size-adjust: 0.52; /* x-height 0.40: pixel fonts are small */
+}
+
+html[data-font="crimson-pro"],
+html[data-font="spectral"] {
+  font-size-adjust: 0.5; /* x-height 0.42 and 0.45 */
+}
+
+html[data-font="instrument-serif"] {
+  font-size-adjust: 0.57; /* normal x-height, but a very narrow, condensed face */
+}
+
+@theme {
+  --font-sans: var(--app-font);
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-canvas: #f7f6f2;
+  --color-surface: #ffffff;
+  --color-ink: #111111;
+  --color-ink-2: #4a4a4a;
+  --color-muted: #8a8a85;
+  --color-hairline: #e4e2dc;
+  --color-wash: #efede6; /* hover / subtle fill on canvas */
+  --color-pos: #15803d;
+  --color-neg: #dc2626;
+  --color-warn-bg: #fff4d6;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --shadow-hard-sm: 2px 2px 0 0 #111111;
+  --shadow-hard: 4px 4px 0 0 #111111;
+  --shadow-hard-lg: 8px 8px 0 0 #111111;
+
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+html {
+  background: var(--color-canvas);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--app-font);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* One focus style for everything interactive. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #111111;
+  color: #ffffff;
+}
+
+dialog::backdrop {
+  background: rgb(17 17 17 / 0.35);
+}
+
+/* Toast entrance */
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes skeleton {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

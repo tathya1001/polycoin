@@ -1,69 +1,77 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { Copy, GripVertical, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { cn } from "@/lib/cn";
+import { IconButton } from "@/components/ui/Button";
+import { useConfirm } from "@/components/ui/Confirm";
+import { Popover } from "@/components/ui/Popover";
 
 type Props = {
   title: string;
-  editing: boolean; // Edit mode: show the grip and the ⋯ menu
+  editing: boolean; // Edit mode: show the grip and the menu
   onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
   children: ReactNode;
 };
 
-// The box around one chart: a header and, in Edit mode, a ⋯ menu. The grid lays an
+// The card around one chart: a header and, in Edit mode, a menu. The grid lays an
 // invisible move handle over the header, so dragging the title moves the panel.
 export default function PanelFrame({ title, editing, onEdit, onDuplicate, onDelete, children }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
+  const confirm = useConfirm();
 
-  function closeMenu() {
-    setMenuOpen(false);
-    setConfirming(false);
+  async function askDelete() {
+    const ok = await confirm({
+      title: `Delete "${title || "this panel"}"?`,
+      message: "The chart is removed from this dashboard.",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (ok) onDelete();
   }
 
   return (
-    <section className="flex h-full flex-col overflow-hidden rounded-lg border border-gray-200 bg-background shadow-sm dark:border-gray-800">
-      <header className="flex items-center gap-2 border-b border-gray-100 px-3 py-1.5 dark:border-gray-900">
-        <h2
-          className={`min-w-0 flex-1 truncate text-sm font-medium ${editing ? "select-none" : ""}`}
-          title={title}
-        >
-          {editing && <span className="mr-1.5 text-gray-400" aria-hidden>⠿</span>}
-          {title || <span className="text-gray-400">Untitled</span>}
+    <section
+      className={cn(
+        "flex h-full flex-col overflow-hidden rounded-md border-[1.5px] bg-surface transition-shadow duration-150",
+        editing ? "border-dashed border-ink" : "border-ink shadow-hard-sm",
+      )}
+    >
+      <header className="flex items-center gap-2 border-b border-hairline px-3 py-2">
+        {editing && <GripVertical size={16} className="shrink-0 text-muted" aria-hidden />}
+        <h2 className={cn("min-w-0 flex-1 truncate text-sm font-semibold", editing && "select-none")} title={title}>
+          {title || <span className="text-muted">Untitled</span>}
         </h2>
         {editing && (
-          <div className="relative">
-            <button
-              onClick={() => (menuOpen ? closeMenu() : setMenuOpen(true))}
-              className="rounded px-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-900"
-              aria-label="Panel menu"
-              aria-expanded={menuOpen}
-            >
-              ⋯
-            </button>
-            {menuOpen && (
-              <div className="absolute right-0 top-7 z-30 w-40 rounded-md border border-gray-200 bg-background py-1 text-sm shadow-lg dark:border-gray-800">
-                {confirming ? (
-                  <div className="flex flex-col gap-2 px-3 py-2">
-                    <p>Delete this panel?</p>
-                    <div className="flex gap-3">
-                      <button className="text-red-600 underline" onClick={() => { closeMenu(); onDelete(); }}>
-                        Delete
-                      </button>
-                      <button className="underline" onClick={closeMenu}>Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <MenuItem onClick={() => { closeMenu(); onEdit(); }}>Edit…</MenuItem>
-                    <MenuItem onClick={() => { closeMenu(); onDuplicate(); }}>Duplicate</MenuItem>
-                    <MenuItem onClick={() => setConfirming(true)} danger>Delete…</MenuItem>
-                  </>
-                )}
+          <Popover
+            align="right"
+            className="w-44 p-1.5!"
+            trigger={(p) => (
+              <IconButton
+                label="Panel menu"
+                size="sm"
+                icon={<MoreHorizontal size={16} />}
+                onClick={p.onClick}
+                aria-expanded={p["aria-expanded"]}
+                aria-haspopup={p["aria-haspopup"]}
+              />
+            )}
+          >
+            {(close) => (
+              <div className="flex flex-col text-sm">
+                <MenuItem icon={<Pencil size={15} />} onClick={() => { close(); onEdit(); }}>
+                  Edit…
+                </MenuItem>
+                <MenuItem icon={<Copy size={15} />} onClick={() => { close(); onDuplicate(); }}>
+                  Duplicate
+                </MenuItem>
+                <MenuItem icon={<Trash2 size={15} />} danger onClick={() => { close(); askDelete(); }}>
+                  Delete…
+                </MenuItem>
               </div>
             )}
-          </div>
+          </Popover>
         )}
       </header>
       <div className="min-h-0 flex-1 p-2">{children}</div>
@@ -71,12 +79,27 @@ export default function PanelFrame({ title, editing, onEdit, onDuplicate, onDele
   );
 }
 
-function MenuItem({ children, onClick, danger }: { children: ReactNode; onClick: () => void; danger?: boolean }) {
+function MenuItem({
+  children,
+  icon,
+  onClick,
+  danger,
+}: {
+  children: ReactNode;
+  icon: ReactNode;
+  onClick: () => void;
+  danger?: boolean;
+}) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`block w-full px-3 py-1.5 text-left hover:bg-gray-100 dark:hover:bg-gray-900 ${danger ? "text-red-600" : ""}`}
+      className={cn(
+        "flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-left hover:bg-wash",
+        danger && "text-neg hover:bg-[#fee2e2]",
+      )}
     >
+      {icon}
       {children}
     </button>
   );

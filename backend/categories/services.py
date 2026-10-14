@@ -1,3 +1,4 @@
+from .colors import CATEGORY_COLORS, OTHERS_COLOR
 from .models import Category, CategoryKeyword
 
 DEFAULT_CATEGORY = "Others"
@@ -10,17 +11,22 @@ SEED_CATEGORIES = [
 # that the user's rows are the single source of truth: they can add and delete freely, and
 # nothing here is read again. Keyed by lower-cased category name. English / India-flavoured.
 DEFAULT_KEYWORDS = {
-    "food": ["restaurant", "food delivery", "cafe", "dining", "swiggy", "zomato"],
-    "groceries": ["supermarket", "grocery", "vegetables", "bigbasket", "blinkit", "zepto"],
-    "transport": ["taxi", "cab", "metro", "bus", "train", "fuel", "petrol", "uber", "ola"],
-    "shopping": ["online shopping", "clothes", "electronics", "amazon", "flipkart"],
+    "food": ["restaurant", "food delivery", "cafe", "dining", "takeaway", "lunch"],
+    "groceries": ["supermarket", "grocery", "vegetables", "fruits", "provisions", "milk"],
+    "transport": ["taxi", "cab", "metro", "bus", "train", "fuel", "petrol", "parking"],
+    "shopping": ["online shopping", "clothes", "electronics", "footwear", "mall"],
     "bills": ["electricity", "water", "mobile recharge", "internet", "gas", "utility bill"],
     "rent": ["house rent", "rent payment", "landlord"],
     "salary": ["salary credit", "payroll", "income"],
     "transfer": ["bank transfer", "money transfer", "sent to friend", "self transfer"],
-    "entertainment": ["movies", "streaming", "netflix", "spotify", "games"],
+    "entertainment": ["movies", "streaming", "music", "concert", "games"],
     "health": ["hospital", "pharmacy", "doctor", "medicine", "insurance"],
 }
+
+
+def _seed_color(index: int) -> str:
+    """Seed categories after "Others" take the palette in order: index 1 gets the first colour."""
+    return CATEGORY_COLORS[(index - 1) % len(CATEGORY_COLORS)]
 
 
 def seed_default_categories(user) -> None:
@@ -31,8 +37,13 @@ def seed_default_categories(user) -> None:
     """
     Category.objects.bulk_create(
         [
-            Category(user=user, name=name, is_default=(name == DEFAULT_CATEGORY))
-            for name in SEED_CATEGORIES
+            Category(
+                user=user,
+                name=name,
+                is_default=(name == DEFAULT_CATEGORY),
+                color=OTHERS_COLOR if name == DEFAULT_CATEGORY else _seed_color(index),
+            )
+            for index, name in enumerate(SEED_CATEGORIES)
         ],
         ignore_conflicts=True,
     )

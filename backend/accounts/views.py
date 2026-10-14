@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db.models import ProtectedError
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import generics, status
@@ -11,7 +12,14 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .authentication import enforce_csrf
-from .serializers import RegisterSerializer, UserSerializer
+from .models import UserPreferences
+from .serializers import (
+    DeleteDataSerializer,
+    PreferencesSerializer,
+    RegisterSerializer,
+    UserSerializer,
+)
+from .services import delete_user_data
 
 
 def set_auth_cookies(response, access, refresh=None):
@@ -113,6 +121,40 @@ class MeView(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+class PreferencesView(generics.RetrieveUpdateAPIView):
+    """GET / PATCH /api/accounts/preferences/: the signed-in user's own settings (font...)."""
+
+    serializer_class = PreferencesSerializer
+    http_method_names = ["get", "patch", "head", "options"]  # no PUT: PATCH is enough
+
+    def get_object(self):
+        preferences, _ = UserPreferences.objects.get_or_create(user=self.request.user)
+        return preferences
+
+
+class DeleteDataView(APIView):
+    """POST /api/accounts/delete-data/ {"password": "..."}: erase the user's data, keep the account.
+
+    Throttled hard (the "destructive" scope, per user) so it cannot be used to guess the
+    password either: wrong attempts count too.
+    """
+
+    throttle_scope = "destructive"
+
+    def post(self, request):
+        serializer = DeleteDataSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        try:
+            counts = delete_user_data(request.user)
+        except ProtectedError:
+            # An import added a transaction while we were erasing. Nothing was deleted.
+            return Response(
+                {"detail": "Your data changed during the erase. Nothing was deleted. Try again."},
+                status=status.HTTP_409_CONFLICT,
+            )
+        return Response(counts)
 
 
 class LogoutView(APIView):
