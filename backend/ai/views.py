@@ -11,6 +11,8 @@ from .client import AIError, OllamaClient
 # anything not listed here (unknown model, no embedder installed, ...) is fixable by them.
 STATUS_BY_CODE = {
     "ollama_unreachable": status.HTTP_503_SERVICE_UNAVAILABLE,
+    # A wrong gateway key is our misconfiguration, not the user's mistake, so not a 400.
+    "ollama_unauthorized": status.HTTP_503_SERVICE_UNAVAILABLE,
     "embedding_failed": status.HTTP_502_BAD_GATEWAY,
     "dimension_mismatch": status.HTTP_502_BAD_GATEWAY,
 }

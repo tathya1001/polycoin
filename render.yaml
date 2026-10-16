@@ -1,0 +1,50 @@
+# Render Blueprint: the backend service as code. Create it with Render → New → Blueprint, or
+# keep it as the written record of the dashboard settings. Values marked `sync: false` are
+# secrets: Render asks for them in its dashboard and they are never stored in this repo.
+services:
+  - type: web
+    name: polycoin-api
+    runtime: docker
+    region: singapore
+    plan: free
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/ping/  # no database access, so checks don't keep Neon awake
+    autoDeployTrigger: "off"  # GitHub Actions deploys through the deploy hook, after tests pass
+    envVars:
+      # Secrets and per-environment values (set in the dashboard).
+      - key: DATABASE_URL  # Neon DIRECT (not pooled) connection string
+        sync: false
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: JWT_SIGNING_KEY
+        sync: false
+      - key: FIELD_ENCRYPTION_KEYS  # back this up outside Render and Neon
+        sync: false
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+      - key: ORIGIN_SECRET  # same value as ORIGIN_SECRET on Vercel
+        sync: false
+      - key: OLLAMA_BASE_URL
+        sync: false
+      - key: OLLAMA_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      # Fixed configuration.
+      - key: DJANGO_PRODUCTION
+        value: "TRUE"
+      - key: AUTH_COOKIE_SECURE
+        value: "TRUE"
+      - key: FIELD_ENCRYPTION_ACTIVE_KEY
+        value: v1
+      - key: OLLAMA_TIMEOUT
+        value: "30"
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: INSIGHTS_MAX_ROWS
+        value: "20000"
+      - key: SECURE_HSTS_SECONDS
+        value: "3600"

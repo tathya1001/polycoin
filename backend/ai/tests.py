@@ -11,7 +11,6 @@ from ai.scoring import (
     prepare_text,
 )
 
-
 # --- prepare_text -------------------------------------------------------------
 
 

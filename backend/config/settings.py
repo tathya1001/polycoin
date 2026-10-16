@@ -1,9 +1,10 @@
 """Django settings. Secrets and per-environment values come from environment variables (see .env.example)."""
 
 import os
-import dj_database_url
 from datetime import timedelta
 from pathlib import Path
+
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -16,7 +17,13 @@ SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]
 # Off unless the variable is exactly TRUE.
 DEBUG = os.environ.get("DJANGO_DEBUG") == "TRUE"
 
+# Production (Render). Off locally, where everything is plain http on localhost.
+PRODUCTION = os.environ.get("DJANGO_PRODUCTION") == "TRUE"
+
 ALLOWED_HOSTS = os.environ["DJANGO_ALLOWED_HOSTS"].split(",")
+# Render sets this to the service's own *.onrender.com name.
+if render_host := os.environ.get("RENDER_EXTERNAL_HOSTNAME"):
+    ALLOWED_HOSTS.append(render_host)
 
 
 INSTALLED_APPS = [
@@ -40,13 +47,21 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.OriginSecretMiddleware',
+    'core.middleware.NoStoreApiMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware'    
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+if PRODUCTION:
+    # Serves the admin's collected static files (Render has no nginx). Right after
+    # SecurityMiddleware so static requests are answered before sessions and auth run.
+    # Only in production: locally the image's staticfiles/ is hidden by the bind mount.
+    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 
 ROOT_URLCONF = 'config.urls'
 
@@ -68,7 +83,9 @@ TEMPLATES = [
 WSGI_APPLICATION = 'config.wsgi.application'
 
 
-DATABASES = {"default": dj_database_url.config(conn_max_age=600)}
+# Neon suspends idle computes and drops their connections; the health check replaces a dead
+# persistent connection instead of failing the request.
+DATABASES = {"default": dj_database_url.config(conn_max_age=600, conn_health_checks=True)}
 
 
 # Password hashing
@@ -109,6 +126,7 @@ USE_TZ = True
 
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / "staticfiles"  # collectstatic target, served by WhiteNoise
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -158,6 +176,47 @@ FIELD_ENCRYPTION_KEYS = os.environ["FIELD_ENCRYPTION_KEYS"]
 FIELD_ENCRYPTION_ACTIVE_KEY = os.environ["FIELD_ENCRYPTION_ACTIVE_KEY"]
 
 
+# Production hardening (DJANGO_PRODUCTION=TRUE)
+
+if PRODUCTION:
+    # Render terminates TLS and forwards plain http, recording the original scheme in this
+    # header. Trusting it is safe because the container is only reachable through Render's proxy.
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    # Render's health checker may call over plain http, and a redirect would read as unhealthy.
+    SECURE_REDIRECT_EXEMPT = [r"^api/ping/$"]
+    SECURE_HSTS_SECONDS = int(os.environ.get("SECURE_HSTS_SECONDS", "3600"))
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    }
+
+    # Throttle counters must be shared by every gunicorn worker and survive restarts; the
+    # default in-memory cache is per process, which would multiply the login limit.
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.db.DatabaseCache",
+            "LOCATION": "django_cache",
+        }
+    }
+
+    # No debug page in production, so errors must reach stdout for Render's log viewer.
+    LOGGING = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "handlers": {"console": {"class": "logging.StreamHandler"}},
+        "root": {"handlers": ["console"], "level": "INFO"},
+        "loggers": {"httpx": {"level": "WARNING"}},  # httpx logs every request URL at INFO
+    }
+
+# onrender.com and vercel.app are shared parent domains we don't own, so HSTS can't include
+# subdomains or be preloaded.
+SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
+
+
 # Local AI categorisation (Ollama embeddings)
 # Optional, unlike the settings above: a missing Ollama must not stop the app booting.
 # The URL comes from the environment only, never from a request.
@@ -176,3 +235,22 @@ AI_BLEND_MAX_WEIGHT = float(os.environ.get("AI_BLEND_MAX_WEIGHT", "0.7"))  # max
 
 # Insights decrypts rows in Python, so one request must never load an unbounded number of them.
 INSIGHTS_MAX_ROWS = int(os.environ.get("INSIGHTS_MAX_ROWS", "50000"))
+
+# Bearer token for the authenticated gateway in front of a remote Ollama (ollama-gateway/).
+# Empty for a local Ollama, which needs no auth.
+OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "")
+
+# Shared with the Vercel proxy, which sends it as X-Origin-Secret on every /api/ request;
+# Django refuses /api/ requests without it. Empty (the default) turns the check off.
+ORIGIN_SECRET = os.environ.get("ORIGIN_SECRET", "")
+
+# The commit this process runs. Render sets it; the deploy pipeline waits for it to change.
+GIT_COMMIT = os.environ.get("RENDER_GIT_COMMIT", "dev")
+
+# Error tracking (Sentry). Off unless a DSN is set; see core/observability.py for what it
+# keeps out of error reports.
+SENTRY_DSN = os.environ.get("SENTRY_DSN", "")
+if SENTRY_DSN:
+    from core.observability import init_sentry
+
+    init_sentry(SENTRY_DSN, release=GIT_COMMIT)

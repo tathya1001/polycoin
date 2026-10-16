@@ -1,0 +1,22 @@
+name: Keep-alive
+
+# Render's free web service sleeps after 15 minutes without traffic, and waking takes ~1 minute.
+# This pings it every 10 minutes. Cron is UTC and best effort; odd minutes avoid the
+# top-of-the-hour queue when GitHub delays scheduled runs most.
+on:
+  schedule:
+    - cron: "4,14,24,34,44,54 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    if: vars.DEPLOY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping the backend (no database access, so Neon still sleeps)
+        env:
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
+        run: curl -fsS --retry 3 --retry-delay 10 --max-time 90 "$BACKEND_URL/api/ping/"

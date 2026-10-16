@@ -1,8 +1,10 @@
 from django.contrib.auth.password_validation import validate_password
-from rest_framework import serializers
 from django.db import transaction
-from vault.services import create_user_key
+from rest_framework import serializers
+
 from categories.services import seed_default_categories
+from vault.services import create_user_key
+
 from .models import User, UserPreferences
 
 

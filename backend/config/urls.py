@@ -4,7 +4,8 @@ from django.urls import include, path
 
 # Every API view requires authentication by default (REST_FRAMEWORK
 # DEFAULT_PERMISSION_CLASSES). These are the ONLY explicitly open (AllowAny) ones:
-#   GET  /api/health/             liveness probe
+#   GET  /api/health/             readiness probe (checks the database)
+#   GET  /api/ping/               liveness for keep-alive and Render; no DB access
 #   GET  /api/accounts/csrf/      hands the browser its CSRF cookie
 #   POST /api/accounts/register/  throttled
 #   POST /api/accounts/login/     throttled

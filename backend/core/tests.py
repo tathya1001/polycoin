@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 # Keep in sync with the comment in config/urls.py.
 EXPECTED_OPEN_ENDPOINTS = {
     "api/health/",
+    "api/ping/",
     "api/accounts/csrf/",
     "api/accounts/register/",
     "api/accounts/login/",
@@ -49,3 +50,28 @@ def test_health_returns_ok():
     response = client.get("/api/health/")
     assert response.status_code == 200
     assert response.json()["database"] == "ok"
+
+
+# --- /api/ping/ -----------------------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_ping_runs_no_database_queries(django_assert_num_queries, settings):
+    """Keep-alive and Render's health check hit this constantly; it must never wake Neon."""
+    settings.GIT_COMMIT = "abc123"
+    with django_assert_num_queries(0):
+        response = Client().get("/api/ping/")
+    assert response.status_code == 200
+    assert response.json() == {"status": "ok", "commit": "abc123"}
+
+
+@pytest.mark.django_db
+def test_ping_ignores_credentials_so_it_cannot_query_the_user_table(
+    django_assert_num_queries, settings
+):
+    """A request carrying a (garbage) auth cookie must not trigger a user lookup either."""
+    client = Client()
+    client.cookies[settings.AUTH_COOKIE_ACCESS] = "not-a-real-token"
+    with django_assert_num_queries(0):
+        response = client.get("/api/ping/")
+    assert response.status_code == 200

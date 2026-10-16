@@ -9,9 +9,13 @@ __pycache__/
 .pytest_cache/
 db.sqlite3
 
+# Production static files built by collectstatic
+staticfiles/
+
 # Node / Next.js
 node_modules/
 .next/
 
 # Local tooling and notes
 dev-docs/
+

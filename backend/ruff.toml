@@ -1,0 +1,9 @@
+line-length = 100
+target-version = "py311"
+# Generated migrations aren't hand-formatted.
+extend-exclude = ["*/migrations/*"]
+
+[lint]
+# Explicit, so a ruff upgrade can't silently widen the rule set and break CI:
+# E4/E7/E9 + F = pycodestyle errors and pyflakes (the classic defaults), I = import sorting.
+select = ["E4", "E7", "E9", "F", "I"]

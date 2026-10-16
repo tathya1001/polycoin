@@ -15,13 +15,21 @@ class AIError(Exception):
         self.detail = detail
         
 class OllamaClient:
-    def __init__(self, base_url: str | None = None, timeout: float | None = None):
+    def __init__(
+        self, base_url: str | None = None, timeout: float | None = None, api_key: str | None = None
+    ):
         self.base_url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
         self.timeout = timeout or settings.OLLAMA_TIMEOUT
+        key = settings.OLLAMA_API_KEY if api_key is None else api_key
+        # Plain Ollama ignores this header; the gateway in front of a remote Ollama rejects
+        # requests without it. The key is never put in an AIError.
+        self.headers = {"Authorization": f"Bearer {key}"} if key else {}
         
     def _request(self, method: str, path: str, **kwargs) -> httpx.Response:
         try:
-            return httpx.request(method, self.base_url + path, timeout=self.timeout, **kwargs)
+            response = httpx.request(
+                method, self.base_url + path, timeout=self.timeout, headers=self.headers, **kwargs
+            )
         except httpx.TransportError:
             # Covers connection refused, DNS failure and timeouts. `from None` drops the
             # original exception so nothing from the request leaks into the traceback.
@@ -29,6 +37,13 @@ class OllamaClient:
                 "ollama_unreachable",
                 "Could not reach the Ollama server. Check the OLLAMA_BASE_URL environment variable and that the server is running.",
             ) from None
+
+        if response.status_code == 401:
+            raise AIError(
+                "ollama_unauthorized",
+                "The Ollama gateway rejected the API key. Check the OLLAMA_API_KEY environment variable.",
+            )
+        return response
     
     def list_models(self) -> list[dict]:
         """Installed models that can produce embeddings, as [{"name", "dimension"}]."""

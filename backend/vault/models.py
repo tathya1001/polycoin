@@ -1,5 +1,6 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
+
 
 class UserDataKey(models.Model):
     """One row per user: their random data key (DEK), stored wrapped by a master key."""
