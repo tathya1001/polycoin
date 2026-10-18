@@ -71,6 +71,16 @@ class PreviewView(AIBase):
         return Response(services.build_proposals(request.user, data.validated_data["model"], client))
 
 
+class PrepareView(AIBase):
+    """The texts, candidates and thresholds for a run in the browser, which embeds them with
+    the user's own Ollama and scores them itself. Makes no Ollama call and writes nothing."""
+
+    throttle_scope = "ai"  # decrypts as many rows as a preview does
+
+    def get(self, request):
+        return Response(services.prepare_run(request.user))
+
+
 class ApplyView(AIBase):
     """Commits the decisions the user saw. Makes no Ollama call."""
 

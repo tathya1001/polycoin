@@ -104,6 +104,28 @@ export type CategorizePreview = {
   proposals: Proposal[];
 };
 
+// GET /api/ai/categorize/prepare/: what the browser embeds with the user's own Ollama and
+// scores itself. Every number in `label`, `examples` and `text` is an index into `texts`.
+export type Candidate = { category: string; name: string; label: number; examples: number[] };
+
+export type PreparedTarget = {
+  transaction: string;
+  date: string;
+  txn_type: "credit" | "debit";
+  name: string;
+  amount: string;
+  text: number;
+};
+
+export type PreparedRun = {
+  considered: number;
+  capped: boolean;
+  thresholds: { min_score: number; min_margin: number; blend_full_at: number; blend_max_weight: number };
+  texts: string[];
+  candidates: Partial<Record<"credit" | "debit", Candidate[]>>;
+  targets: PreparedTarget[];
+};
+
 export type ApplyResult = {
   applied: number;
   skipped: { transaction: string; reason: "invalid_category" | "not_in_others" }[];

@@ -45,8 +45,13 @@ export default function Register() {
         setErrors({ other: "Too many attempts. Wait a minute and try again." });
         return;
       }
+      // A server error sends an HTML page, not JSON: say so instead of blaming the network.
+      if (res.status >= 500) {
+        setErrors({ other: "Something went wrong on our side. Please try again later." });
+        return;
+      }
       if (!res.ok) {
-        setErrors(readFieldErrors(await res.json()));
+        setErrors(readFieldErrors(await res.json().catch(() => null)));
         return;
       }
 
@@ -101,6 +106,11 @@ export default function Register() {
         <Button type="submit" variant="primary" loading={loading} className="w-full">
           {loading ? "Creating…" : "Create account"}
         </Button>
+        <p className="text-xs text-muted">
+          Your statement data is encrypted at rest with a key unique to your account. AI categorisation is optional
+          and runs on your own computer: your browser sends transaction descriptions to the Ollama you install, and
+          nowhere else. You can delete all your data any time in Settings.
+        </p>
       </form>
     </AuthLayout>
   );

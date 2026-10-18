@@ -5,14 +5,18 @@ import { useEffect, useState } from "react";
 import { PartyPopper, Play, RefreshCw } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { readError } from "@/lib/errors";
+import { embed, listEmbeddingModels, OllamaError, savedOllamaUrl, saveOllamaUrl } from "@/lib/ollama";
+import { buildProposals } from "@/lib/scoring";
 import { recall, remember } from "@/lib/storage";
 import type {
   ApplyResult,
   Category,
   CategorizePreview,
   EmbeddingModel,
+  PreparedRun,
   Proposal,
 } from "@/lib/types";
+import { OllamaSetup } from "@/components/ai/OllamaSetup";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState, ErrorNote, Loading } from "@/components/ui/Feedback";
@@ -21,8 +25,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { MoneyCell, Table, Td, Th, Tr } from "@/components/ui/Table";
 import { useToast } from "@/components/ui/Toast";
 
-const MODELS_URL = "/api/ai/models/";
-const PREVIEW_URL = "/api/ai/categorize/preview/";
+const PREPARE_URL = "/api/ai/categorize/prepare/";
 const APPLY_URL = "/api/ai/categorize/apply/";
 
 const MODEL_KEY = "polycoin.ai.model";
@@ -40,8 +43,12 @@ export default function Categorize() {
   const [models, setModels] = useState<EmbeddingModel[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [model, setModel] = useState("");
-  const [setupError, setSetupError] = useState<string | null>(null);
+  const [ollamaUrl, setOllamaUrl] = useState(savedOllamaUrl);
+  const [setupError, setSetupError] = useState<string | null>(null); // our server
+  const [ollamaProblem, setOllamaProblem] = useState<OllamaError | null>(null); // the user's Ollama
   const [loadingSetup, setLoadingSetup] = useState(true);
+  const [attempt, setAttempt] = useState(0); // bumped by "Check again"
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
 
   const [preview, setPreview] = useState<CategorizePreview | null>(null);
   const [rows, setRows] = useState<Proposal[]>([]); // proposals still on screen
@@ -60,38 +67,54 @@ export default function Categorize() {
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+    async function loadCategories() {
       try {
-        const [categoryRes, modelRes] = await Promise.all([
-          apiFetch("/api/categories/"),
-          apiFetch(MODELS_URL),
-        ]);
+        const res = await apiFetch("/api/categories/");
         if (cancelled) return;
-        if (categoryRes.ok) setCategories(await categoryRes.json());
-        if (modelRes.ok) {
-          const body: { models: EmbeddingModel[] } = await modelRes.json();
-          setModels(body.models);
-          const saved = recall(MODEL_KEY);
-          setModel(body.models.find((m) => m.name === saved)?.name ?? body.models[0]?.name ?? "");
-        } else {
-          // The server's message says what to do, e.g. "Run: ollama pull nomic-embed-text".
-          setSetupError(await readError(modelRes, "Could not load your Ollama models."));
-        }
+        if (res.ok) setCategories(await res.json());
+        else setSetupError(await readError(res, "Could not load your categories."));
       } catch {
         if (!cancelled) setSetupError("Cannot reach the server.");
-      } finally {
-        if (!cancelled) setLoadingSetup(false);
       }
     }
-    load();
+    // Straight from this browser to the user's own Ollama; our server is not involved.
+    async function loadModels() {
+      try {
+        const found: EmbeddingModel[] = await listEmbeddingModels(ollamaUrl);
+        if (cancelled) return;
+        setOllamaProblem(null);
+        setModels(found);
+        const saved = recall(MODEL_KEY);
+        setModel(found.find((m) => m.name === saved)?.name ?? found[0]?.name ?? "");
+      } catch (problem) {
+        if (cancelled) return;
+        setOllamaProblem(
+          problem instanceof OllamaError ? problem : new OllamaError("unreachable", "Can't reach Ollama on this computer."),
+        );
+      }
+    }
+    Promise.all([loadCategories(), loadModels()]).finally(() => {
+      if (!cancelled) setLoadingSetup(false);
+    });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [ollamaUrl, attempt]);
 
   function changeModel(value: string) {
     setModel(value);
     remember(MODEL_KEY, value);
+  }
+
+  function checkAgain() {
+    setLoadingSetup(true);
+    setAttempt((n) => n + 1);
+  }
+
+  function changeOllamaUrl(url: string) {
+    saveOllamaUrl(url);
+    setOllamaUrl(url);
+    checkAgain(); // also re-checks when the address didn't actually change
   }
 
   async function runPreview() {
@@ -99,15 +122,19 @@ export default function Categorize() {
     setError(null);
     setResult(null);
     try {
-      const res = await apiFetch(PREVIEW_URL, {
-        method: "POST",
-        body: JSON.stringify({ model }),
-      });
+      // 1. Our server decrypts the rows and returns the texts to embed (no Ollama call there).
+      const res = await apiFetch(PREPARE_URL);
       if (!res.ok) {
-        setError(await readError(res, "Could not run the preview."));
+        setError(await readError(res, "Could not prepare the run."));
         return;
       }
-      const data: CategorizePreview = await res.json();
+      const run: PreparedRun = await res.json();
+      // 2. The user's own Ollama embeds them, and 3. this browser scores them.
+      setProgress({ done: 0, total: run.texts.length });
+      const vectors = await embed(ollamaUrl, model, run.texts, (done) =>
+        setProgress({ done, total: run.texts.length }),
+      );
+      const data: CategorizePreview = buildProposals(run, vectors, model);
       setPreview(data);
       setRows(data.proposals);
       // Only rows the AI is confident about start selected; the rest are the user's call.
@@ -117,10 +144,17 @@ export default function Categorize() {
           data.proposals.filter((p) => p.category).map((p) => [p.transaction, p.category as string]),
         ),
       );
-    } catch {
-      setError("Cannot reach the server.");
+    } catch (problem) {
+      if (problem instanceof OllamaError) {
+        setError(problem.code === "unreachable" ? `${problem.message} Is it still running?` : problem.message);
+      } else if (problem instanceof TypeError) {
+        setError("Cannot reach the server."); // fetch itself failed
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
       setRunning(false);
+      setProgress(null);
     }
   }
 
@@ -177,13 +211,22 @@ export default function Categorize() {
     <>
       <PageHeader
         title="Categorize with AI"
-        subtitle="Runs on the Ollama installed on your own machine. Nothing is sent anywhere else, and nothing changes until you press Apply. What you approve counts as your own choice and helps categorise the rest."
+        subtitle="Runs on the Ollama installed on your own computer: transaction text goes from this browser to it and nowhere else. Nothing changes until you press Apply. What you approve counts as your own choice and helps categorise the rest."
       />
 
-      {loadingSetup && <Loading />}
+      {loadingSetup && !ollamaProblem && <Loading />}
       {setupError && <ErrorNote className="mb-4">{setupError}</ErrorNote>}
+      {ollamaProblem && !setupError && (
+        <OllamaSetup
+          problem={ollamaProblem}
+          url={ollamaUrl}
+          checking={loadingSetup}
+          onRetry={checkAgain}
+          onUrlChange={changeOllamaUrl}
+        />
+      )}
 
-      {!loadingSetup && !setupError && (
+      {!loadingSetup && !setupError && !ollamaProblem && (
         <Card className="mb-5 flex flex-wrap items-end gap-3 p-4!">
           <Field label="Embedding model" className="w-64">
             <Select dense className="w-full" value={model} onChange={(e) => changeModel(e.target.value)}>
@@ -201,7 +244,13 @@ export default function Categorize() {
             icon={preview ? <RefreshCw size={16} /> : <Play size={16} />}
             onClick={runPreview}
           >
-            {running ? "Working…" : preview ? "Run again" : "Run preview"}
+            {running
+              ? progress && progress.total > 0
+                ? `Embedding ${progress.done} / ${progress.total}…`
+                : "Working…"
+              : preview
+                ? "Run again"
+                : "Run preview"}
           </Button>
         </Card>
       )}

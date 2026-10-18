@@ -7,6 +7,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from django.conf import settings
+from django.core.exceptions import ImproperlyConfigured
 
 from .models import UserDataKey
 
@@ -24,6 +25,23 @@ def _load_keks() -> dict[str, bytes]:
             raise ValueError("Each KEK must be 'version:base64' and decode to 32 bytes.")
         keks[version] = key
     return keks
+
+
+def check_keys() -> None:
+    """Refuse to start with unusable KEK settings. The keys are otherwise only parsed at the
+    first signup, which turned a typo into a 500 for every new user. The messages never
+    contain key material."""
+    try:
+        keks = _load_keks()
+    except ValueError:  # includes binascii.Error, i.e. text that isn't base64
+        raise ImproperlyConfigured(
+            "FIELD_ENCRYPTION_KEYS must be comma-separated 'version:base64' items, each "
+            "decoding to 32 bytes, e.g. v1:<44 base64 characters>."
+        ) from None
+    if settings.FIELD_ENCRYPTION_ACTIVE_KEY not in keks:
+        raise ImproperlyConfigured(
+            "FIELD_ENCRYPTION_ACTIVE_KEY must name one of the versions in FIELD_ENCRYPTION_KEYS."
+        )
 
 
 def _wrap_aad(user) -> bytes:

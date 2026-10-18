@@ -3,11 +3,13 @@ import os
 
 import pytest
 from cryptography.exceptions import InvalidTag
+from django.apps import apps
+from django.core.exceptions import ImproperlyConfigured
 from django.core.management import call_command
 
 from accounts.models import User
 from vault.models import UserDataKey
-from vault.services import UserCipher, create_user_key, decrypt, encrypt
+from vault.services import UserCipher, check_keys, create_user_key, decrypt, encrypt
 
 pytestmark = pytest.mark.django_db
 
@@ -194,3 +196,60 @@ def test_rotation_is_idempotent(alice, bob, two_keks, settings):
     call_command("rotate_kek")  # second run has nothing to do
     assert {k.user_id: bytes(k.wrapped_dek) for k in UserDataKey.objects.all()} == wrapped
     assert set(UserDataKey.objects.values_list("kek_version", flat=True)) == {"v2"}
+
+
+# --- startup check of the KEK settings ----------------------------------------
+
+
+def test_valid_keys_pass_the_startup_check(settings):
+    settings.FIELD_ENCRYPTION_KEYS = f"v1:{_b64_key()}"
+    settings.FIELD_ENCRYPTION_ACTIVE_KEY = "v1"
+
+    check_keys()  # no error
+
+
+def test_mid_rotation_settings_pass_the_startup_check(two_keks, settings):
+    settings.FIELD_ENCRYPTION_ACTIVE_KEY = "v2"  # v1 still listed until rotate_kek has run
+
+    check_keys()
+
+
+@pytest.mark.parametrize(
+    "keys",
+    [
+        "{key}",  # the first-deploy mistake: the base64 without its "v1:" prefix
+        "v1:{key},",  # a trailing comma leaves an empty item
+        "v1:{short}",  # base64, but 16 bytes
+        "v1:not base64 at all!",
+        "v1:",
+        "",
+    ],
+)
+def test_malformed_keys_fail_the_startup_check(settings, keys):
+    key, short = _b64_key(), base64.b64encode(os.urandom(16)).decode()
+    settings.FIELD_ENCRYPTION_KEYS = keys.format(key=key, short=short)
+    settings.FIELD_ENCRYPTION_ACTIVE_KEY = "v1"
+
+    with pytest.raises(ImproperlyConfigured) as raised:
+        check_keys()
+
+    assert key not in str(raised.value)  # never echo key material into logs
+    assert raised.value.__cause__ is None
+
+
+def test_an_active_key_that_is_not_listed_fails_the_startup_check(settings):
+    key = _b64_key()
+    settings.FIELD_ENCRYPTION_KEYS = f"v1:{key}"
+    settings.FIELD_ENCRYPTION_ACTIVE_KEY = "v2"
+
+    with pytest.raises(ImproperlyConfigured) as raised:
+        check_keys()
+
+    assert key not in str(raised.value)
+
+
+def test_the_app_runs_the_check_when_django_starts(settings):
+    settings.FIELD_ENCRYPTION_KEYS = "missing-prefix"
+
+    with pytest.raises(ImproperlyConfigured):
+        apps.get_app_config("vault").ready()

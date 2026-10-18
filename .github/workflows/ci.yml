@@ -91,6 +91,7 @@ jobs:
       # has none, so generate them before type-checking.
       - run: npx next typegen
       - run: npx tsc --noEmit
+      - run: npm test
       - run: npm run build
 
   deploy:

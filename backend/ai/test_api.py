@@ -14,6 +14,7 @@ from transactions.tests import make_txn, make_user
 pytestmark = pytest.mark.django_db
 
 MODELS = "/api/ai/models/"
+PREPARE = "/api/ai/categorize/prepare/"
 PREVIEW = "/api/ai/categorize/preview/"
 APPLY = "/api/ai/categorize/apply/"
 TRANSACTIONS = "/api/transactions/"
@@ -71,7 +72,9 @@ def category(user, name):
 # --- auth ---------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("method, url", [("get", MODELS), ("post", PREVIEW), ("post", APPLY)])
+@pytest.mark.parametrize(
+    "method, url", [("get", MODELS), ("get", PREPARE), ("post", PREVIEW), ("post", APPLY)]
+)
 def test_every_endpoint_requires_login(method, url):
     assert getattr(APIClient(), method)(url).status_code == 401
 
@@ -182,6 +185,39 @@ def test_preview_reports_an_embedding_failure_as_502(alice, monkeypatch):
 
     assert response.status_code == 502
     assert response.json()["code"] == "embedding_failed"
+
+
+# --- GET /api/ai/categorize/prepare/ ------------------------------------------
+
+
+def test_prepare_returns_a_run_without_ever_calling_ollama(alice, monkeypatch):
+    use_client(monkeypatch, BrokenOllama("ollama_unreachable", on="list_models"))
+    txn = make_txn(alice, name="TASTYBITES", description="UPI/DR/412345678901/TASTYBITES")
+
+    response = as_user(alice).get(PREPARE)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert (body["considered"], body["capped"]) == (1, False)
+    assert body["targets"][0]["transaction"] == str(txn.id)
+    assert body["texts"][body["targets"][0]["text"]] == "TASTYBITES"
+    txn.refresh_from_db()
+    assert txn.category.is_default  # nothing was written
+
+
+def test_prepare_is_never_cached(alice, ollama):
+    # It carries decrypted narrations, so no proxy or CDN may keep a copy.
+    assert "no-store" in as_user(alice).get(PREPARE)["Cache-Control"]
+
+
+def test_prepare_shares_the_tight_ai_budget_with_preview(alice, ollama):
+    api = as_user(alice)
+
+    codes = [api.get(PREPARE).status_code for _ in range(20)]
+
+    assert codes == [200] * 20
+    assert api.post(PREVIEW, {"model": "fake-model"}, format="json").status_code == 429
+    assert api.post(APPLY, {"decisions": [a_decision()]}, format="json").status_code == 200
 
 
 # --- POST /api/ai/categorize/apply/ -------------------------------------------

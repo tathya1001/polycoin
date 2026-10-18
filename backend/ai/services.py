@@ -99,6 +99,82 @@ def _load_examples(user, default: Category, txn_types):
     return groups
 
 
+def prepare_run(user) -> dict:
+    """Everything the browser needs to embed and score the user's uncategorised rows with the
+    user's own Ollama, so narrations go from here to that browser and nowhere else. Makes no
+    Ollama call and writes nothing.
+
+    Every distinct text appears once in `texts`; targets and candidates point into it by index.
+    The response holds decrypted text: never log or persist it.
+    """
+    default = get_default_category(user)
+    categories = list(
+        Category.objects.filter(user=user, is_default=False).prefetch_related("keywords")
+    )
+    targets, capped = _load_targets(user, default)
+
+    result = {
+        "considered": len(targets),
+        "capped": capped,
+        "thresholds": {
+            "min_score": settings.AI_MIN_SCORE,
+            "min_margin": settings.AI_MIN_MARGIN,
+            "blend_full_at": settings.AI_BLEND_FULL_AT,
+            "blend_max_weight": settings.AI_BLEND_MAX_WEIGHT,
+        },
+        "texts": [],
+        "candidates": {},
+        "targets": [],
+    }
+    if not targets or not categories:
+        return result
+
+    texts: dict[str, int] = {}
+
+    def index(text: str) -> int:
+        return texts.setdefault(text, len(texts))
+
+    cipher = UserCipher(user)
+    txn_types = sorted({txn.txn_type for txn in targets})
+    examples = _load_examples(user, default, txn_types)
+    labels = {category.id: index(_label_text(category)) for category in categories}
+
+    for txn in targets:
+        name, description, notes = _decrypt_fields(cipher, txn)
+        result["targets"].append(
+            {
+                "transaction": str(txn.id),
+                "date": txn.date.isoformat(),
+                "txn_type": txn.txn_type,
+                "name": name,
+                "amount": cipher.decrypt(bytes(txn.amount_enc), "txn.amount").decode(),
+                "text": index(scoring.prepare_text(name, description, notes)),
+            }
+        )
+
+    # Same candidate rules as build_proposals: one list per direction, only the categories
+    # allowed for it, in category order (which keeps ties deterministic). Duplicate example
+    # texts stay in the list, because each one counts toward the blend weight.
+    result["candidates"] = {
+        txn_type: [
+            {
+                "category": str(category.id),
+                "name": category.name,
+                "label": labels[category.id],
+                "examples": [
+                    index(scoring.prepare_text(*_decrypt_fields(cipher, txn)))
+                    for txn in examples.get((category.id, txn_type), [])
+                ],
+            }
+            for category in categories
+            if _allowed(category, txn_type)
+        ]
+        for txn_type in txn_types
+    }
+    result["texts"] = list(texts)
+    return result
+
+
 def build_proposals(user, model: str, client) -> dict:
     """Dry run: scores the user's uncategorised rows and writes nothing."""
     default = get_default_category(user)
