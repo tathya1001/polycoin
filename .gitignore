@@ -18,4 +18,5 @@ node_modules/
 
 # Local tooling and notes
 dev-docs/
-
+.claude/
+.vibe-wise/

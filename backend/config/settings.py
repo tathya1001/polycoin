@@ -236,10 +236,6 @@ AI_BLEND_MAX_WEIGHT = float(os.environ.get("AI_BLEND_MAX_WEIGHT", "0.7"))  # max
 # Insights decrypts rows in Python, so one request must never load an unbounded number of them.
 INSIGHTS_MAX_ROWS = int(os.environ.get("INSIGHTS_MAX_ROWS", "50000"))
 
-# Bearer token for the authenticated gateway in front of a remote Ollama (ollama-gateway/).
-# Empty for a local Ollama, which needs no auth.
-OLLAMA_API_KEY = os.environ.get("OLLAMA_API_KEY", "")
-
 # Shared with the Vercel proxy, which sends it as X-Origin-Secret on every /api/ request;
 # Django refuses /api/ requests without it. Empty (the default) turns the check off.
 ORIGIN_SECRET = os.environ.get("ORIGIN_SECRET", "")

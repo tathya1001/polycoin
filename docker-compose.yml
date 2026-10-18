@@ -43,22 +43,5 @@ services:
       - WATCHPACK_POLLING=true
     depends_on: [backend]
 
-  # Authenticated front door for the host's Ollama, which has no auth of its own. Only starts
-  # with `docker compose --profile gateway up -d ollama-gateway`, so a plain `up` is unchanged.
-  ollama-gateway:
-    image: caddy:2.10-alpine
-    profiles: ["gateway"]
-    ports:
-      - "127.0.0.1:8080:8080"
-    environment:
-      # Not `:?`: compose would then demand the token even for a plain `docker compose up`.
-      # The Caddyfile rejects every request when the token is empty or shorter than 32 chars.
-      - OLLAMA_GATEWAY_TOKEN=${OLLAMA_GATEWAY_TOKEN:-}
-    volumes:
-      - ./ollama-gateway/Caddyfile:/etc/caddy/Caddyfile:ro
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-
 volumes:
   pgdata:

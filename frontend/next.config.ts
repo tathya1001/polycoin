@@ -1,9 +1,13 @@
 import type { NextConfig } from "next";
 
 // Rewrites are compiled at build time, so this must be set before `next build`, not just at runtime.
-const backend = process.env.BACKEND_INTERNAL_URL;
-if (!backend) {
-  throw new Error("BACKEND_INTERNAL_URL is not set (e.g. https://polycoin-api.onrender.com).");
+// On Vercel it must be a plain variable: a Sensitive one reaches the CLI build as a placeholder.
+const backend = process.env.BACKEND_INTERNAL_URL?.trim();
+if (!backend || !/^https?:\/\//.test(backend)) {
+  throw new Error(
+    "BACKEND_INTERNAL_URL must be an http(s) URL (e.g. https://polycoin-api.onrender.com). " +
+      "On Vercel, add it as a plain variable, not a Sensitive one.",
+  );
 }
 
 // Baseline browser protections for every page. HSTS is added by Vercel itself. A full

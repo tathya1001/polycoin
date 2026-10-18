@@ -90,7 +90,6 @@ def test_models_lists_the_installed_embedders(alice, ollama):
     "code, expected_status",
     [
         ("ollama_unreachable", 503),
-        ("ollama_unauthorized", 503),
         ("no_embedding_models", 400),
         ("embedding_failed", 502),
         ("dimension_mismatch", 502),

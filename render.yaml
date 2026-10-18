@@ -27,10 +27,6 @@ services:
         sync: false
       - key: ORIGIN_SECRET  # same value as ORIGIN_SECRET on Vercel
         sync: false
-      - key: OLLAMA_BASE_URL
-        sync: false
-      - key: OLLAMA_API_KEY
-        sync: false
       - key: SENTRY_DSN
         sync: false
       # Fixed configuration.
@@ -40,8 +36,6 @@ services:
         value: "TRUE"
       - key: FIELD_ENCRYPTION_ACTIVE_KEY
         value: v1
-      - key: OLLAMA_TIMEOUT
-        value: "30"
       - key: WEB_CONCURRENCY
         value: "2"
       - key: INSIGHTS_MAX_ROWS
