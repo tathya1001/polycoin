@@ -21,10 +21,6 @@ services:
     env_file: .env
     volumes:
       - ./backend:/app
-    extra_hosts:
-      # Ollama runs on the host, not in a container. Docker Desktop resolves this name
-      # already; Linux needs this line.
-      - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:8001:8000"
     depends_on:

@@ -8,8 +8,6 @@ cryptography
 openpyxl
 defusedxml
 msoffcrypto-tool
-httpx
-numpy>=2.0,<3
 gunicorn>=23
 whitenoise>=6.7
 sentry-sdk>=2.20

@@ -12,7 +12,6 @@ from transactions.models import Transaction
 from vault.services import UserCipher
 
 from . import scoring
-from .client import AIError
 
 # Which directions the AI may PROPOSE each seed category for. A debit is never auto-labelled
 # Salary and a credit is never auto-labelled Food. Categories not listed here (Transfer, and
@@ -41,12 +40,6 @@ def _label_text(category: Category) -> str:
     `keywords`, which the model already orders, so the text is stable between runs."""
     terms = [keyword.term for keyword in category.keywords.all()]
     return f"{category.name}: {', '.join(terms)}" if terms else category.name
-
-
-def validate_model(client, model: str) -> None:
-    """A request-supplied string only reaches Ollama if it's an installed embedding model."""
-    if model not in {entry["name"] for entry in client.list_models()}:
-        raise AIError("model_not_found", f"'{model}' isn't an installed embedding model.")
 
 
 def _decrypt_fields(cipher: UserCipher, txn: Transaction) -> tuple[str, str, str]:
@@ -152,9 +145,10 @@ def prepare_run(user) -> dict:
             }
         )
 
-    # Same candidate rules as build_proposals: one list per direction, only the categories
-    # allowed for it, in category order (which keeps ties deterministic). Duplicate example
-    # texts stay in the list, because each one counts toward the blend weight.
+    # One list per direction with only the categories allowed for it, so a credit is never
+    # compared against debit examples and a disallowed category can be neither the proposal nor
+    # the runner-up. Category order keeps ties deterministic. Duplicate example texts stay in
+    # the list, because each one counts toward the blend weight.
     result["candidates"] = {
         txn_type: [
             {
@@ -175,101 +169,8 @@ def prepare_run(user) -> dict:
     return result
 
 
-def build_proposals(user, model: str, client) -> dict:
-    """Dry run: scores the user's uncategorised rows and writes nothing."""
-    default = get_default_category(user)
-    categories = list(
-        Category.objects.filter(user=user, is_default=False).prefetch_related("keywords")
-    )
-    names = {category.id: category.name for category in categories}
-    targets, capped = _load_targets(user, default)
-
-    result = {
-        "model": model,
-        "considered": len(targets),
-        "proposed": 0,
-        "skipped": 0,
-        "capped": capped,
-        "proposals": [],
-    }
-    if not targets or not categories:
-        return result
-
-    cipher = UserCipher(user)
-    plain = {txn.id: _decrypt_fields(cipher, txn) for txn in targets}
-    txn_types = {txn.txn_type for txn in targets}
-    examples = _load_examples(user, default, txn_types)
-
-    label_texts = {category.id: _label_text(category) for category in categories}
-    target_texts = {txn.id: scoring.prepare_text(*plain[txn.id]) for txn in targets}
-    example_texts = {
-        key: [scoring.prepare_text(*_decrypt_fields(cipher, txn)) for txn in rows]
-        for key, rows in examples.items()
-    }
-
-    # Embed every distinct text once, in one batched call set, then look vectors up by text.
-    wanted = list(
-        dict.fromkeys(
-            [
-                *label_texts.values(),
-                *target_texts.values(),
-                *(text for texts in example_texts.values() for text in texts),
-            ]
-        )
-    )
-    vectors = dict(zip(wanted, client.embed(model, wanted)))
-
-    # A prototype per (txn_type, category): a credit is never compared against debit examples,
-    # and a category that doesn't allow this direction isn't a candidate at all (so it can be
-    # neither the proposal nor the runner-up).
-    prototypes = {
-        txn_type: {
-            category.id: scoring.build_prototype(
-                vectors[label_texts[category.id]],
-                [vectors[text] for text in example_texts.get((category.id, txn_type), [])],
-                settings.AI_BLEND_FULL_AT,
-                settings.AI_BLEND_MAX_WEIGHT,
-            )
-            for category in categories
-            if _allowed(category, txn_type)
-        }
-        for txn_type in txn_types
-    }
-
-    for txn in targets:
-        decision = scoring.decide(
-            vectors[target_texts[txn.id]],
-            prototypes[txn.txn_type],
-            settings.AI_MIN_SCORE,
-            settings.AI_MIN_MARGIN,
-        )
-        result["proposals"].append(
-            {
-                "transaction": str(txn.id),
-                "date": txn.date.isoformat(),
-                "txn_type": txn.txn_type,
-                "name": plain[txn.id][0],
-                "amount": cipher.decrypt(bytes(txn.amount_enc), "txn.amount").decode(),
-                "category": str(decision.category_id) if decision.category_id else None,
-                "category_name": names.get(decision.category_id),
-                "score": round(decision.score, 4) if decision.score is not None else None,
-                "runner_up": str(decision.runner_up_id) if decision.runner_up_id else None,
-                "runner_up_name": names.get(decision.runner_up_id),
-                "runner_up_score": (
-                    round(decision.runner_up_score, 4)
-                    if decision.runner_up_score is not None
-                    else None
-                ),
-                "decision": decision.decision,
-            }
-        )
-
-    result["proposed"] = sum(row["decision"] == "propose" for row in result["proposals"])
-    result["skipped"] = result["considered"] - result["proposed"]
-    return result
-
 def apply_decisions(user, decisions: list[dict]) -> dict:
-    """Commit exactly what the user saw. Makes no Ollama call.
+    """Commit exactly what the user saw.
 
     `decisions` is [{"transaction": UUID, "category": UUID}], already shape-validated by the
     view's serializer. Each row is moved by ONE conditional UPDATE, so "still in Others and

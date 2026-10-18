@@ -8,7 +8,7 @@ import { recall, remember } from "@/lib/storage";
 export const DEFAULT_OLLAMA_URL = "http://localhost:11434";
 const URL_KEY = "polycoin.ai.ollamaUrl";
 const BATCH_SIZE = 64;
-const TIMEOUT_MS = 60_000; // per request, like the server's old OLLAMA_TIMEOUT
+const TIMEOUT_MS = 60_000; // per request; a big batch on a slow machine can take a while
 
 export type OllamaErrorCode =
   | "unreachable"

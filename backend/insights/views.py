@@ -25,7 +25,7 @@ UUID_RE = r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA
 
 
 class InsightsProblem(APIException):
-    """Same {"code", "detail"} body as ImportProblem and AIProblem."""
+    """Same {"code", "detail"} body as ImportProblem."""
 
     status_code = status.HTTP_400_BAD_REQUEST
 

@@ -51,7 +51,7 @@ CHART_RULES = {
 
 
 class SpecError(Exception):
-    """A rejected panel spec. Same {code, detail} idea as AIError and ImportProblem."""
+    """A rejected panel spec. Same {code, detail} idea as ImportProblem."""
 
     def __init__(self, code: str, detail: str):
         super().__init__(detail)

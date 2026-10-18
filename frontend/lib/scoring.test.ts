@@ -16,7 +16,7 @@ function expectScore(actual: number | null, expected: number | null) {
   else expect(actual).toBeCloseTo(expected, DIGITS);
 }
 
-// --- parity with backend/ai/scoring.py (lib/__fixtures__/scoring-cases.json) ---
+// --- parity with the original Python scoring (lib/__fixtures__/scoring-cases.json) ---
 
 describe("matches the Python scoring it replaces", () => {
   it.each(fixtures.normalize)("normalize #%#", ({ vector, expected }) => {
@@ -56,7 +56,7 @@ describe("matches the Python scoring it replaces", () => {
   });
 });
 
-// --- the same rules as backend/ai/tests.py, stated directly ---
+// --- the same rules the original Python unit tests stated, directly ---
 
 describe("normalize", () => {
   it("gives unit length", () => {

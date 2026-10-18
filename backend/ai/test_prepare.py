@@ -1,8 +1,6 @@
 """prepare_run tests: the texts, candidates and thresholds that the browser embeds with the
-user's own Ollama and scores itself (frontend/lib/scoring.ts).
-
-The parity tests matter most: scoring a prepared run the way the browser does must reproduce
-build_proposals, the server-side preview it replaces, row for row.
+user's own Ollama and scores itself. The scoring is tested where it runs, in
+frontend/lib/scoring.test.ts, against this project's original Python outputs.
 """
 
 from datetime import date
@@ -10,10 +8,10 @@ from decimal import Decimal
 
 import pytest
 
-from ai import scoring, services
-from ai.test_services import FakeOllama, add_note
+from ai import services
 from transactions.models import Transaction
 from transactions.tests import make_txn, make_user
+from vault.services import UserCipher
 
 pytestmark = pytest.mark.django_db
 
@@ -40,103 +38,13 @@ def candidate_names(run, txn_type):
     return [c["name"] for c in run["candidates"][txn_type]]
 
 
-def score_like_the_browser(run, vectors):
-    """lib/scoring.ts buildProposals, written with ai.scoring, in the same order."""
-    thresholds = run["thresholds"]
-    prototypes = {
-        txn_type: {
-            c["category"]: scoring.build_prototype(
-                vectors[c["label"]],
-                [vectors[i] for i in c["examples"]],
-                thresholds["blend_full_at"],
-                thresholds["blend_max_weight"],
-            )
-            for c in candidates
-        }
-        for txn_type, candidates in run["candidates"].items()
-    }
-    names = {c["category"]: c["name"] for cs in run["candidates"].values() for c in cs}
-    rows = []
-    for target in run["targets"]:
-        decision = scoring.decide(
-            vectors[target["text"]],
-            prototypes[target["txn_type"]],
-            thresholds["min_score"],
-            thresholds["min_margin"],
-        )
-        rows.append(
-            {
-                "transaction": target["transaction"],
-                "date": target["date"],
-                "txn_type": target["txn_type"],
-                "name": target["name"],
-                "amount": target["amount"],
-                "category": decision.category_id,
-                "category_name": names.get(decision.category_id),
-                "score": round(decision.score, 4) if decision.score is not None else None,
-                "runner_up": decision.runner_up_id,
-                "runner_up_name": names.get(decision.runner_up_id),
-                "runner_up_score": (
-                    round(decision.runner_up_score, 4)
-                    if decision.runner_up_score is not None
-                    else None
-                ),
-                "decision": decision.decision,
-            }
-        )
-    return rows
+def label_of(run, name, txn_type="debit"):
+    return next(text_of(run, c["label"]) for c in run["candidates"][txn_type] if c["name"] == name)
 
 
-# --- parity with the server-side preview -------------------------------------
-
-
-def clear_matches(user, settings):
-    make_txn(user, name="TASTYBITES", description="UPI/DR/412345678901/TASTYBITES/x@y")
-    make_txn(user, name="ACMESOFT", description="SALARY JUNE", txn_type="credit")
-    make_txn(user, name="Crunchy", description="zzz", amount=Decimal("7"))
-
-
-def learned_from_examples(user, settings):
-    settings.AI_BLEND_FULL_AT = 1
-    make_txn(user, name="Crunchy", description="crunchy", amount=Decimal("5"),
-             category=category(user, "Shopping"))
-    make_txn(user, name="Crunchy", description="crunchy", amount=Decimal("6"))
-
-
-def wrong_direction(user, settings):
-    make_txn(user, name="Acme", description="SALARY JUNE", txn_type="debit")
-    make_txn(user, name="TASTYBITES", description="refund", txn_type="credit")
-
-
-def duplicate_examples(user, settings):
-    # Two identical example rows count twice toward the blend weight.
-    for amount in (1, 2):
-        make_txn(user, name="Crunchy", description="crunchy", amount=Decimal(amount),
-                 category=category(user, "Shopping"))
-    make_txn(user, name="Crunchy", description="crunchy", amount=Decimal("3"))
-    make_txn(user, name="TASTYBITES", description="lunch", amount=Decimal("4"))
-
-
-def with_notes(user, settings):
-    make_txn(user, name="Crunchy", description="zzz", amount=Decimal("1"))
-    noted = make_txn(user, name="Crunchy", description="yyy", amount=Decimal("2"))
-    add_note(noted, "tastybites")
-
-
-@pytest.mark.parametrize(
-    "scenario",
-    [clear_matches, learned_from_examples, wrong_direction, duplicate_examples, with_notes],
-)
-def test_scoring_a_prepared_run_reproduces_the_server_preview(alice, settings, scenario):
-    scenario(alice, settings)
-    ollama = FakeOllama()
-
-    run = services.prepare_run(alice)
-    in_browser = score_like_the_browser(run, ollama.embed("fake-model", run["texts"]))
-    on_server = services.build_proposals(alice, "fake-model", FakeOllama())["proposals"]
-
-    assert in_browser == on_server
-    assert on_server  # every scenario has rows to compare
+def add_note(txn, text):
+    txn.notes_enc = UserCipher(txn.user).encrypt(text.encode(), "txn.notes")
+    txn.save(update_fields=["notes_enc"])
 
 
 # --- the response -------------------------------------------------------------
@@ -204,6 +112,59 @@ def test_labels_are_the_category_name_plus_the_users_keywords(alice):
     labels = {c["name"]: text_of(run, c["label"]) for c in run["candidates"]["debit"]}
 
     assert labels["Pets"] == "Pets: vet"
+
+
+def test_a_new_category_is_searchable_by_its_name_straight_away(alice):
+    alice.category_set.create(name="Pets")  # no keywords yet
+    make_txn(alice, name="a", description="1")
+
+    assert label_of(services.prepare_run(alice), "Pets") == "Pets"
+
+
+def test_deleted_keywords_leave_the_label_and_the_rest_stay(alice):
+    make_txn(alice, name="a", description="1")
+    shopping = category(alice, "Shopping")
+    shopping.keywords.create(term="crunchy")
+    shopping.keywords.filter(term="clothes").delete()
+
+    label = label_of(services.prepare_run(alice), "Shopping")
+
+    assert "crunchy" in label
+    assert "clothes" not in label
+    assert "electronics" in label  # untouched starter keywords stay
+
+
+def test_a_renamed_category_is_labelled_with_its_new_name_and_keeps_its_keywords(alice):
+    make_txn(alice, name="a", description="1")
+    food = category(alice, "Food")
+    food.name = "Eating out"
+    food.save()
+
+    label = label_of(services.prepare_run(alice), "Eating out")
+
+    assert label.startswith("Eating out:")
+    assert "cafe" in label
+
+
+def test_only_this_users_uncategorised_rows_are_targets(alice, bob):
+    make_txn(alice, name="filed", description="1", category=category(alice, "Food"))
+    pending = make_txn(alice, name="pending", description="2")
+    make_txn(bob, name="bobs", description="3")
+
+    assert [t["transaction"] for t in services.prepare_run(alice)["targets"]] == [str(pending.id)]
+
+
+def test_notes_on_example_rows_reach_the_texts_too(alice):
+    example = make_txn(
+        alice, name="Crunchy", description="aaa", amount=Decimal("1"), category=category(alice, "Shopping")
+    )
+    add_note(example, "uniquenotewords")
+    make_txn(alice, name="Target", description="bbb", amount=Decimal("2"))
+
+    run = services.prepare_run(alice)
+    shopping = next(c for c in run["candidates"]["debit"] if c["name"] == "Shopping")
+
+    assert any("uniquenotewords" in text_of(run, i) for i in shopping["examples"])
 
 
 def test_examples_are_the_newest_per_category_and_direction(alice, settings):

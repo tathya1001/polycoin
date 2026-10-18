@@ -1,6 +1,6 @@
-// Scores a prepared run in the browser. A one-to-one port of backend/ai/scoring.py (float64,
-// like numpy); lib/__fixtures__/scoring-cases.json holds that file's outputs and the tests
-// require these functions to reproduce them.
+// Scores a prepared run in the browser. Ported one-to-one from the backend's original numpy
+// scoring (float64, removed once this replaced it); lib/__fixtures__/scoring-cases.json holds
+// that code's outputs, and the tests require these functions to reproduce them.
 
 import type { CategorizePreview, PreparedRun, Proposal, ProposalDecision } from "@/lib/types";
 

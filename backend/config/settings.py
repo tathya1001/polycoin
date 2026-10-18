@@ -209,7 +209,6 @@ if PRODUCTION:
         "disable_existing_loggers": False,
         "handlers": {"console": {"class": "logging.StreamHandler"}},
         "root": {"handlers": ["console"], "level": "INFO"},
-        "loggers": {"httpx": {"level": "WARNING"}},  # httpx logs every request URL at INFO
     }
 
 # onrender.com and vercel.app are shared parent domains we don't own, so HSTS can't include
@@ -217,12 +216,9 @@ if PRODUCTION:
 SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 
 
-# Local AI categorisation (Ollama embeddings)
-# Optional, unlike the settings above: a missing Ollama must not stop the app booting.
-# The URL comes from the environment only, never from a request.
-
-OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://host.docker.internal:11434")
-OLLAMA_TIMEOUT = float(os.environ.get("OLLAMA_TIMEOUT", "60"))  # seconds, per HTTP call
+# AI categorisation. The server never calls Ollama: it prepares a run, and the user's browser
+# embeds it with the user's own Ollama and scores it (frontend/lib/ollama.ts, lib/scoring.ts).
+# The scoring thresholds below are sent to the browser with each run, so they live in one place.
 
 AI_MAX_RUN = int(os.environ.get("AI_MAX_RUN", "200"))  # transactions scored per run
 AI_MAX_EXAMPLES_PER_CATEGORY = int(os.environ.get("AI_MAX_EXAMPLES_PER_CATEGORY", "20"))
