@@ -310,7 +310,7 @@ def test_status_reports_the_switch_the_counts_and_the_profile(alice, settings):
         "profile": {
             "doc_prefix": "search_document: ",
             "query_prefix": "search_query: ",
-            "tuned": False,
+            "tuned": True,
         },
     }
     settings.RAG_ENABLED = False

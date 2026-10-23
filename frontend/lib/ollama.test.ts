@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_OLLAMA_URL, embed, listEmbeddingModels, loopbackUrl, OllamaError, savedOllamaUrl } from "./ollama";
+import {
+  chatStream,
+  DEFAULT_OLLAMA_URL,
+  embed,
+  listChatModels,
+  listEmbeddingModels,
+  loopbackUrl,
+  OllamaError,
+  savedOllamaUrl,
+} from "./ollama";
 
 const BASE = "http://localhost:11434";
 const SECRET = "SECRET-NARRATION-9f3a"; // stands in for a real bank narration
@@ -199,5 +208,146 @@ describe("embed", () => {
     }
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError(SECRET)));
     expect((await failure(embed(BASE, "m", [SECRET]))).message).not.toContain(SECRET);
+  });
+});
+
+// --- chat models and streamed answers ----------------------------------------------
+
+describe("listEmbeddingModels digests", () => {
+  it("passes the digest through, so a re-pulled tag is noticed", async () => {
+    mockFetch(() =>
+      json({ models: [{ name: "nomic-embed-text:latest", digest: "0a109f422b47", capabilities: ["embedding"] }] }),
+    );
+    expect((await listEmbeddingModels(BASE))[0].digest).toBe("0a109f422b47");
+  });
+});
+
+describe("listChatModels", () => {
+  it("keeps models that can write answers and skips embedding-only ones", async () => {
+    mockFetch(() => json(TAGS));
+    expect(await listChatModels(BASE)).toEqual([{ name: "llama3.2:latest" }]);
+  });
+
+  it("falls back to the name when an older Ollama lists no capabilities", async () => {
+    mockFetch(() => json({ models: [{ name: "nomic-embed-text:latest" }, { name: "llama3:latest" }] }));
+    expect(await listChatModels(BASE)).toEqual([{ name: "llama3:latest" }]);
+  });
+
+  it("says how to install a chat model when there is none", async () => {
+    mockFetch(() => json({ models: [TAGS.models[0]] }));
+    const error = await failure(listChatModels(BASE));
+    expect(error.code).toBe("no_chat_models");
+    expect(error.message).toContain("ollama pull");
+  });
+});
+
+/** A streamed response whose body arrives as these exact text chunks. */
+function streamed(chunks: string[], status = 200) {
+  const encoder = new TextEncoder();
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(encoder.encode(chunk));
+      controller.close();
+    },
+  });
+  return new Response(body, { status });
+}
+
+const line = (content: string, done = false) => JSON.stringify({ message: { content }, done }) + "\n";
+
+describe("chatStream", () => {
+  const MESSAGES = [{ role: "user" as const, content: SECRET }];
+  const OPTIONS = { temperature: 0.1, num_ctx: 4096 };
+
+  it("streams each piece as it arrives and returns the whole answer", async () => {
+    const calls = mockFetch(() => streamed([line("You paid "), line("₹1500.00 [1]."), line("", true)]));
+    const pieces: string[] = [];
+
+    const answer = await chatStream(BASE, "llama3.2:latest", MESSAGES, OPTIONS, (piece) => pieces.push(piece));
+
+    expect(answer).toBe("You paid ₹1500.00 [1].");
+    expect(pieces).toEqual(["You paid ", "₹1500.00 [1]."]);
+    expect(calls[0].url).toBe(`${BASE}/api/chat`);
+    expect(calls[0].init?.credentials).toBe("omit");
+    expect(JSON.parse(calls[0].init?.body as string)).toEqual({
+      model: "llama3.2:latest",
+      messages: MESSAGES,
+      options: OPTIONS,
+      stream: true,
+    });
+  });
+
+  it("reassembles a line split across network chunks", async () => {
+    const whole = line("split ") + line("answer", true);
+    const cut = whole.indexOf("answer") - 3; // inside the second JSON object
+    mockFetch(() => streamed([whole.slice(0, cut), whole.slice(cut)]));
+
+    expect(await chatStream(BASE, "m", MESSAGES, OPTIONS, () => {})).toBe("split answer");
+  });
+
+  it("finishes cleanly when the stream ends without a done line", async () => {
+    mockFetch(() => streamed([line("partial")]));
+    expect(await chatStream(BASE, "m", MESSAGES, OPTIONS, () => {})).toBe("partial");
+  });
+
+  it("reports an error Ollama sends in the stream", async () => {
+    mockFetch(() => streamed([line("start"), JSON.stringify({ error: "model crashed" }) + "\n"]));
+    const error = await failure(chatStream(BASE, "m", MESSAGES, OPTIONS, () => {}));
+    expect(error.code).toBe("chat_failed");
+    expect(error.message).toContain("model crashed");
+  });
+
+  it.each([
+    [404, "model_not_found"],
+    [500, "chat_failed"],
+  ])("maps HTTP %i to %s", async (status, code) => {
+    mockFetch(() => streamed([], status));
+    expect((await failure(chatStream(BASE, "m", MESSAGES, OPTIONS, () => {}))).code).toBe(code);
+  });
+
+  it("treats a failed request as unreachable, without the prompt in the message", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new TypeError("Failed to fetch"))));
+    const error = await failure(chatStream(BASE, "m", MESSAGES, OPTIONS, () => {}));
+    expect(error.code).toBe("unreachable");
+    expect(error.message).not.toContain(SECRET);
+  });
+
+  it("stops when the user cancels, rejecting with the abort rather than an Ollama error", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_url: string, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+          }),
+      ),
+    );
+
+    const pending = chatStream(BASE, "m", MESSAGES, OPTIONS, () => {}, controller.signal);
+    controller.abort();
+    await expect(pending).rejects.not.toBeInstanceOf(OllamaError);
+  });
+
+  it("gives up when Ollama goes quiet", async () => {
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          (_url: string, init?: RequestInit) =>
+            new Promise<Response>((_resolve, reject) => {
+              init?.signal?.addEventListener("abort", () => reject(init.signal?.reason));
+            }),
+        ),
+      );
+      const pending = failure(chatStream(BASE, "m", MESSAGES, OPTIONS, () => {}));
+      await vi.advanceTimersByTimeAsync(180_000);
+      const error = await pending;
+      expect(error.code).toBe("unreachable");
+      expect(error.message).toBe("Ollama stopped answering.");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

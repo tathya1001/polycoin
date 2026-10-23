@@ -1,0 +1,478 @@
+[
+ {
+  "id": "gym",
+  "question": "What do I pay for the gym?",
+  "relevant": [
+   "t005",
+   "t033",
+   "t050",
+   "t071",
+   "t094",
+   "t113",
+   "t128",
+   "t148",
+   "t163",
+   "t177",
+   "t197",
+   "t215"
+  ]
+ },
+ {
+  "id": "landlord",
+  "question": "When did I last pay my landlord?",
+  "relevant": [
+   "t004",
+   "t031",
+   "t048",
+   "t069",
+   "t092",
+   "t112",
+   "t125",
+   "t147",
+   "t162",
+   "t176",
+   "t195",
+   "t213"
+  ]
+ },
+ {
+  "id": "electricity",
+  "question": "How much did I spend on electricity?",
+  "relevant": [
+   "t009",
+   "t035",
+   "t053",
+   "t074",
+   "t095",
+   "t115",
+   "t130",
+   "t149",
+   "t164",
+   "t180",
+   "t198",
+   "t218"
+  ]
+ },
+ {
+  "id": "phone",
+  "question": "Show my mobile phone bills",
+  "relevant": [
+   "t012",
+   "t038",
+   "t057",
+   "t078",
+   "t099",
+   "t118",
+   "t134",
+   "t153",
+   "t167",
+   "t182",
+   "t202",
+   "t221"
+  ]
+ },
+ {
+  "id": "internet",
+  "question": "What do I pay for internet?",
+  "relevant": [
+   "t014",
+   "t060",
+   "t103",
+   "t137",
+   "t169",
+   "t206"
+  ]
+ },
+ {
+  "id": "water",
+  "question": "Water bill payments",
+  "relevant": [
+   "t016",
+   "t084",
+   "t139",
+   "t187"
+  ]
+ },
+ {
+  "id": "streaming",
+  "question": "Which streaming subscriptions do I pay for?",
+  "relevant": [
+   "t013",
+   "t017",
+   "t039",
+   "t058",
+   "t061",
+   "t081",
+   "t101",
+   "t105",
+   "t120",
+   "t135",
+   "t140",
+   "t156",
+   "t168",
+   "t171",
+   "t184",
+   "t204",
+   "t208",
+   "t223"
+  ]
+ },
+ {
+  "id": "coffee",
+  "question": "How much do I spend on coffee?",
+  "relevant": [
+   "t011",
+   "t041",
+   "t056",
+   "t079",
+   "t144",
+   "t190",
+   "t205",
+   "t222"
+  ]
+ },
+ {
+  "id": "salary",
+  "question": "When was my salary credited?",
+  "relevant": [
+   "t001",
+   "t027",
+   "t046",
+   "t068",
+   "t091",
+   "t111",
+   "t124",
+   "t145",
+   "t161",
+   "t173",
+   "t194",
+   "t212"
+  ]
+ },
+ {
+  "id": "petrol",
+  "question": "Petrol expenses",
+  "relevant": [
+   "t020",
+   "t029",
+   "t055",
+   "t106",
+   "t114",
+   "t127",
+   "t172",
+   "t178",
+   "t196"
+  ]
+ },
+ {
+  "id": "taxi",
+  "question": "Taxi rides",
+  "relevant": [
+   "t003",
+   "t032",
+   "t082",
+   "t108",
+   "t155",
+   "t166",
+   "t185"
+  ]
+ },
+ {
+  "id": "medicine",
+  "question": "Medicine purchases",
+  "relevant": [
+   "t015",
+   "t034",
+   "t059",
+   "t088",
+   "t210"
+  ]
+ },
+ {
+  "id": "doctor",
+  "question": "Doctor consultations",
+  "relevant": [
+   "t064",
+   "t070",
+   "t160"
+  ]
+ },
+ {
+  "id": "train",
+  "question": "Train tickets",
+  "relevant": [
+   "t096",
+   "t123",
+   "t170"
+  ]
+ },
+ {
+  "id": "flight",
+  "question": "Flight bookings",
+  "relevant": [
+   "t067"
+  ]
+ },
+ {
+  "id": "hotel",
+  "question": "Hotel stays",
+  "relevant": [
+   "t051",
+   "t102"
+  ]
+ },
+ {
+  "id": "insurance",
+  "question": "Insurance premium payments",
+  "relevant": [
+   "t019",
+   "t086",
+   "t141",
+   "t189"
+  ]
+ },
+ {
+  "id": "loan",
+  "question": "Home loan EMI",
+  "relevant": [
+   "t010",
+   "t037",
+   "t054",
+   "t075",
+   "t098",
+   "t116",
+   "t132",
+   "t150",
+   "t165",
+   "t181",
+   "t200",
+   "t220"
+  ]
+ },
+ {
+  "id": "tuition",
+  "question": "Tuition fees",
+  "relevant": [
+   "t007",
+   "t073",
+   "t129",
+   "t179"
+  ]
+ },
+ {
+  "id": "clothes",
+  "question": "Clothes shopping",
+  "relevant": [
+   "t040",
+   "t100",
+   "t175"
+  ]
+ },
+ {
+  "id": "electronics",
+  "question": "Electronics I bought",
+  "relevant": [
+   "t036",
+   "t083"
+  ]
+ },
+ {
+  "id": "groceries",
+  "question": "Grocery shopping",
+  "relevant": [
+   "t021",
+   "t030",
+   "t042",
+   "t066",
+   "t077",
+   "t090",
+   "t104",
+   "t121",
+   "t136",
+   "t146",
+   "t157",
+   "t186",
+   "t192",
+   "t207",
+   "t209",
+   "t217"
+  ]
+ },
+ {
+  "id": "refunds",
+  "question": "Refunds I received",
+  "relevant": [
+   "t022",
+   "t188",
+   "t203"
+  ]
+ },
+ {
+  "id": "friend",
+  "question": "Money sent to R Sample",
+  "relevant": [
+   "t006",
+   "t072",
+   "t110",
+   "t199"
+  ]
+ },
+ {
+  "id": "cash",
+  "question": "Cash withdrawals",
+  "relevant": [
+   "t028",
+   "t065",
+   "t085",
+   "t154",
+   "t219"
+  ]
+ },
+ {
+  "id": "movies",
+  "question": "Movie tickets",
+  "relevant": [
+   "t008",
+   "t080",
+   "t126",
+   "t151"
+  ]
+ },
+ {
+  "id": "games",
+  "question": "Video game purchases",
+  "relevant": [
+   "t049",
+   "t117"
+  ]
+ },
+ {
+  "id": "biryani",
+  "question": "Biryani orders",
+  "relevant": [
+   "t062",
+   "t107",
+   "t142",
+   "t152",
+   "t183"
+  ]
+ },
+ {
+  "id": "interest",
+  "question": "Interest earned on savings",
+  "relevant": [
+   "t025",
+   "t087",
+   "t143",
+   "t191"
+  ]
+ },
+ {
+  "id": "metro",
+  "question": "Metro card recharges",
+  "relevant": [
+   "t018",
+   "t052",
+   "t109",
+   "t119"
+  ]
+ },
+ {
+  "id": "breakfast",
+  "question": "Breakfast at Daily Dosa",
+  "relevant": [
+   "t002",
+   "t044",
+   "t063",
+   "t138",
+   "t174",
+   "t216"
+  ]
+ },
+ {
+  "id": "gym-march",
+  "question": "Gym payments in March 2026",
+  "relevant": [
+   "t094"
+  ]
+ },
+ {
+  "id": "power-last-month",
+  "question": "Electricity bill last month",
+  "relevant": [
+   "t198"
+  ]
+ },
+ {
+  "id": "salary-this-year",
+  "question": "Salary this year",
+  "relevant": [
+   "t046",
+   "t068",
+   "t091",
+   "t111",
+   "t124",
+   "t145",
+   "t161",
+   "t173",
+   "t194",
+   "t212"
+  ]
+ },
+ {
+  "id": "fuel-3-months",
+  "question": "Fuel in the last 3 months",
+  "relevant": [
+   "t178",
+   "t196"
+  ]
+ },
+ {
+  "id": "rent-2025",
+  "question": "Rent paid in 2025",
+  "relevant": [
+   "t004",
+   "t031"
+  ]
+ },
+ {
+  "id": "horse",
+  "question": "Horse riding lessons",
+  "relevant": []
+ },
+ {
+  "id": "dog",
+  "question": "Dog grooming",
+  "relevant": []
+ },
+ {
+  "id": "crypto",
+  "question": "Crypto exchange deposits",
+  "relevant": []
+ },
+ {
+  "id": "piano",
+  "question": "Piano teacher",
+  "relevant": []
+ },
+ {
+  "id": "parking",
+  "question": "Parking fines",
+  "relevant": []
+ },
+ {
+  "id": "jewellery",
+  "question": "Jewellery",
+  "relevant": []
+ },
+ {
+  "id": "lottery",
+  "question": "Lottery winnings",
+  "relevant": []
+ },
+ {
+  "id": "vet",
+  "question": "Vet visits",
+  "relevant": []
+ }
+]

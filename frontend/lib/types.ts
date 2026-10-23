@@ -76,7 +76,8 @@ export type ImportResult = {
 
 // --- AI categorisation ---
 
-export type EmbeddingModel = { name: string; dimension: number | null };
+// `digest` identifies the exact model build: a tag can point at a new one after `ollama pull`.
+export type EmbeddingModel = { name: string; dimension: number | null; digest?: string };
 
 export type ProposalDecision = "propose" | "below_threshold" | "too_close" | "no_candidates";
 
@@ -129,6 +130,65 @@ export type PreparedRun = {
 export type ApplyResult = {
   applied: number;
   skipped: { transaction: string; reason: "invalid_category" | "not_in_others" }[];
+};
+
+// --- RAG ("Ask your transactions") ---
+// These mirror backend/ai/rag_views.py. The browser embeds with the user's own Ollama; the
+// server stores the encrypted index, searches it and builds the prompt.
+
+export type ChatModel = { name: string };
+
+export type RagProfile = { doc_prefix: string; query_prefix: string; tuned: boolean };
+
+// GET /api/ai/rag/status/
+export type RagStatus = { enabled: boolean; indexed: number; total: number; profile: RagProfile };
+
+// GET /api/ai/rag/pending/: `version` must come back with the vector.
+export type PendingItem = { transaction: string; version: string; text: string };
+export type PendingBatch = { items: PendingItem[]; remaining: number };
+
+// POST /api/ai/rag/vectors/
+export type VectorItem = { transaction: string; version: string; vector: number[] };
+export type StoreResult = { stored: number; stale: number; rejected: number };
+
+export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
+
+export type AskFilters = { date: DateFilter; type: "credit" | "debit" | null };
+
+export type RagSource = {
+  n: number; // the number the model cites as [n]
+  transaction: string;
+  date: string;
+  txn_type: "credit" | "debit";
+  amount: string;
+  name: string;
+  category: { id: string; name: string; color: string };
+};
+
+export type RagPeriod = { from: string; to: string; source: "question" | "filter"; phrase: string | null };
+
+// searched < indexed: the per-ask cap was hit; indexed < total: some rows aren't embedded yet.
+export type RagCoverage = { searched: number; indexed: number; total: number };
+
+export type RagSummary = {
+  matches: number;
+  debit_total: string;
+  credit_total: string;
+  first_date: string | null;
+  last_date: string | null;
+};
+
+// POST /api/ai/rag/ask/. `messages` is null when nothing matched: the model isn't called.
+export type AskResponse = {
+  prompt_version: string;
+  profile: RagProfile;
+  period: RagPeriod;
+  coverage: RagCoverage;
+  summary: RagSummary;
+  sources: RagSource[];
+  in_prompt: number; // sources 1..in_prompt are in the prompt; higher citations are invalid
+  messages: ChatMessage[] | null;
+  options: Record<string, number>;
 };
 
 // --- Insights (dashboards of chart panels) ---

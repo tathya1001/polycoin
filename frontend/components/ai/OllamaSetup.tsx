@@ -38,6 +38,7 @@ function Code({ children }: { children: string }) {
 const TITLES: Partial<Record<OllamaError["code"], string>> = {
   unreachable: "Can't reach Ollama on this computer",
   no_embedding_models: "Ollama has no embedding model yet",
+  no_chat_models: "Ollama has no chat model yet",
 };
 
 export function OllamaSetup({
@@ -46,12 +47,14 @@ export function OllamaSetup({
   checking,
   onRetry,
   onUrlChange,
+  models = ["nomic-embed-text"],
 }: {
   problem: OllamaError;
   url: string;
   checking: boolean;
   onRetry: () => void;
   onUrlChange: (url: string) => void;
+  models?: string[]; // what this page needs installed, in `ollama pull` order
 }) {
   const [os, setOS] = useState<OS>(guessOS);
   const [draft, setDraft] = useState(url);
@@ -77,8 +80,8 @@ export function OllamaSetup({
       <div>
         <h2 className="text-lg font-semibold tracking-tight">{TITLES[problem.code] ?? problem.message}</h2>
         <p className="mt-1 text-sm text-ink-2">
-          AI categorisation runs on Ollama on your own desktop or laptop. Your transaction text goes from this browser
-          to your Ollama and nowhere else. Set it up once:
+          The AI model runs on Ollama on your own desktop or laptop: transaction text goes from this browser to your
+          Ollama, never to an AI service. Set it up once:
         </p>
       </div>
 
@@ -91,8 +94,10 @@ export function OllamaSetup({
           and start it.
         </li>
         <li>
-          Download the embedding model:
-          <Code>ollama pull nomic-embed-text</Code>
+          Download the {models.length > 1 ? "models" : "model"}:
+          {models.map((model) => (
+            <Code key={model}>{`ollama pull ${model}`}</Code>
+          ))}
         </li>
         {!servedLocally && (
           <li>

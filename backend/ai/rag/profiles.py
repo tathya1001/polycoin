@@ -1,9 +1,10 @@
 """Per-model retrieval settings, and the versions that tie stored data to the code.
 
-Embedding models score on different scales (nomic-embed-text puts unrelated bank narrations at
-0.35-0.45 and real matches from 0.47), so one global similarity threshold would be wrong for other
-models. A model without a profile still works: search falls back to a relative rule, and the page
-shows an "untuned model" note.
+Embedding models score on different scales, so one global similarity threshold would be wrong for
+other models. Even for one model the bands overlap: on the evaluation set, nomic-embed-text gives
+questions with no answer up to 0.51 against their closest row, while some real matches score 0.46,
+which is why keywords and vectors are combined. A model without a profile still works: search
+falls back to a relative rule, and the page shows an "untuned model" note.
 """
 
 from dataclasses import dataclass
@@ -12,7 +13,7 @@ from dataclasses import dataclass
 # document embedded under an older version then counts as stale and is re-embedded.
 TEXT_VERSION = 1
 # Sent with every ask and logged, so each evaluation result is tied to the exact prompt.
-PROMPT_VERSION = "rag-v1"
+PROMPT_VERSION = "rag-v2"
 
 
 @dataclass(frozen=True)
@@ -39,9 +40,13 @@ class Profile:
 UNTUNED = Profile(doc_prefix="", query_prefix="")
 
 PROFILES = {
-    # Task prefixes from nomic's model card. The evaluation set decides whether they help (they
-    # stay only if they do) and sets min_similarity, with the date it was tuned.
-    "nomic-embed-text": Profile(doc_prefix="search_document: ", query_prefix="search_query: "),
+    # Task prefixes from nomic's model card; on the evaluation set they beat plain text. The
+    # threshold is what ai/eval/evaluate.py's tuning picks (tuned 2026-10-23, digest
+    # 0a109f422b47): hybrid recall@5 0.872, MRR 0.875, and every no-answer question finds nothing.
+    # ai/test_rag_eval.py fails if a change to the data or the ranking moves the pick.
+    "nomic-embed-text": Profile(
+        doc_prefix="search_document: ", query_prefix="search_query: ", min_similarity=0.52
+    ),
 }
 
 

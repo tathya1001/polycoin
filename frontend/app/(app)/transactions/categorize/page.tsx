@@ -211,7 +211,7 @@ export default function Categorize() {
     <>
       <PageHeader
         title="Categorize with AI"
-        subtitle="Runs on the Ollama installed on your own computer: transaction text goes from this browser to it and nowhere else. Nothing changes until you press Apply. What you approve counts as your own choice and helps categorise the rest."
+        subtitle="The AI model runs on your computer: transaction text goes from this browser to your Ollama, never to an AI service. Nothing changes until you press Apply. What you approve counts as your own choice and helps categorise the rest."
       />
 
       {loadingSetup && !ollamaProblem && <Loading />}

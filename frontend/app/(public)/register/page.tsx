@@ -107,9 +107,10 @@ export default function Register() {
           {loading ? "Creating…" : "Create account"}
         </Button>
         <p className="text-xs text-muted">
-          Your statement data is encrypted at rest with a key unique to your account. AI categorisation is optional
-          and runs on your own computer: your browser sends transaction descriptions to the Ollama you install, and
-          nowhere else. You can delete all your data any time in Settings.
+          Your statement data is encrypted at rest with a key unique to your account. The AI features are optional.
+          The AI model runs on your computer: your browser sends transaction text to the Ollama you install, never to
+          an AI service. The search index is stored encrypted on our server. You can delete all your data any time in
+          Settings.
         </p>
       </form>
     </AuthLayout>

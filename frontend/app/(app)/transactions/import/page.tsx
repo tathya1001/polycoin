@@ -309,6 +309,9 @@ export default function ImportStatement() {
             <Link href="/transactions/categorize" className={buttonClass("secondary", "md")}>
               Categorize with AI
             </Link>
+            <Link href="/ask" className={buttonClass("ghost", "md")}>
+              Update the Ask index
+            </Link>
           </div>
         </Card>
       )}

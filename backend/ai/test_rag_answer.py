@@ -141,7 +141,8 @@ def test_the_prompt_is_a_system_rule_message_then_the_grounded_question():
     assert "debits total ₹1650.50, credits total ₹0.00, dated 2026-01-05 to 2026-01-20" in content
     assert "[1] 2026-01-05 | debit | ₹450.50 | Health | Fitzone Gym jan" in content
     assert content.index("<transactions>") < content.index("[1]") < content.index("</transactions>")
-    assert content.endswith("Question: What do I pay for the gym?")
+    assert "Question: What do I pay for the gym?\n\nAnswer in a few short sentences" in content
+    assert content.endswith("cite the transactions you used, like [1].")
 
 
 def test_only_the_top_k_sources_go_in_but_the_summary_covers_all(settings):
@@ -168,7 +169,7 @@ def test_braces_in_data_or_the_question_are_never_treated_as_template_fields():
     tricky = source(1, text="note {question} {today}")
     (_, human) = build_messages("why {summary}?", [tricky], summarize([tricky]), PERIOD, TODAY)
     assert "note {question} {today}" in human["content"]
-    assert human["content"].endswith("Question: why {summary}?")
+    assert "Question: why {summary}?\n" in human["content"]
 
 
 def test_a_full_prompt_fits_the_context_window_with_room_for_the_answer(settings):
@@ -202,10 +203,21 @@ def test_a_search_becomes_a_full_answer_context(alice):
     result = answer.build_answer(alice, "gym", search(alice, "gym", vector=NEAR_GYM), TODAY)
 
     assert set(result) == {
-        "prompt_version", "period", "coverage", "summary", "sources", "messages", "options",
+        "prompt_version", "period", "coverage", "summary", "sources", "in_prompt", "messages",
+        "options",
     }  # fmt: skip
     assert result["sources"][0]["transaction"] == str(rows["gym"].id)
     assert result["sources"][0]["n"] == 1
     assert result["summary"]["matches"] == len(result["sources"])
     assert [message["role"] for message in result["messages"]] == ["system", "user"]
     assert "Fitzone Gym" in result["messages"][1]["content"]
+
+
+def test_in_prompt_says_how_many_sources_the_model_saw(alice, settings):
+    settings.RAG_TOP_K = 1
+    history(alice)
+    result = answer.build_answer(alice, "gym", search(alice, "gym", vector=NEAR_GYM), TODAY)
+    assert len(result["sources"]) > 1 and result["in_prompt"] == 1
+
+    empty = SearchResult([], PERIOD, {"searched": 0, "indexed": 0, "total": 0})
+    assert answer.build_answer(alice, "anything", empty, TODAY)["in_prompt"] == 0

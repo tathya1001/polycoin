@@ -2,6 +2,7 @@ import {
   ArrowLeftRight,
   FileUp,
   LayoutDashboard,
+  MessageSquareText,
   Settings2,
   Sparkles,
   Tag,
@@ -14,7 +15,10 @@ export type NavGroup = { label: string; items: NavItem[] };
 export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Insights",
-    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/ask", label: "Ask", icon: MessageSquareText },
+    ],
   },
   {
     label: "Money",

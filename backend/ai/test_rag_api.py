@@ -9,6 +9,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from ai.models import RagDocument
+from ai.rag.profiles import PROMPT_VERSION
 from ai.rag_views import AskView, IndexView, PendingView, StatusView, VectorsView
 from ai.test_rag_retriever import NEAR_GYM, VECTORS
 from categories.models import Category
@@ -92,7 +93,8 @@ def test_index_then_ask_end_to_end(alice):
     assert response.status_code == 200
     body = response.json()
     assert set(body) == {
-        "prompt_version", "profile", "period", "coverage", "summary", "sources", "messages",
+        "prompt_version", "profile", "period", "coverage", "summary", "sources", "in_prompt",
+        "messages",
         "options",
     }  # fmt: skip
     assert body["sources"][0]["transaction"] == str(rows["gym"].id)
@@ -276,7 +278,7 @@ def test_the_ask_log_line_has_counts_and_never_the_question_or_the_data(alice, c
     with caplog.at_level(logging.INFO):
         ask(api, "What do I pay for my secret gym membership?")
 
-    assert "rag ask: prompt=rag-v1" in caplog.text and "matches=" in caplog.text
+    assert f"rag ask: prompt={PROMPT_VERSION}" in caplog.text and "matches=" in caplog.text
     for secret in ("secret", "membership", "Fitzone", "FITZONE", "4.50"):
         assert secret not in caplog.text
 
