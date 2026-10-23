@@ -42,7 +42,7 @@ def _label_text(category: Category) -> str:
     return f"{category.name}: {', '.join(terms)}" if terms else category.name
 
 
-def _decrypt_fields(cipher: UserCipher, txn: Transaction) -> tuple[str, str, str]:
+def decrypt_fields(cipher: UserCipher, txn: Transaction) -> tuple[str, str, str]:
     """(name, description, notes), in the order scoring.prepare_text takes them. Plaintext
     lives only in memory for the length of a run: never log or persist it."""
     notes = (
@@ -133,7 +133,7 @@ def prepare_run(user) -> dict:
     labels = {category.id: index(_label_text(category)) for category in categories}
 
     for txn in targets:
-        name, description, notes = _decrypt_fields(cipher, txn)
+        name, description, notes = decrypt_fields(cipher, txn)
         result["targets"].append(
             {
                 "transaction": str(txn.id),
@@ -156,7 +156,7 @@ def prepare_run(user) -> dict:
                 "name": category.name,
                 "label": labels[category.id],
                 "examples": [
-                    index(scoring.prepare_text(*_decrypt_fields(cipher, txn)))
+                    index(scoring.prepare_text(*decrypt_fields(cipher, txn)))
                     for txn in examples.get((category.id, txn_type), [])
                 ],
             }

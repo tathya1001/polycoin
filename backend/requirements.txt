@@ -11,3 +11,8 @@ msoffcrypto-tool
 gunicorn>=23
 whitenoise>=6.7
 sentry-sdk>=2.20
+# RAG search. Exact pins: memory and speed were measured on these versions, so a newer one is a
+# deliberate Dependabot bump. numpy 2.5+ needs Python 3.12.
+langchain-core==1.6.9
+numpy==2.4.6
+rank-bm25==0.2.2

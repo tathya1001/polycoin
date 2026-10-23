@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "categories",
     "transactions",
     "insights",
+    "ai",
 ]
 
 
@@ -149,6 +150,10 @@ REST_FRAMEWORK = {
         "ai_light": "120/hour",
         "insights": "600/hour",
         "destructive": "5/hour",  # erasing all data; also caps password guessing through it
+        # Ask your transactions. Indexing is two calls per 100 rows (pending, then
+        # vectors). Asking decrypts the whole index, so scripted bulk decryption is capped.
+        "rag_index": "300/hour",
+        "rag_ask": "60/hour",
     },
 }
 
@@ -231,6 +236,37 @@ AI_BLEND_MAX_WEIGHT = float(os.environ.get("AI_BLEND_MAX_WEIGHT", "0.7"))  # max
 
 # Insights decrypts rows in Python, so one request must never load an unbounded number of them.
 INSIGHTS_MAX_ROWS = int(os.environ.get("INSIGHTS_MAX_ROWS", "50000"))
+
+# "Ask your transactions" (RAG). The browser embeds with the user's own Ollama; the server stores
+# the encrypted vectors and searches them.
+RAG_MAX_DIMS = int(os.environ.get("RAG_MAX_DIMS", "4096"))  # largest vector accepted (cap 4096)
+# Kill switch: FALSE turns the feature off with an environment change and no deploy.
+RAG_ENABLED = os.environ.get("RAG_ENABLED", "TRUE") == "TRUE"
+RAG_INDEX_BATCH = int(os.environ.get("RAG_INDEX_BATCH", "100"))  # rows per embed round trip
+# One ask searches at most this many documents, newest first: about a second at Render's 0.1 CPU.
+# A period reaches older rows, and the page says how many were searched.
+RAG_MAX_DOCS = int(os.environ.get("RAG_MAX_DOCS", "8000"))
+RAG_MAX_MATCHES = int(os.environ.get("RAG_MAX_MATCHES", "50"))  # kept per ranking and after fusion
+RAG_RRF_K = int(os.environ.get("RAG_RRF_K", "60"))  # reciprocal rank fusion constant
+# An untuned model's vector matches: rows within this much of the best cosine score.
+RAG_RELATIVE_MARGIN = float(os.environ.get("RAG_RELATIVE_MARGIN", "0.05"))
+# The prompt lists the closest RAG_TOP_K matches (the summary still covers all of them), about
+# 40 tokens each, so RAG_NUM_CTX tokens hold them, the rules and the answer with room to spare.
+RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "20"))
+RAG_NUM_CTX = int(os.environ.get("RAG_NUM_CTX", "4096"))
+
+# langchain-core installs the LangSmith client, and LangSmith tracing would send every prompt,
+# which holds decrypted transactions, to a third party. It is forced off whatever the environment
+# says, and the keys it would use are removed; ai/test_rag_api.py checks this.
+for _name in (
+    "LANGSMITH_TRACING",
+    "LANGSMITH_TRACING_V2",
+    "LANGCHAIN_TRACING",
+    "LANGCHAIN_TRACING_V2",
+):
+    os.environ[_name] = "false"
+for _name in ("LANGSMITH_API_KEY", "LANGCHAIN_API_KEY"):
+    os.environ.pop(_name, None)
 
 # Shared with the Vercel proxy, which sends it as X-Origin-Secret on every /api/ request;
 # Django refuses /api/ requests without it. Empty (the default) turns the check off.

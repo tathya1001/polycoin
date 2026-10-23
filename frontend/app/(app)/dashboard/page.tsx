@@ -2,7 +2,7 @@
 
 // The Insights dashboard: tabs of user-built dashboards, each a grid of chart panels.
 //
-// Data flow (see dev-docs/phase-5-plan.md):
+// Data flow:
 //   - GET  /api/dashboards/        the tabs
 //   - GET  /api/dashboards/{id}/   the active tab's panels (decrypted titles and configs)
 //   - POST /api/insights/query/    every panel's chart data in ONE request, so the server

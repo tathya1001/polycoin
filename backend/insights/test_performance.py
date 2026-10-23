@@ -1,11 +1,10 @@
-"""Opt-in timing check from the Phase 5 plan: 20,000 rows, one 12-panel batch, about 2 s.
+"""Opt-in timing check: 20,000 rows, one 12-panel batch, within about 2 s.
 
 Seeding 20,000 encrypted rows takes a while, so this is skipped unless asked for:
 
     docker compose exec -e INSIGHTS_PERF=1 backend pytest insights/test_performance.py -s
 
-The measured time is printed. Record it in dev-docs/phase-5-plan.md; it decides whether
-INSIGHTS_MAX_ROWS (50,000) needs to change.
+The measured time is printed; it decides whether INSIGHTS_MAX_ROWS (50,000) needs to change.
 """
 
 import os

@@ -1,7 +1,12 @@
 FROM python:3.11-slim
 
+# numpy's OpenBLAS starts one thread per host CPU it sees (16 locally, likely more on Render), and
+# idle threads keep spinning after each call. Under Render's 0.1 CPU quota that spinning cost ~15x
+# the real work of a search, so BLAS runs single-threaded; the vectors are small anyway.
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    OPENBLAS_NUM_THREADS=1 \
+    OMP_NUM_THREADS=1
 
 WORKDIR /app
 
