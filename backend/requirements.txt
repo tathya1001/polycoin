@@ -8,7 +8,7 @@ cryptography
 openpyxl
 defusedxml
 msoffcrypto-tool
-gunicorn>=23
+gunicorn>=26.2.0
 whitenoise>=6.7
 sentry-sdk>=2.20
 # RAG search. Exact pins: memory and speed were measured on these versions, so a newer one is a
