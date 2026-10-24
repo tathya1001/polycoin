@@ -67,7 +67,7 @@ export default function Settings() {
                   preferences.font !== font.id && choose({ font: font.id }, "Could not save your font. Try again.")
                 }
               >
-                <span className="block truncate text-3xl font-semibold tracking-tight tabular-nums" style={{ fontFamily: family }}>
+                <span className="block truncate text-3xl font-semibold tracking-tight" style={{ fontFamily: family }}>
                   ₹42,310.00
                 </span>
                 <span className="mt-3 flex items-center gap-2">

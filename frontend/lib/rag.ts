@@ -35,7 +35,8 @@ export class RagProblem extends Error {
   }
 }
 
-async function problemFrom(res: Response): Promise<RagProblem> {
+/** The server's {code, detail} refusal as an error; the panel builder's client uses it too. */
+export async function problemFrom(res: Response): Promise<RagProblem> {
   try {
     const body = await res.json();
     if (typeof body?.code === "string" && typeof body?.detail === "string") {

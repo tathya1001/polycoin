@@ -1,0 +1,384 @@
+{
+ "version": 7,
+ "dimensions": [
+  {
+   "id": "date",
+   "granularities": [
+    "day",
+    "week",
+    "month",
+    "quarter",
+    "year"
+   ]
+  },
+  {
+   "id": "weekday",
+   "granularities": []
+  },
+  {
+   "id": "month_of_year",
+   "granularities": []
+  },
+  {
+   "id": "category",
+   "granularities": []
+  },
+  {
+   "id": "txn_type",
+   "granularities": []
+  },
+  {
+   "id": "merchant",
+   "granularities": []
+  }
+ ],
+ "measures": [
+  {
+   "id": "spend",
+   "aggs": [
+    "sum",
+    "avg",
+    "min",
+    "max",
+    "median"
+   ],
+   "default_agg": "sum"
+  },
+  {
+   "id": "income",
+   "aggs": [
+    "sum",
+    "avg",
+    "min",
+    "max",
+    "median"
+   ],
+   "default_agg": "sum"
+  },
+  {
+   "id": "net",
+   "aggs": [
+    "sum",
+    "avg",
+    "min",
+    "max",
+    "median"
+   ],
+   "default_agg": "sum"
+  },
+  {
+   "id": "amount",
+   "aggs": [
+    "sum",
+    "avg",
+    "min",
+    "max",
+    "median"
+   ],
+   "default_agg": "sum"
+  },
+  {
+   "id": "count",
+   "aggs": [
+    "sum"
+   ],
+   "default_agg": "sum"
+  },
+  {
+   "id": "balance",
+   "aggs": [
+    "last"
+   ],
+   "default_agg": "last"
+  }
+ ],
+ "charts": {
+  "kpi": {
+   "x": [],
+   "color": false
+  },
+  "bar": {
+   "x": [
+    "date",
+    "weekday",
+    "month_of_year",
+    "category",
+    "txn_type",
+    "merchant"
+   ],
+   "color": true
+  },
+  "line": {
+   "x": [
+    "date"
+   ],
+   "color": true
+  },
+  "area": {
+   "x": [
+    "date"
+   ],
+   "color": true
+  },
+  "pie": {
+   "x": [
+    "weekday",
+    "month_of_year",
+    "category",
+    "txn_type",
+    "merchant"
+   ],
+   "color": false
+  },
+  "donut": {
+   "x": [
+    "weekday",
+    "month_of_year",
+    "category",
+    "txn_type",
+    "merchant"
+   ],
+   "color": false
+  },
+  "histogram": {
+   "x": [],
+   "color": false
+  },
+  "calendar": {
+   "x": [],
+   "color": false
+  },
+  "heatmap": {
+   "x": [
+    "date",
+    "weekday",
+    "month_of_year",
+    "category",
+    "txn_type",
+    "merchant"
+   ],
+   "color": false
+  },
+  "text": {
+   "x": [],
+   "color": false
+  }
+ },
+ "calcs": [
+  {
+   "id": "running_total",
+   "needs_date": true,
+   "additive_only": true,
+   "never_negative": false
+  },
+  {
+   "id": "percent_of_total",
+   "needs_date": false,
+   "additive_only": true,
+   "never_negative": true
+  },
+  {
+   "id": "moving_average",
+   "needs_date": true,
+   "additive_only": false,
+   "never_negative": false
+  },
+  {
+   "id": "change",
+   "needs_date": true,
+   "additive_only": false,
+   "never_negative": false
+  }
+ ],
+ "kpi": {
+  "compares": [
+   "none",
+   "previous",
+   "year_ago",
+   "average"
+  ],
+  "directions": [
+   "auto",
+   "up_is_good",
+   "down_is_good"
+  ],
+  "secondary": [
+   {
+    "id": "count",
+    "needs_money_measure": false,
+    "needs_sum": false
+   },
+   {
+    "id": "average",
+    "needs_money_measure": true,
+    "needs_sum": false
+   },
+   {
+    "id": "largest",
+    "needs_money_measure": true,
+    "needs_sum": false
+   },
+   {
+    "id": "share_of_income",
+    "needs_money_measure": true,
+    "needs_sum": true
+   }
+  ],
+  "money_measures": [
+   "spend",
+   "income",
+   "net",
+   "amount"
+  ],
+  "average_of": [
+   3,
+   12
+  ],
+  "max_secondary": 3
+ },
+ "format": {
+  "numbers": [
+   "auto",
+   "full",
+   "compact"
+  ],
+  "legends": [
+   "auto",
+   "top",
+   "bottom",
+   "right",
+   "none"
+  ],
+  "charts": [
+   "bar",
+   "line",
+   "area",
+   "pie",
+   "donut",
+   "histogram",
+   "calendar",
+   "heatmap"
+  ],
+  "legend_charts": [
+   "bar",
+   "line",
+   "area",
+   "pie",
+   "donut"
+  ],
+  "axis_charts": [
+   "bar",
+   "line",
+   "area"
+  ]
+ },
+ "rows_fields": [
+  "weekday",
+  "month_of_year",
+  "category",
+  "txn_type",
+  "merchant"
+ ],
+ "formula": {
+  "charts": [
+   "bar",
+   "line",
+   "area",
+   "kpi"
+  ],
+  "agg": "avg",
+  "variables": [
+   "spend",
+   "income",
+   "net",
+   "count"
+  ],
+  "functions": {
+   "abs": 1,
+   "min": 2,
+   "max": 2
+  },
+  "forms": [
+   "number",
+   "percent",
+   "money"
+  ],
+  "max_length": 200
+ },
+ "parameters": {
+  "defaults": {
+   "top_n": 10,
+   "granularity": "month",
+   "measure": "spend",
+   "comparison": "previous"
+  },
+  "measures": [
+   "spend",
+   "income",
+   "net"
+  ],
+  "comparisons": [
+   "previous",
+   "year_ago"
+  ],
+  "top_n": [
+   1,
+   50
+  ],
+  "bindings": {
+   "limit": "top_n",
+   "granularity": "granularity",
+   "measure": "measure",
+   "compare": "comparison",
+   "vs": "comparison"
+  }
+ },
+ "change_vs": [
+  "previous",
+  "year_ago"
+ ],
+ "change_as": [
+  "percent",
+  "amount"
+ ],
+ "sorts": [
+  "measure_desc",
+  "label"
+ ],
+ "orientations": [
+  "vertical",
+  "horizontal"
+ ],
+ "txn_types": [
+  "credit",
+  "debit"
+ ],
+ "date_presets": [
+  "this_month",
+  "last_month",
+  "last_3_months",
+  "last_12_months",
+  "this_year",
+  "all",
+  "custom"
+ ],
+ "limits": {
+  "limit": [
+   1,
+   50
+  ],
+  "bins": [
+   5,
+   50
+  ],
+  "categories": 20,
+  "merchant_contains": 60,
+  "series_colors": 50,
+  "window": [
+   2,
+   12
+  ],
+  "text": 2000,
+  "calendar_days": 366
+ }
+}

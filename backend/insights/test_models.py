@@ -4,7 +4,7 @@ from django.db import IntegrityError, connection, transaction
 
 from insights import services
 from insights.models import Dashboard, Panel
-from insights.spec import SpecError
+from insights.spec import SPEC_VERSION, SpecError
 from transactions.tests import make_user
 from vault.services import UserCipher
 
@@ -56,7 +56,7 @@ def test_config_round_trips_with_defaults_filled_in(alice):
     config = services.decrypt_config(UserCipher(alice), panel.config_enc)
     assert config["chart"] == "bar"
     assert config["y"] == {"measure": "spend", "agg": "sum"}
-    assert config["v"] == 1
+    assert config["v"] == SPEC_VERSION
     assert config["filters"]["date"] == {"preset": "inherit"}
 
 

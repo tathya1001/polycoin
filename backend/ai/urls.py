@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import rag_views
+from . import agent_views, rag_views
 from .views import ApplyView, PrepareView
 
 urlpatterns = [
@@ -13,4 +13,9 @@ urlpatterns = [
     path("ai/rag/vectors/", rag_views.VectorsView.as_view()),
     path("ai/rag/ask/", rag_views.AskView.as_view()),
     path("ai/rag/index/", rag_views.IndexView.as_view()),
+    # The AI panel builder. agent_views loads LangGraph; like the RAG views, it is loaded at
+    # boot through this URLconf.
+    path("ai/agent/status/", agent_views.StatusView.as_view()),
+    path("ai/agent/turn/", agent_views.TurnView.as_view()),
+    path("ai/agent/step/", agent_views.StepView.as_view()),
 ]

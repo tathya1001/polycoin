@@ -9,6 +9,7 @@ import { Popover } from "@/components/ui/Popover";
 
 type Props = {
   title: string;
+  showTitle: boolean; // false: no header line outside Edit mode
   editing: boolean; // Edit mode: show the grip and the menu
   onEdit: () => void;
   onDuplicate: () => void;
@@ -17,8 +18,9 @@ type Props = {
 };
 
 // The card around one chart: a header and, in Edit mode, a menu. The grid lays an
-// invisible move handle over the header, so dragging the title moves the panel.
-export default function PanelFrame({ title, editing, onEdit, onDuplicate, onDelete, children }: Props) {
+// invisible move handle over the header, so dragging the title moves the panel. A panel whose
+// title is hidden still has its header in Edit mode: the handle and the menu live there.
+export default function PanelFrame({ title, showTitle, editing, onEdit, onDuplicate, onDelete, children }: Props) {
   const confirm = useConfirm();
 
   async function askDelete() {
@@ -33,47 +35,57 @@ export default function PanelFrame({ title, editing, onEdit, onDuplicate, onDele
 
   return (
     <section
+      aria-label={title || undefined}
       className={cn(
         "flex h-full flex-col overflow-hidden rounded-md border-[1.5px] bg-surface transition-shadow duration-150",
         editing ? "border-dashed border-ink" : "border-ink shadow-hard-sm",
       )}
     >
-      <header className="flex items-center gap-2 border-b border-hairline px-3 py-2">
-        {editing && <GripVertical size={16} className="shrink-0 text-muted" aria-hidden />}
-        <h2 className={cn("min-w-0 flex-1 truncate text-sm font-semibold", editing && "select-none")} title={title}>
-          {title || <span className="text-muted">Untitled</span>}
-        </h2>
-        {editing && (
-          <Popover
-            align="right"
-            className="w-44 p-1.5!"
-            trigger={(p) => (
-              <IconButton
-                label="Panel menu"
-                size="sm"
-                icon={<MoreHorizontal size={16} />}
-                onClick={p.onClick}
-                aria-expanded={p["aria-expanded"]}
-                aria-haspopup={p["aria-haspopup"]}
-              />
+      {(showTitle || editing) && (
+        <header className="flex items-center gap-2 border-b border-hairline px-3 py-2">
+          {editing && <GripVertical size={16} className="shrink-0 text-muted" aria-hidden />}
+          <h2
+            className={cn(
+              "min-w-0 flex-1 truncate text-sm font-semibold",
+              editing && "select-none",
+              !showTitle && "font-normal text-muted",
             )}
+            title={title}
           >
-            {(close) => (
-              <div className="flex flex-col text-sm">
-                <MenuItem icon={<Pencil size={15} />} onClick={() => { close(); onEdit(); }}>
-                  Edit…
-                </MenuItem>
-                <MenuItem icon={<Copy size={15} />} onClick={() => { close(); onDuplicate(); }}>
-                  Duplicate
-                </MenuItem>
-                <MenuItem icon={<Trash2 size={15} />} danger onClick={() => { close(); askDelete(); }}>
-                  Delete…
-                </MenuItem>
-              </div>
-            )}
-          </Popover>
-        )}
-      </header>
+            {showTitle ? title || <span className="text-muted">Untitled</span> : `${title || "Untitled"} (title hidden)`}
+          </h2>
+          {editing && (
+            <Popover
+              align="right"
+              className="w-44 p-1.5!"
+              trigger={(p) => (
+                <IconButton
+                  label="Panel menu"
+                  size="sm"
+                  icon={<MoreHorizontal size={16} />}
+                  onClick={p.onClick}
+                  aria-expanded={p["aria-expanded"]}
+                  aria-haspopup={p["aria-haspopup"]}
+                />
+              )}
+            >
+              {(close) => (
+                <div className="flex flex-col text-sm">
+                  <MenuItem icon={<Pencil size={15} />} onClick={() => { close(); onEdit(); }}>
+                    Edit…
+                  </MenuItem>
+                  <MenuItem icon={<Copy size={15} />} onClick={() => { close(); onDuplicate(); }}>
+                    Duplicate
+                  </MenuItem>
+                  <MenuItem icon={<Trash2 size={15} />} danger onClick={() => { close(); askDelete(); }}>
+                    Delete…
+                  </MenuItem>
+                </div>
+              )}
+            </Popover>
+          )}
+        </header>
+      )}
       <div className="min-h-0 flex-1 p-2">{children}</div>
     </section>
   );

@@ -29,7 +29,7 @@ def test_day_is_unchanged():
 
 def test_week_starts_on_monday():
     assert bucket_date(date(2026, 10, 11), "week") == date(2026, 10, 5)  # a Sunday
-    assert bucket_date(date(2026, 10, 5), "week") == date(2026, 10, 5)   # already a Monday
+    assert bucket_date(date(2026, 10, 5), "week") == date(2026, 10, 5)  # already a Monday
 
 
 def test_week_can_start_in_the_previous_year():
@@ -423,8 +423,13 @@ def test_count_measure_prints_whole_numbers():
 def test_weekday_axis_always_shows_all_seven_days():
     spec = make_spec(x={"field": "weekday"})
     assert run_grouped(spec, ROWS, PERIOD)["rows"] == [
-        [0, "0.00"], [1, "50.00"], [2, "0.00"], [3, "30.00"],
-        [4, "0.00"], [5, "100.00"], [6, "800.00"],
+        [0, "0.00"],
+        [1, "50.00"],
+        [2, "0.00"],
+        [3, "30.00"],
+        [4, "0.00"],
+        [5, "100.00"],
+        [6, "800.00"],
     ]
 
 
@@ -444,8 +449,11 @@ def test_previous_period_is_the_same_length_ending_the_day_before():
 # --- kpi ----------------------------------------------------------------------
 
 
-def kpi_spec(**override):
-    base = {"chart": "kpi", "y": {"measure": "spend", "agg": "sum"}}
+def kpi_spec(compare="none", **override):
+    """A validated-shape KPI spec: the engine reads `kpi` and never fills in defaults."""
+    kpi = {"compare": compare, "sparkline": None, "direction": "auto", "secondary": []}
+    kpi.update(override.pop("kpi", {}))
+    base = {"chart": "kpi", "y": {"measure": "spend", "agg": "sum"}, "kpi": kpi}
     base.update(override)
     return base
 
@@ -456,13 +464,13 @@ def test_kpi_is_a_single_total():
 
 def test_kpi_with_compare_gives_previous_and_percent_change():
     period = (date(2026, 2, 1), date(2026, 3, 31))  # previous period is Dec 4 - Jan 31
-    result = run(kpi_spec(compare=True), ROWS, period)
+    result = run(kpi_spec("previous"), ROWS, period)
     assert result["rows"] == [["30.00", "950.00", "-96.8"]]
 
 
 def test_kpi_percent_is_none_when_the_previous_period_is_zero():
     period = (date(2026, 3, 1), date(2026, 3, 31))  # previous period has no spend
-    assert run(kpi_spec(compare=True), ROWS, period)["rows"] == [["30.00", "0.00", None]]
+    assert run(kpi_spec("previous"), ROWS, period)["rows"] == [["30.00", "0.00", None]]
 
 
 def test_kpi_with_no_data_is_zero_for_totals_and_unknown_for_averages():

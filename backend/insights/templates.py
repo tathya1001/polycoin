@@ -11,9 +11,9 @@ def _panel(title: str, grid: tuple[int, int, int, int], **config) -> dict:
 
 
 OVERVIEW = [
-    _panel("Spend", (0, 0, 4, 3), chart="kpi", y={"measure": "spend"}, compare=True),
-    _panel("Income", (4, 0, 4, 3), chart="kpi", y={"measure": "income"}, compare=True),
-    _panel("Net", (8, 0, 4, 3), chart="kpi", y={"measure": "net"}, compare=True),
+    _panel("Spend", (0, 0, 4, 3), chart="kpi", y={"measure": "spend"}, kpi={"compare": "previous"}),
+    _panel("Income", (4, 0, 4, 3), chart="kpi", y={"measure": "income"}, kpi={"compare": "previous"}),
+    _panel("Net", (8, 0, 4, 3), chart="kpi", y={"measure": "net"}, kpi={"compare": "previous"}),
     _panel(
         "Spend by category", (0, 3, 6, 8),
         chart="bar", x={"field": "category"}, y={"measure": "spend"}, orientation="horizontal",

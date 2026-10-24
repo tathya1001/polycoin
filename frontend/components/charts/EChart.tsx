@@ -5,8 +5,8 @@
 
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
-import { BarChart, LineChart, PieChart } from "echarts/charts";
-import { GridComponent, LegendComponent, TooltipComponent } from "echarts/components";
+import { BarChart, HeatmapChart, LineChart, PieChart } from "echarts/charts";
+import { CalendarComponent, GridComponent, LegendComponent, TooltipComponent, VisualMapComponent } from "echarts/components";
 import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
 import { CATEGORY_COLORS } from "@/lib/colors";
 import { CHART_TEXT_SCALE } from "@/lib/fonts";
@@ -16,11 +16,14 @@ import type { ChartOption } from "./toOption";
 // Tree-shaken: only the chart types and components the dashboard uses are bundled.
 echarts.use([
   BarChart,
+  HeatmapChart,
   LineChart,
   PieChart,
+  CalendarComponent,
   GridComponent,
   LegendComponent,
   TooltipComponent,
+  VisualMapComponent,
   SVGRenderer,
   CanvasRenderer,
 ]);
@@ -75,8 +78,9 @@ function themeFor(fontFamily: string, scale: number) {
 
 type Props = {
   option: ChartOption;
-  // A click on a bar / point / slice, by series and data index (see ChartKeys in toOption).
-  onPick?: (seriesIndex: number, dataIndex: number) => void;
+  // A click on a bar / point / slice, by series and data index (see ChartKeys in toOption),
+  // and where in the chart it happened, in pixels from its top-left corner.
+  onPick?: (seriesIndex: number, dataIndex: number, at: { x: number; y: number }) => void;
 };
 
 export default function EChart({ option, onPick }: Props) {
@@ -112,7 +116,11 @@ export default function EChart({ option, onPick }: Props) {
     const instance = echarts.init(node, themeName, { renderer });
     instance.setOption(latestOption.current);
     instance.on("click", (params) => {
-      latestPick.current?.(params.seriesIndex ?? 0, params.dataIndex);
+      // zrender gives the position relative to the chart, whichever renderer draws it
+      latestPick.current?.(params.seriesIndex ?? 0, params.dataIndex, {
+        x: params.event?.offsetX ?? 0,
+        y: params.event?.offsetY ?? 0,
+      });
     });
     chart.current = instance;
 

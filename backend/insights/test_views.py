@@ -6,7 +6,7 @@ import pytest
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from insights.spec import catalogue, validate_spec
+from insights.spec import SPEC_VERSION, catalogue, validate_spec
 from insights.views import MAX_QUERIES
 from transactions.tests import make_txn, make_user
 
@@ -60,7 +60,7 @@ def test_fields_returns_the_catalogue(alice):
     response = as_user(alice).get(FIELDS)
     assert response.status_code == 200
     data = response.json()
-    assert data["version"] == 1
+    assert data["version"] == SPEC_VERSION
     assert data["charts"]["kpi"] == {"x": [], "color": False}
     assert "category" in data["charts"]["bar"]["x"]
     assert data["charts"]["line"]["x"] == ["date"]
@@ -80,6 +80,8 @@ def example_spec(chart, x_field, measure):
         spec["x"] = {"field": x_field}
         if x_field == "date":
             spec["x"]["granularity"] = "month"
+    if chart == "heatmap":  # the second axis, anything the catalogue offers but x itself
+        spec["rows"] = {"field": next(f for f in catalogue()["rows_fields"] if f != x_field)}
     return spec
 
 
@@ -87,6 +89,8 @@ def test_everything_the_catalogue_offers_is_accepted_by_the_validator():
     offered = catalogue()
     checked = 0
     for chart, rules in offered["charts"].items():
+        if chart == "text":  # a note has no fields or measures; test_format.py covers it
+            continue
         for x_field in rules["x"] or [None]:
             for measure in offered["measures"]:
                 if chart in ("pie", "donut") and measure["id"] in ("net", "balance"):

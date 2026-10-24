@@ -8,6 +8,8 @@ and balance, and the specs it reads are produced by `insights.spec.validate_spec
 from datetime import date, timedelta
 from decimal import Decimal
 
+from .formula import FORMULA, evaluate_rows, parse_once
+
 GRANULARITIES = ("day", "week", "month", "quarter", "year")
 MEASURES = ("spend", "income", "net", "amount", "count", "balance")
 AGGS = ("sum", "avg", "min", "max", "median", "count", "last")
@@ -15,6 +17,7 @@ DIMENSIONS = ("date", "weekday", "month_of_year", "category", "txn_type", "merch
 GROUPED_CHARTS = ("bar", "line", "area", "pie", "donut")
 
 OTHER_LABEL = "Other"
+CALENDAR_MAX_DAYS = 366  # keep equal to spec.CALENDAR_MAX_DAYS
 # More time buckets than this is unreadable as a chart, and an unbounded range
 # (say 2000 to 2100 by day) would let one request build a huge list.
 MAX_BUCKETS = 1000
@@ -22,6 +25,10 @@ MAX_BUCKETS = 1000
 
 class TooManyBuckets(ValueError):
     """The period holds more time buckets than a chart can sensibly show."""
+
+
+class PeriodTooLong(ValueError):
+    """A calendar heatmap was asked to draw more days than fit in a year."""
 
 
 # --- time buckets -------------------------------------------------------------
@@ -77,6 +84,59 @@ def bucket_range(start: date, end: date, granularity: str) -> list[date]:
         buckets.append(current)
         current = next_bucket(current, granularity)
     return buckets
+
+
+def previous_bucket(d: date, granularity: str) -> date:
+    """The start of the bucket before the one starting at `d`."""
+    return bucket_date(d - timedelta(days=1), granularity)
+
+
+def year_before(d: date) -> date:
+    """The same calendar day a year earlier; 29 February becomes the 28th."""
+    try:
+        return d.replace(year=d.year - 1)
+    except ValueError:
+        return d.replace(year=d.year - 1, day=28)
+
+
+def comparison_periods(kpi: dict, period: tuple[date, date]) -> list[tuple[date, date]]:
+    """The periods a KPI is compared with: none, the one before, the same dates a year earlier,
+    or the N periods of the same length before it (their average is the baseline)."""
+    compare = kpi["compare"]
+    if compare == "previous":
+        return [previous_period(period)]
+    if compare == "year_ago":
+        return [(year_before(period[0]), year_before(period[1]))]
+    if compare == "average":
+        periods, current = [], period
+        for _ in range(kpi["average_of"]):
+            current = previous_period(current)
+            periods.append(current)
+        return periods
+    return []
+
+
+def load_start(spec: dict, period: tuple[date, date]) -> date:
+    """The first day of rows a panel needs: its own period, or earlier when it looks back.
+
+    A KPI that compares needs the periods it compares with; a moving average needs the buckets
+    that fill its first window; a change needs the bucket before, or the same bucket a year
+    earlier.
+    """
+    kpi = spec.get("kpi")
+    if kpi:
+        return min((start for start, _ in comparison_periods(kpi, period)), default=period[0])
+    calc = spec.get("calc")
+    if not calc or calc["type"] not in ("moving_average", "change"):
+        return period[0]
+    granularity = spec["x"]["granularity"]
+    first = bucket_date(period[0], granularity)
+    if calc["type"] == "change" and calc["vs"] == "year_ago":
+        return bucket_date(year_before(first), granularity)
+    steps = calc["window"] - 1 if calc["type"] == "moving_average" else 1
+    for _ in range(steps):
+        first = previous_bucket(first, granularity)
+    return first
 
 
 # --- measures and aggregation -------------------------------------------------
@@ -228,6 +288,8 @@ def _y_cell(rows: list[dict], y: dict) -> Decimal | None:
     not appear in a spend chart. Real zeros for empty time buckets are added later, where
     run_grouped fills the gaps.
     """
+    if y["measure"] == FORMULA:  # worked out from the whole group, not row by row
+        return evaluate_rows(y["formula"]["expression"], rows) if rows else None
     values = []
     for row in rows:
         value = measure_value(row, y["measure"])
@@ -236,6 +298,11 @@ def _y_cell(rows: list[dict], y: dict) -> Decimal | None:
     if not values:
         return None
     return aggregate(values, y["agg"])
+
+
+def value_of(rows: list[dict], y: dict) -> str | None:
+    """The one number a panel's measure gives for `rows`, formatted as the charts format it."""
+    return _fmt(_or_zero(_y_cell(rows, y), y), y)
 
 
 def _money(value: Decimal) -> str:
@@ -256,6 +323,95 @@ def _label(key):
     return key.isoformat() if isinstance(key, date) else key
 
 
+# --- table calculations -------------------------------------------------------
+# They work on the aggregated chart values, not on rows (Tableau's "table calculations"), so they
+# cost one pass over the buckets. A value is None where nothing can be said, never a made-up 0.
+
+
+def running_total(values: list[Decimal | None]) -> list[Decimal]:
+    """Cumulative sum in order. Only used on values that add up, so an empty bucket adds 0."""
+    total, out = Decimal(0), []
+    for value in values:
+        total += value or 0
+        out.append(total)
+    return out
+
+
+def moving_average(values: list[Decimal | None], window: int) -> list[Decimal | None]:
+    """The mean of each value and the `window - 1` before it, skipping unknown values."""
+    out = []
+    for i in range(len(values)):
+        known = [v for v in values[max(0, i - window + 1) : i + 1] if v is not None]
+        out.append(sum(known, Decimal(0)) / len(known) if known else None)
+    return out
+
+
+def change(
+    current: list[Decimal | None], prior: list[Decimal | None], as_: str
+) -> list[Decimal | None]:
+    """Each value minus its prior value, as an amount or as a % of the prior value.
+
+    No percentage of nothing: a prior of 0 or None gives None.
+    """
+    out = []
+    for now, before in zip(current, prior):
+        if now is None or before is None:
+            out.append(None)
+        elif as_ == "amount":
+            out.append(now - before)
+        else:
+            out.append((now - before) / abs(before) * 100 if before else None)
+    return out
+
+
+def share(value: Decimal | None, total: Decimal) -> Decimal | None:
+    """`value` as a % of `total`; None when there is no total to take a share of."""
+    return None if value is None or not total else value / total * 100
+
+
+def _apply_calc(calc: dict, table: dict, x_keys: list, colors: list, granularity) -> dict:
+    """The calculated value for every (x, colour) cell of `table`, in the same shape.
+
+    % of total is the share of the chart's total for one series, or each segment's share of its
+    own bar when the chart is split by colour (100% stacked, Tableau's "pane" scope). The other
+    calculations run along x, separately for each colour.
+    """
+    kind = calc["type"]
+    if kind == "percent_of_total":
+        if colors == [None]:
+            total = sum((v for v in table.values() if v is not None), Decimal(0))
+            return {key: share(value, total) for key, value in table.items()}
+        bars = {x: sum((table[(x, c)] or 0 for c in colors), Decimal(0)) for x in x_keys}
+        return {(x, c): share(value, bars[x]) for (x, c), value in table.items()}
+
+    out = {}
+    for c in colors:
+        series = [table[(x, c)] for x in x_keys]
+        if kind == "running_total":
+            result = running_total(series)
+        elif kind == "moving_average":
+            result = moving_average(series, calc["window"])
+        elif calc["vs"] == "previous":
+            result = change(series, [None, *series[:-1]], calc["as"])
+        else:
+            by_bucket = dict(zip(x_keys, series))
+            prior = [by_bucket.get(bucket_date(year_before(x), granularity)) for x in x_keys]
+            result = change(series, prior, calc["as"])
+        out.update({(x, c): value for x, value in zip(x_keys, result)})
+    return out
+
+
+def _fmt_cell(value: Decimal | None, y: dict, calc: dict | None) -> str | None:
+    """Like _fmt, for a value that may have been through a table calculation."""
+    if value is None or not calc:
+        return _fmt(value, y)
+    if calc["type"] == "percent_of_total" or calc.get("as") == "percent":
+        return str(value.quantize(Decimal("0.1")))
+    if calc["type"] == "moving_average":
+        return _money(value)  # an average of counts has decimals too
+    return _fmt(value, y)
+
+
 def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
     """bar / line / area / pie / donut: aggregate `y` for each value of `x` (and of `color`).
 
@@ -274,8 +430,10 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
     foldable = y["agg"] in ("sum", "count")
     empty = Decimal(0) if foldable else None
 
+    calc = spec.get("calc")
     if x["field"] == "date":
-        x_keys = bucket_range(period[0], period[1], x["granularity"])
+        # A calculation that looks back sees the earlier buckets too; only the period is shown.
+        x_keys = bucket_range(load_start(spec, period), period[1], x["granularity"])
     elif x["field"] == "weekday":
         x_keys = list(range(7))
     elif x["field"] == "month_of_year":
@@ -294,21 +452,116 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
             values = {(label,): value for label, value in ranked}
 
     colors = sorted({key[1] for key in values}, key=str) if color else [None]
+    table = {
+        (x_key, c): values.get((x_key, c) if color else (x_key,), empty)
+        for x_key in x_keys
+        for c in colors
+    }
+    if calc:
+        table = _apply_calc(calc, table, x_keys, colors, x.get("granularity"))
+    if x["field"] == "date":
+        first = bucket_date(period[0], x["granularity"])
+        x_keys = [x_key for x_key in x_keys if x_key >= first]
 
     out = []
     for x_key in x_keys:
         for color_key in colors:
-            key = (x_key, color_key) if color else (x_key,)
             out.append(
                 [_label(x_key)]
                 + ([_label(color_key)] if color else [])
-                + [_fmt(values.get(key, empty), y)]
+                + [_fmt_cell(table[(x_key, color_key)], y, calc)]
             )
 
+    meta = {"chart": spec["chart"], "x": x, "y": y}
+    if calc:
+        meta["calc"] = calc
     return {
         "columns": ["x", "color", "value"] if color else ["x", "value"],
         "rows": out,
-        "meta": {"chart": spec["chart"], "x": x, "y": y},
+        "meta": meta,
+    }
+
+
+def _axis_keys(
+    field: str,
+    granularity: str | None,
+    rows: list[dict],
+    y: dict,
+    spec: dict,
+    period: tuple[date, date],
+) -> list:
+    """Every value one heatmap axis shows, in order: all the weekdays, all the months, every
+    time bucket in the period, or the biggest categories (by total, or A to Z)."""
+    if field == "date":
+        return bucket_range(period[0], period[1], granularity)
+    if field == "weekday":
+        return list(range(7))
+    if field == "month_of_year":
+        return list(range(1, 13))
+    totals = {key[0]: _y_cell(group, y) for key, group in group_rows(rows, [(field, None)]).items()}
+    ranked = top_n(
+        [(label, value) for label, value in totals.items() if value is not None],
+        spec.get("limit", 10),
+        fold=False,  # a cell for "everything else" would mix unlike things
+    )
+    keys = [label for label, _ in ranked]
+    if spec.get("sort") == "label":
+        keys.sort()
+    return keys
+
+
+def run_heatmap(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
+    """A matrix: one cell per (x, rows) pair, coloured by the measure.
+
+    Cells with nothing in them are left out (blank), not drawn as zero. `axes` lists every
+    x and row value in display order, so the frontend can place a cell and label an empty one.
+    """
+    x, y, row_field = spec["x"], spec["y"], spec["rows"]["field"]
+    x_keys = _axis_keys(x["field"], x.get("granularity"), rows, y, spec, period)
+    row_keys = _axis_keys(row_field, None, rows, y, spec, period)
+
+    cells = {
+        key: _y_cell(group, y)
+        for key, group in group_rows(
+            rows, [(x["field"], x.get("granularity")), (row_field, None)]
+        ).items()
+    }
+    x_position = {key: n for n, key in enumerate(x_keys)}
+    row_position = {key: n for n, key in enumerate(row_keys)}
+    shown = [
+        (x_position[x_key], row_position[row_key], x_key, row_key, value)
+        for (x_key, row_key), value in cells.items()
+        if value is not None and x_key in x_position and row_key in row_position
+    ]
+    shown.sort(key=lambda cell: cell[:2])  # left to right, then top to bottom
+    return {
+        "columns": ["x", "row", "value"],
+        "rows": [
+            [_label(x_key), _label(row_key), _fmt(value, y)]
+            for _, _, x_key, row_key, value in shown
+        ],
+        "axes": {"x": [_label(k) for k in x_keys], "rows": [_label(k) for k in row_keys]},
+        "meta": {"chart": "heatmap", "x": x, "rows": spec["rows"], "y": y},
+    }
+
+
+def run_calendar(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
+    """One value per day, for a calendar heatmap. Days with no transactions are left out."""
+    start, end = period
+    if (end - start).days + 1 > CALENDAR_MAX_DAYS:
+        raise PeriodTooLong(f"A calendar shows at most {CALENDAR_MAX_DAYS} days.")
+    y = spec["y"]
+    cells = {
+        key[0]: _y_cell(group, y) for key, group in group_rows(rows, [("date", "day")]).items()
+    }
+    return {
+        "columns": ["x", "value"],
+        "rows": [
+            [day.isoformat(), _fmt(value, y)]
+            for day, value in sorted(cells.items())
+            if value is not None
+        ],
+        "meta": {"chart": "calendar", "y": y, "range": [start.isoformat(), end.isoformat()]},
     }
 
 
@@ -331,26 +584,104 @@ def _or_zero(value: Decimal | None, y: dict) -> Decimal | None:
     return value
 
 
-def run_kpi(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
-    """One headline number, plus the previous period's number and % change when spec["compare"].
+def _baseline(rows: list[dict], periods: list[tuple[date, date]], y: dict) -> Decimal | None:
+    """The number a KPI is compared with: its value in the one comparison period, or the mean of
+    its values over several. A period with no rows counts as 0 for totals, and is skipped for
+    averages, minimums and maximums (unknown, not zero)."""
+    values = [_or_zero(_y_cell(_in_period(rows, *p), y), y) for p in periods]
+    known = [value for value in values if value is not None]
+    return sum(known, Decimal(0)) / len(known) if known else None
 
-    Unlike the other runners this one receives rows from BOTH periods and does its own
-    filtering, because it needs the older rows for the comparison.
+
+def _fmt_baseline(value: Decimal | None, y: dict, compare: str) -> str | None:
+    """A mean of period counts has decimals ("12.5 transactions"); a single period's count doesn't."""
+    if (
+        value is not None
+        and compare == "average"
+        and (y["measure"] == "count" or y["agg"] == "count")
+    ):
+        return str(value.quantize(Decimal("0.1")))
+    return _fmt(value, y)
+
+
+def secondary_figures(
+    ids: list[str],
+    y: dict,
+    rows: list[dict],
+    value: Decimal | None,
+    income_rows: list[dict],
+) -> list[dict]:
+    """The small figures under a KPI: how many transactions, the average and the biggest one,
+    and the value as a share of income. `rows` are the period's rows after the panel's filters;
+    `income_rows` are the period's rows with every filter but the type, so a spend KPI that
+    only counts debits can still be set against income."""
+    amounts = [v for v in (measure_value(row, y["measure"]) for row in rows) if v is not None]
+    figures = []
+    for figure in ids:
+        if figure == "count":
+            result = str(len(amounts))
+        elif figure == "average":
+            result = _money(sum(amounts, Decimal(0)) / len(amounts)) if amounts else None
+        elif figure == "largest":
+            result = _money(max(amounts, key=abs)) if amounts else None
+        else:  # share_of_income
+            income = sum(
+                (measure_value(row, "income") or Decimal(0) for row in income_rows), Decimal(0)
+            )
+            result = (
+                str((value / income * 100).quantize(Decimal("0.1")))
+                if value is not None and income
+                else None
+            )
+        figures.append({"id": figure, "value": result})
+    return figures
+
+
+def run_kpi(
+    spec: dict, rows: list[dict], period: tuple[date, date], all_types: list[dict] | None = None
+) -> dict:
+    """One headline number, with what it is compared with and the optional extras.
+
+    Unlike the other runners this one receives rows from BEFORE the period too, and does its own
+    filtering, because the comparison needs them. `all_types` is the same rows without the
+    panel's type filter (None: `rows` already are), for the share of income.
     """
-    y = spec["y"]
-    current = _or_zero(_y_cell(_in_period(rows, *period), y), y)
+    y, kpi = spec["y"], spec["kpi"]
+    current_rows = _in_period(rows, *period)
+    current = _or_zero(_y_cell(current_rows, y), y)
 
     previous = change = None
-    if spec.get("compare"):
-        previous = _or_zero(_y_cell(_in_period(rows, *previous_period(period)), y), y)
+    periods = comparison_periods(kpi, period)
+    if periods:
+        previous = _baseline(rows, periods, y)
         if current is not None and previous:  # skip None and 0: no percentage of nothing
             change = ((current - previous) / abs(previous) * 100).quantize(Decimal("0.1"))
 
-    return {
+    result = {
         "columns": ["value", "previous", "change_pct"],
-        "rows": [[_fmt(current, y), _fmt(previous, y), None if change is None else str(change)]],
+        "rows": [
+            [
+                _fmt(current, y),
+                _fmt_baseline(previous, y, kpi["compare"]),
+                None if change is None else str(change),
+            ]
+        ],
         "meta": {"chart": "kpi", "y": y},
     }
+    if kpi["sparkline"]:
+        trend = {"chart": "line", "x": {"field": "date", "granularity": kpi["sparkline"]}, "y": y}
+        grouped = run_grouped(trend, current_rows, period)
+        result["sparkline"] = {
+            "granularity": kpi["sparkline"],
+            "columns": grouped["columns"],
+            "rows": grouped["rows"],
+        }
+    if kpi["secondary"]:
+        income_rows = _in_period(rows if all_types is None else all_types, *period)
+        result["secondary"] = secondary_figures(
+            kpi["secondary"], y, current_rows, current, income_rows
+        )
+    return result
 
 
 def run_histogram(spec: dict, rows: list[dict]) -> dict:
@@ -371,17 +702,33 @@ def run_histogram(spec: dict, rows: list[dict]) -> dict:
     }
 
 
-def run(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
-    """The engine's one public entry point: a validated spec and plain rows in, a result out."""
+def run(
+    spec: dict, rows: list[dict], period: tuple[date, date], all_types: list[dict] | None = None
+) -> dict:
+    """The engine's one public entry point: a validated spec and plain rows in, a result out.
+
+    `all_types` is only read by a KPI that shows its share of income (see run_kpi)."""
+    with parse_once():  # a calculated field is worked out per group: parse its formula once
+        return _run(spec, rows, period, all_types)
+
+
+def _run(spec: dict, rows: list[dict], period: tuple[date, date], all_types) -> dict:
     rows = sorted(rows, key=lambda row: row["date"])  # `last` and gap-filling rely on date order
     chart = spec["chart"]
 
     if chart == "kpi":
-        return run_kpi(spec, rows, period)
+        return run_kpi(
+            spec, rows, period, sorted(all_types, key=lambda r: r["date"]) if all_types else None
+        )
 
-    current = _in_period(rows, *period)  # rows from outside the period never reach a chart
     if chart in GROUPED_CHARTS:
-        return run_grouped(spec, current, period)
+        # Only the period's rows, plus any a table calculation looks back over.
+        return run_grouped(spec, _in_period(rows, load_start(spec, period), period[1]), period)
+    current = _in_period(rows, *period)  # rows from outside the period never reach a chart
+    if chart == "heatmap":
+        return run_heatmap(spec, current, period)
+    if chart == "calendar":
+        return run_calendar(spec, current, period)
     if chart == "histogram":
         return run_histogram(spec, current)
     raise ValueError(f"Unsupported chart: {chart!r}")  # "table" comes later

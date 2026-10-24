@@ -10,6 +10,7 @@ from insights.spec import (
     MAX_SERIES_COLORS,
     MAX_SERIES_KEY_LENGTH,
     MIN_DATE,
+    SPEC_VERSION,
     SpecError,
     resolve_period,
     validate_date_filter,
@@ -46,7 +47,6 @@ def test_a_valid_bar_gets_its_defaults_filled_in():
         "sort": "measure_desc",
         "limit": 10,
         "bins": 20,
-        "compare": False,
     }
 
 
@@ -58,11 +58,11 @@ def test_the_aggregation_defaults_depend_on_the_measure():
 
 def test_null_means_not_set():
     spec = validate_encoding(
-        enc(y={"measure": "spend", "agg": None}, sort=None, limit=None, bins=None, compare=None)
+        enc(y={"measure": "spend", "agg": None}, sort=None, limit=None, bins=None)
     )
     assert spec["y"]["agg"] == "sum"
-    defaults = (spec["sort"], spec["limit"], spec["bins"], spec["compare"])
-    assert defaults == ("measure_desc", 10, 20, False)
+    defaults = (spec["sort"], spec["limit"], spec["bins"])
+    assert defaults == ("measure_desc", 10, 20)
 
 
 @pytest.mark.parametrize(
@@ -142,11 +142,9 @@ def test_limit_and_bins_are_bounded_whole_numbers(name, bad):
     rejected(validate_encoding, enc(**{name: bad}))
 
 
-def test_compare_is_a_boolean_and_only_for_kpis():
-    kpi = {"chart": "kpi", "y": {"measure": "spend"}, "compare": True}
-    assert validate_encoding(kpi)["compare"] is True
-    rejected(validate_encoding, enc(compare=True))
-    rejected(validate_encoding, {"chart": "kpi", "y": {"measure": "spend"}, "compare": "yes"})
+def test_the_encoding_has_no_compare_any_more():
+    # Version 3 moved it into the KPI options (validate_kpi); upgrade() converts old specs.
+    assert "compare" not in validate_encoding({"chart": "kpi", "y": {"measure": "spend"}})
 
 
 # --- validate_date_filter -----------------------------------------------------
@@ -256,7 +254,7 @@ def full(**override):
 
 def test_validate_spec_returns_the_clean_shape():
     spec = validate_spec(full())
-    assert spec["v"] == 1
+    assert spec["v"] == SPEC_VERSION
     assert spec["chart"] == "line"
     assert spec["filters"] == {
         "date": INHERIT,
@@ -280,7 +278,12 @@ def test_validate_spec_defaults_for_the_presentation_options():
     [
         full(),
         enc(),
-        {"chart": "kpi", "y": {"measure": "net"}, "compare": True},
+        {"chart": "kpi", "y": {"measure": "net"}, "kpi": {"compare": "previous"}},
+        {
+            "chart": "kpi",
+            "y": {"measure": "spend"},
+            "kpi": {"compare": "average", "secondary": ["share_of_income"]},
+        },
         {"chart": "histogram", "y": {"measure": "spend", "agg": "avg"}, "bins": 8},
         enc(filters={"date": {"preset": "custom", "from": "2026-01-01", "to": "2026-02-01"}}),
         enc(filters={"categories": [str(uuid.uuid4()).upper()]}),
@@ -296,9 +299,14 @@ def test_unknown_top_level_keys_are_rejected():
 
 
 def test_the_spec_version_is_checked():
-    assert validate_spec(full(v=1))["v"] == 1
-    rejected(validate_spec, full(v=2), code="unsupported_version")
-    rejected(validate_spec, full(v=True), code="unsupported_version")
+    assert validate_spec(full(v=SPEC_VERSION))["v"] == SPEC_VERSION
+    for unknown in (0, SPEC_VERSION + 1, True, "2"):
+        rejected(validate_spec, full(v=unknown), code="unsupported_version")
+
+
+def test_every_older_version_is_upgraded_to_the_current_one():
+    for version in range(1, SPEC_VERSION):
+        assert validate_spec(full(v=version)) == validate_spec(full(v=SPEC_VERSION))
 
 
 def test_validate_spec_surfaces_encoding_and_filter_errors():

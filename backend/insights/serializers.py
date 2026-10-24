@@ -26,7 +26,7 @@ class PanelSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Panel
-        fields = ("id", "x", "y", "w", "h")
+        fields = ("id", "x", "y", "w", "h", "show_title")
         read_only_fields = fields
 
     def to_representation(self, panel):
@@ -111,6 +111,11 @@ class DashboardDetailSerializer(DashboardSerializer):
         data["panels"] = PanelSerializer(
             dashboard.panels.all(), many=True, context=self.context
         ).data
+        data["settings"] = {
+            "parameters": services.decrypt_parameters(
+                self.context["cipher"], dashboard.settings_enc
+            )
+        }
         return data
 
 
@@ -128,10 +133,11 @@ def _check_fits(x: int, w: int) -> None:
 
 
 class PanelUpdateSerializer(serializers.Serializer):
-    """Title and config only. Needs context["cipher"]. Moving and resizing go through the
-    layout endpoint instead, so the grid can never be half-saved."""
+    """Title, whether it is shown, and config. Needs context["cipher"]. Moving and resizing
+    go through the layout endpoint instead, so the grid can never be half-saved."""
 
     title = serializers.CharField(max_length=MAX_TITLE_LENGTH, allow_blank=True)
+    show_title = serializers.BooleanField(required=False)
     config = serializers.DictField()
 
     def validate_title(self, value):
@@ -151,6 +157,8 @@ class PanelUpdateSerializer(serializers.Serializer):
             )
         if "config" in validated_data:
             panel.config_enc = services.encrypt_config(cipher, validated_data["config"])
+        if "show_title" in validated_data:
+            panel.show_title = validated_data["show_title"]
         panel.save()
         return panel
 
@@ -186,6 +194,7 @@ class PanelCreateSerializer(PanelUpdateSerializer):
             dashboard=dashboard,
             title_enc=services.encrypt_text(cipher, validated_data["title"], services.PANEL_TITLE),
             config_enc=services.encrypt_config(cipher, validated_data["config"]),
+            show_title=validated_data.get("show_title", True),
             **grid,
         )
 

@@ -16,3 +16,9 @@ sentry-sdk>=2.20
 langchain-core==1.6.9
 numpy==2.4.6
 rank-bm25==0.2.2
+# AI panel builder. langgraph needs langchain-core >=1.4.7,<2; langgraph-checkpoint is the
+# version langgraph resolves to, pinned so a checkpoint-format change is a deliberate bump.
+# pydantic was already installed by langchain-core; it is pinned because the agent uses it directly.
+langgraph==1.2.17
+langgraph-checkpoint==4.3.0
+pydantic==2.14.1

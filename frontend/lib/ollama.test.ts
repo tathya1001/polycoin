@@ -290,6 +290,20 @@ describe("chatStream", () => {
     expect(await chatStream(BASE, "m", MESSAGES, OPTIONS, () => {})).toBe("partial");
   });
 
+  it("sends a JSON schema as Ollama's format when one is given", async () => {
+    const calls = mockFetch(() => streamed([line('{"kind":"panel"}', true)]));
+    const schema = { type: "object", properties: { kind: { enum: ["panel"] } } };
+    const answer = await chatStream(BASE, "m", MESSAGES, OPTIONS, () => {}, undefined, { format: schema });
+    expect(answer).toBe('{"kind":"panel"}');
+    expect(JSON.parse(calls[0].init?.body as string)).toEqual({
+      model: "m",
+      messages: MESSAGES,
+      options: OPTIONS,
+      stream: true,
+      format: schema,
+    });
+  });
+
   it("reports an error Ollama sends in the stream", async () => {
     mockFetch(() => streamed([line("start"), JSON.stringify({ error: "model crashed" }) + "\n"]));
     const error = await failure(chatStream(BASE, "m", MESSAGES, OPTIONS, () => {}));

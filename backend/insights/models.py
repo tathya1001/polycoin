@@ -16,6 +16,8 @@ class Dashboard(OwnedModel):
     """One tab on the /dashboard page. The name is encrypted; `position` is the tab order."""
 
     name_enc = models.BinaryField()
+    # Encrypted JSON of the dashboard's settings (its parameter values); NULL means the defaults.
+    settings_enc = models.BinaryField(null=True, blank=True)
     position = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
@@ -26,8 +28,8 @@ class Panel(TimeStampedModel):
     """One chart box. No `user` column: the owner is dashboard.user (like CategoryKeyword).
 
     Title and config are encrypted: a config can hold the user's own search text
-    ("merchant_contains"). The grid position is plain integers, since it says nothing
-    about the user's money.
+    ("merchant_contains"). The grid position and whether the title is shown are plain
+    values, since they say nothing about the user's money.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -38,6 +40,8 @@ class Panel(TimeStampedModel):
     y = models.PositiveSmallIntegerField()
     w = models.PositiveSmallIntegerField()
     h = models.PositiveSmallIntegerField()
+    # Off for a panel that should read as bare content, such as a note.
+    show_title = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["y", "x"]

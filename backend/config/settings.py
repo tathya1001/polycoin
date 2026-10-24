@@ -149,11 +149,14 @@ REST_FRAMEWORK = {
         "ai": "20/hour",
         "ai_light": "120/hour",
         "insights": "600/hour",
+        "insights_rows": "300/hour",  # lists decrypted transaction names, so tighter
         "destructive": "5/hour",  # erasing all data; also caps password guessing through it
         # Ask your transactions. Indexing is two calls per 100 rows (pending, then
         # vectors). Asking decrypts the whole index, so scripted bulk decryption is capped.
         "rag_index": "300/hour",
         "rag_ask": "60/hour",
+        # AI panel builder. One request is a turn plus a step per model call (about 3-5).
+        "agent": "300/hour",
     },
 }
 
@@ -254,6 +257,28 @@ RAG_RELATIVE_MARGIN = float(os.environ.get("RAG_RELATIVE_MARGIN", "0.05"))
 # 40 tokens each, so RAG_NUM_CTX tokens hold them, the rules and the answer with room to spare.
 RAG_TOP_K = int(os.environ.get("RAG_TOP_K", "20"))
 RAG_NUM_CTX = int(os.environ.get("RAG_NUM_CTX", "4096"))
+
+# AI panel builder. The browser relays each model call to the user's own Ollama; the server runs
+# a fixed, bounded workflow and keeps no state: the workflow state goes back to the browser in a
+# token encrypted with the user's key.
+# Kill switch: FALSE turns the feature off with an environment change and no deploy.
+AGENT_ENABLED = os.environ.get("AGENT_ENABLED", "TRUE") == "TRUE"
+AGENT_TOKEN_TTL = int(os.environ.get("AGENT_TOKEN_TTL", "900"))  # seconds; each step issues a new one
+AGENT_MAX_TOKEN_BYTES = int(os.environ.get("AGENT_MAX_TOKEN_BYTES", "16384"))  # ~4 KB measured
+AGENT_MAX_REPAIRS = int(os.environ.get("AGENT_MAX_REPAIRS", "2"))  # model retries after a bad panel
+AGENT_MAX_TURNS = int(os.environ.get("AGENT_MAX_TURNS", "12"))  # messages in one conversation
+AGENT_MAX_STEPS = int(os.environ.get("AGENT_MAX_STEPS", "6"))  # model round trips in one turn
+# Merchant names decrypted to match a merchant in the request: newest first, about a second at
+# Render's 0.1 CPU.
+AGENT_MERCHANT_SCAN = int(os.environ.get("AGENT_MERCHANT_SCAN", "5000"))
+AGENT_NUM_CTX = int(os.environ.get("AGENT_NUM_CTX", "4096"))  # model context, in tokens
+AGENT_NUM_PREDICT = int(os.environ.get("AGENT_NUM_PREDICT", "400"))  # longest model reply, in tokens
+
+# The agent's state is stored with LangGraph's serialiser. Strict mode refuses to rebuild any
+# object type that is not on its safe list, so a forged state cannot run code when it is loaded.
+# LangGraph reads this once at import, so it is set here, before any app imports it, and it is
+# forced on whatever the environment says; ai/test_agent_settings.py checks this.
+os.environ["LANGGRAPH_STRICT_MSGPACK"] = "true"
 
 # langchain-core installs the LangSmith client, and LangSmith tracing would send every prompt,
 # which holds decrypted transactions, to a third party. It is forced off whatever the environment

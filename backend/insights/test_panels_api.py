@@ -395,3 +395,79 @@ def test_another_users_dashboard_is_a_404_for_every_panel_call(alice, bob):
 
     assert theirs.panels.count() == 1
     assert grid_of(their_panel) == (0, 0, 6, 4)
+
+
+def test_a_panel_with_a_table_calculation_saves_and_reads_back_encrypted():
+    alice = make_user("calc@example.com")
+    dashboard = make_dashboard(alice)
+    config = {
+        "chart": "line",
+        "x": {"field": "date", "granularity": "month"},
+        "y": {"measure": "spend"},
+        "calc": {"type": "moving_average", "window": 4},
+    }
+
+    created = new_panel(alice, dashboard, config=config)
+    assert created.status_code == 201, created.content
+    assert created.json()["config"]["calc"] == {"type": "moving_average", "window": 4}
+
+    stored = Panel.objects.get(pk=created.json()["id"])
+    assert b"moving_average" not in bytes(stored.config_enc)  # encrypted at rest
+    assert services.decrypt_config(UserCipher(alice), stored.config_enc)["calc"]["window"] == 4
+
+    refused = new_panel(
+        alice, dashboard, config={**config, "calc": {"type": "running_total", "window": 2}}
+    )
+    assert refused.status_code == 400
+
+
+# --- showing the title ----------------------------------------------------------------------
+
+
+def test_a_new_panel_shows_its_title_unless_told_not_to(alice):
+    dashboard = make_dashboard(alice)
+    assert new_panel(alice, dashboard).json()["show_title"] is True
+    hidden = new_panel(alice, dashboard, show_title=False).json()
+    assert hidden["show_title"] is False
+    assert Panel.objects.get(pk=hidden["id"]).show_title is False
+
+
+def test_the_title_can_be_hidden_and_shown_again_without_losing_it(alice):
+    dashboard = make_dashboard(alice)
+    panel = make_panel(dashboard)
+    url = panel_url(dashboard, panel)
+
+    hidden = as_user(alice).patch(url, {"show_title": False}, format="json").json()
+    assert hidden["show_title"] is False and hidden["title"] == TITLE
+
+    shown = as_user(alice).patch(url, {"show_title": True}, format="json").json()
+    assert shown["show_title"] is True and shown["title"] == TITLE
+
+
+def test_hiding_the_title_works_for_a_note_too(alice):
+    dashboard = make_dashboard(alice)
+    note = {"chart": "text", "text": "Remember the rent"}
+    created = new_panel(alice, dashboard, config=note, show_title=False).json()
+    assert created["show_title"] is False and created["config"]["chart"] == "text"
+
+
+def test_show_title_is_part_of_the_dashboard(alice):
+    dashboard = make_dashboard(alice)
+    new_panel(alice, dashboard, show_title=False)
+    body = as_user(alice).get(f"{URL}{dashboard.id}/").json()
+    assert body["panels"][0]["show_title"] is False
+
+
+@pytest.mark.parametrize("value", ["maybe", 5, None, [True]])
+def test_show_title_must_be_true_or_false(alice, value):
+    dashboard = make_dashboard(alice)
+    assert new_panel(alice, dashboard, show_title=value).status_code == 400
+
+
+def test_another_user_cannot_hide_a_panels_title(alice, bob):
+    dashboard = make_dashboard(alice)
+    panel = make_panel(dashboard)
+    response = as_user(bob).patch(panel_url(dashboard, panel), {"show_title": False}, format="json")
+    assert response.status_code == 404
+    panel.refresh_from_db()
+    assert panel.show_title is True

@@ -7,6 +7,7 @@
 //   - GET  /api/dashboards/{id}/   the active tab's panels (decrypted titles and configs)
 //   - POST /api/insights/query/    every panel's chart data in ONE request, so the server
 //                                  decrypts the user's transactions once, not once per panel
+//   - POST /api/insights/rows/     the transactions behind a clicked mark, only when asked for
 //   - PUT  /api/dashboards/{id}/layout/   panel positions, saved after a drag or resize
 //
 // Every insights call shares a 600/hour budget, so queries only re-run when a panel's
@@ -14,19 +15,37 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, LayoutDashboard, Pencil, Plus, RefreshCw } from "lucide-react";
-import PanelBody from "@/components/charts/PanelBody";
+import {
+  ArrowDownToLine,
+  Check,
+  ExternalLink,
+  Filter,
+  FilterX,
+  LayoutDashboard,
+  List,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
+import AgentDialog from "@/components/agent/AgentDialog";
 import DashboardGrid from "@/components/dashboard/DashboardGrid";
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import FilterBar from "@/components/dashboard/FilterBar";
+import type { MarkAction } from "@/components/dashboard/MarkMenu";
+import ParameterBar from "@/components/dashboard/ParameterBar";
 import PanelEditor from "@/components/dashboard/PanelEditor";
 import PanelFrame from "@/components/dashboard/PanelFrame";
+import PanelView from "@/components/dashboard/PanelView";
+import RowsDrawer, { type RowsRequest } from "@/components/dashboard/RowsDrawer";
+import SelectionBar from "@/components/dashboard/SelectionBar";
 import { Button, IconButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { EmptyState, ErrorNote, Loading, Spinner } from "@/components/ui/Feedback";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/Toast";
 import { apiFetch } from "@/lib/api";
+import { drillInto, isEmptySelection, pickedLabel, selectionFor, type DrillStep } from "@/lib/drill";
 import { readError } from "@/lib/errors";
 import type { Box } from "@/lib/grid";
 import {
@@ -35,6 +54,8 @@ import {
   FIELDS_URL,
   categoryColorMap,
   QUERY_URL,
+  settingsUrl,
+  usedParameters,
   dashboardUrl,
   defaultConfig,
   drillDownUrl,
@@ -45,25 +66,36 @@ import {
   panelsUrl,
 } from "@/lib/insights";
 import { recall, remember } from "@/lib/storage";
+import { isText } from "@/lib/types";
 import type {
+  AnyPanelConfig,
   Catalogue,
   Category,
   DashboardDetail,
+  DashboardParameters,
   DashboardSummary,
   Panel,
   PanelConfig,
   PanelFilters,
+  Picked,
   QueryOutcome,
+  Selection,
 } from "@/lib/types";
 
 const ACTIVE_KEY = "polycoin.dashboard.active";
 const filtersKey = (id: string) => `polycoin.dashboard.filters.${id}`;
 const LAYOUT_SAVE_DELAY_MS = 600;
+const PARAMETER_SAVE_DELAY_MS = 600;
 const MAX_DASHBOARDS = 20; // insights.models.MAX_DASHBOARDS_PER_USER
 const MAX_PANELS = 30; // insights.models.MAX_PANELS_PER_DASHBOARD
 const MAX_TITLE = 80;
 
-type EditorState = { panel: Panel | null; title: string; config: PanelConfig };
+// `seed` remounts the editor for a new panel opened with a different starting config.
+type EditorState = { panel: Panel | null; title: string; showTitle: boolean; config: AnyPanelConfig; seed?: number };
+
+// A click that is filtering the other panels. View state only: it is not saved.
+type ActiveSelection = { source: string; mark: Selection; label: string; picked: Picked };
+type RowsView = { title: string; request: RowsRequest };
 
 // Each dashboard remembers its own filter bar in this browser.
 function savedFilters(id: string): PanelFilters {
@@ -86,13 +118,27 @@ export default function DashboardPage() {
   const [detail, setDetail] = useState<DashboardDetail | null>(null);
   const [filters, setFilters] = useState<PanelFilters>(DEFAULT_DASHBOARD_FILTERS);
   const [results, setResults] = useState<Record<string, QueryOutcome>>({});
+  // The exact config each result was computed for, so a panel whose config has just changed
+  // (an edit, a drill-down) shows "Loading…" instead of the old answer drawn with the new config.
+  const [answered, setAnswered] = useState<Record<string, string>>({});
+  // Where each panel has been drilled to. View state: an edit or a tab change starts over.
+  const [drills, setDrills] = useState<Record<string, DrillStep[]>>({});
+  const [selection, setSelection] = useState<ActiveSelection | null>(null);
+  const [rowsView, setRowsView] = useState<RowsView | null>(null);
   const [querying, setQuerying] = useState(false);
   const [refreshTick, setRefreshTick] = useState(0);
   const [editing, setEditing] = useState(false);
   const [editor, setEditor] = useState<EditorState | null>(null);
+  const [agentOpen, setAgentOpen] = useState(false);
+  const editorSeed = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filtersRejected, setFiltersRejected] = useState(false);
+  // The dashboard's parameter values; null until its detail has loaded. Saved to the server a
+  // moment after the last change.
+  const [parameters, setParameters] = useState<DashboardParameters | null>(null);
+  const parametersFor = useRef<string | null>(null); // which dashboard `parameters` belongs to
+  const parameterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Layout changes waiting to be saved: panel id -> new box, for one dashboard.
   const pendingLayout = useRef<{ dashboardId: string; boxes: Map<string, Box> } | null>(null);
@@ -104,7 +150,13 @@ export default function DashboardPage() {
     flushLayout();
     setActiveId(id);
     setDetail(null);
+    setParameters(null);
+    parametersFor.current = null;
     setResults({});
+    setAnswered({});
+    setDrills({});
+    setSelection(null);
+    setRowsView(null);
     setFiltersRejected(false);
     if (id) {
       remember(ACTIVE_KEY, id);
@@ -143,9 +195,19 @@ export default function DashboardPage() {
     loadSetup();
   }, []);
 
+  // The parameter values come from the server once per dashboard; after that this page owns them,
+  // so reloading the panels (after an edit) can't undo a change still waiting to be saved.
+  function acceptDetail(body: DashboardDetail) {
+    setDetail(body);
+    if (parametersFor.current !== body.id) {
+      parametersFor.current = body.id;
+      setParameters(body.settings.parameters);
+    }
+  }
+
   async function loadDetail(id: string) {
     const res = await apiFetch(dashboardUrl(id));
-    if (res.ok) setDetail(await res.json());
+    if (res.ok) acceptDetail(await res.json());
     else setError(await readError(res, "Could not load this dashboard."));
   }
 
@@ -155,7 +217,7 @@ export default function DashboardPage() {
     async function load(id: string) {
       const res = await apiFetch(dashboardUrl(id));
       if (cancelled) return;
-      if (res.ok) setDetail(await res.json());
+      if (res.ok) acceptDetail(await res.json());
       else setError(await readError(res, "Could not load this dashboard."));
     }
     load(activeId);
@@ -164,15 +226,37 @@ export default function DashboardPage() {
     };
   }, [activeId]);
 
+  const used = useMemo(() => (detail ? usedParameters(detail.panels) : []), [detail]);
+
+  // The config each panel is drawn with: as saved, or as drilled into.
+  const configs = useMemo(
+    () =>
+      new Map(
+        (detail?.panels ?? []).map((panel) => {
+          const steps = drills[panel.id];
+          return [panel.id, steps?.length ? steps[steps.length - 1].config : panel.config] as const;
+        }),
+      ),
+    [detail, drills],
+  );
+
   // What the batch query depends on, as a string: equal strings mean "nothing to re-run",
   // so moving or resizing panels (which changes `detail`) never costs a query.
   const queryBody = useMemo(() => {
     if (!detail) return null;
     const queries = detail.panels
-      .filter((panel) => panel.config)
-      .map((panel) => ({ key: panel.id, spec: panel.config }));
-    return queries.length ? JSON.stringify({ filters, queries }) : null;
-  }, [detail, filters]);
+      .map((panel) => ({ key: panel.id, spec: configs.get(panel.id) }))
+      .filter(({ spec }) => spec && !isText(spec)); // a note has nothing to query
+    // Parameters only matter when a panel follows one, so a dashboard that doesn't never re-runs
+    // because of them.
+    const sent = used.length && parameters ? { parameters } : {};
+    // A pick filters every panel but the one it came from.
+    const picked =
+      selection && queries.some(({ key }) => key === selection.source)
+        ? { selection: selection.mark, selection_source: selection.source }
+        : {};
+    return queries.length ? JSON.stringify({ filters, ...sent, ...picked, queries }) : null;
+  }, [detail, configs, filters, parameters, used, selection]);
 
   useEffect(() => {
     if (!queryBody) return;
@@ -183,10 +267,13 @@ export default function DashboardPage() {
         const res = await apiFetch(QUERY_URL, { method: "POST", body });
         if (cancelled) return;
         if (res.ok) {
+          const sent: { key: string; spec: unknown }[] = JSON.parse(body).queries;
           setResults((await res.json()).results);
+          setAnswered(Object.fromEntries(sent.map(({ key, spec }) => [key, JSON.stringify(spec)])));
           setFiltersRejected(false);
         } else {
-          if (res.status === 400) setFiltersRejected(true); // only the filter bar can 400 here
+          // A 400 here is the request as a whole: the filter bar, the parameters or a click filter.
+          if (res.status === 400) setFiltersRejected(true);
           setError(await readError(res, "Could not load the charts."));
         }
       } catch {
@@ -201,6 +288,19 @@ export default function DashboardPage() {
     };
   }, [queryBody, refreshTick]);
 
+  // --- parameters -------------------------------------------------------------
+
+  function changeParameters(next: DashboardParameters) {
+    setParameters(next);
+    if (!detail) return;
+    const id = detail.id;
+    if (parameterTimer.current) clearTimeout(parameterTimer.current);
+    parameterTimer.current = setTimeout(async () => {
+      const res = await apiFetch(settingsUrl(id), { method: "PUT", body: JSON.stringify({ parameters: next }) });
+      if (!res.ok) toast.error(await readError(res, "Could not save the dashboard's parameters."));
+    }, PARAMETER_SAVE_DELAY_MS);
+  }
+
   // --- filters ----------------------------------------------------------------
 
   function changeFilters(next: PanelFilters) {
@@ -210,6 +310,7 @@ export default function DashboardPage() {
 
   function resetFilters() {
     setError(null);
+    setSelection(null);
     changeFilters(DEFAULT_DASHBOARD_FILTERS);
   }
 
@@ -294,19 +395,43 @@ export default function DashboardPage() {
 
   // --- panels -----------------------------------------------------------------
 
-  async function savePanel(title: string, config: PanelConfig): Promise<string | null> {
+  // A new panel at the bottom of the dashboard: from the editor, or straight from the AI builder.
+  async function createPanel(title: string, showTitle: boolean, config: AnyPanelConfig): Promise<string | null> {
+    if (!detail) return "The dashboard is still loading.";
+    const res = await apiFetch(panelsUrl(detail.id), {
+      method: "POST",
+      body: JSON.stringify({ title, show_title: showTitle, config }),
+    });
+    if (!res.ok) return readError(res, "Could not save the panel.");
+    await loadDetail(detail.id);
+    toast.success("Panel added.");
+    return null;
+  }
+
+  async function savePanel(title: string, showTitle: boolean, config: AnyPanelConfig): Promise<string | null> {
     if (!detail || !editor) return null;
-    const res = editor.panel
-      ? await apiFetch(panelUrl(detail.id, editor.panel.id), {
-          method: "PATCH",
-          body: JSON.stringify({ title, config }),
-        })
-      : await apiFetch(panelsUrl(detail.id), { method: "POST", body: JSON.stringify({ title, config }) });
+    if (!editor.panel) {
+      const problem = await createPanel(title, showTitle, config);
+      if (!problem) setEditor(null);
+      return problem;
+    }
+    const res = await apiFetch(panelUrl(detail.id, editor.panel.id), {
+      method: "PATCH",
+      body: JSON.stringify({ title, show_title: showTitle, config }),
+    });
     if (!res.ok) return readError(res, "Could not save the panel.");
     setEditor(null);
+    forget(editor.panel.id); // the saved config replaces whatever was drilled into
     await loadDetail(detail.id);
-    toast.success(editor.panel ? "Panel saved." : "Panel added.");
+    toast.success("Panel saved.");
     return null;
+  }
+
+  // "Edit before adding" from the AI builder: the normal editor, filled in with its panel.
+  function editAgentPanel(title: string, config: PanelConfig) {
+    setAgentOpen(false);
+    editorSeed.current += 1;
+    setEditor({ panel: null, title, showTitle: true, config, seed: editorSeed.current });
   }
 
   async function duplicatePanel(panel: Panel) {
@@ -314,7 +439,7 @@ export default function DashboardPage() {
     const title = `${panel.title} (copy)`.slice(0, MAX_TITLE);
     const res = await apiFetch(panelsUrl(detail.id), {
       method: "POST",
-      body: JSON.stringify({ title, config: panel.config }), // no position: it goes at the bottom
+      body: JSON.stringify({ title, show_title: panel.show_title, config: panel.config }), // no position: it goes at the bottom
     });
     if (!res.ok) return toast.error(await readError(res, "Could not duplicate the panel."));
     await loadDetail(detail.id);
@@ -325,22 +450,94 @@ export default function DashboardPage() {
     if (!detail) return;
     const res = await apiFetch(panelUrl(detail.id, panel.id), { method: "DELETE" });
     if (!res.ok) return toast.error(await readError(res, "Could not delete the panel."));
+    forget(panel.id);
     setDetail({ ...detail, panels: detail.panels.filter((p) => p.id !== panel.id) });
     toast.success("Panel deleted.");
   }
 
-  // A click on a bar or slice opens the transactions behind it.
-  function drillDown(panel: Panel, picked: Parameters<typeof drillDownUrl>[3]) {
-    const outcome = results[panel.id];
-    if (!panel.config || !outcome || isError(outcome)) return;
-    const url = drillDownUrl(
-      panel.config,
-      outcome,
-      effectiveFilters(panel.config.filters, filters),
-      picked,
-      categories,
-    );
-    if (url) router.push(url);
+  // --- clicks on a chart --------------------------------------------------------
+
+  // A panel's answer, only if it was computed for the config the panel has now.
+  function outcomeFor(panel: Panel): QueryOutcome | undefined {
+    const config = configs.get(panel.id);
+    return config && answered[panel.id] === JSON.stringify(config) ? results[panel.id] : undefined;
+  }
+
+  // Forget a panel's drill-down and any filter it was making.
+  function forget(panelId: string) {
+    setDrills((all) => {
+      const rest = { ...all };
+      delete rest[panelId];
+      return rest;
+    });
+    setSelection((current) => (current?.source === panelId ? null : current));
+  }
+
+  function trimDrill(panelId: string, depth: number) {
+    setDrills((all) => ({ ...all, [panelId]: (all[panelId] ?? []).slice(0, depth) }));
+    setSelection((current) => (current?.source === panelId ? null : current));
+  }
+
+  // The list behind a mark uses the same inputs as the chart it came from, including a click on
+  // another panel that is filtering this one, so its total agrees with the bar.
+  function openRows(panelId: string, title: string, config: PanelConfig, mark: Selection) {
+    setRowsView({
+      title,
+      request: {
+        filters,
+        parameters: used.length && parameters ? parameters : undefined,
+        config,
+        mark,
+        selection: selection && selection.source !== panelId ? selection.mark : undefined,
+      },
+    });
+  }
+
+  // What a click on a mark can do. Only what makes sense for that mark is offered.
+  function actionsFor(panel: Panel, picked: Picked): MarkAction[] {
+    const config = configs.get(panel.id);
+    const outcome = outcomeFor(panel);
+    if (!catalogue || !config || isText(config) || !outcome || isError(outcome)) return [];
+    const label = pickedLabel(config, picked);
+    const mark = selectionFor(config, picked);
+    const actions: MarkAction[] = [];
+
+    const step = drillInto(config, outcome, picked, categories, catalogue);
+    if (step) {
+      actions.push({
+        id: "drill",
+        label: `Drill into ${step.label}`,
+        icon: <ArrowDownToLine size={15} />,
+        run: () => {
+          setDrills((all) => ({ ...all, [panel.id]: [...(all[panel.id] ?? []), step] }));
+          setSelection((current) => (current?.source === panel.id ? null : current));
+        },
+      });
+    }
+    if (!isEmptySelection(mark)) {
+      const active = selection?.source === panel.id && JSON.stringify(selection.mark) === JSON.stringify(mark);
+      actions.push(
+        active
+          ? { id: "unfilter", label: "Clear the filter", icon: <FilterX size={15} />, run: () => setSelection(null) }
+          : {
+              id: "filter",
+              label: "Filter other panels",
+              icon: <Filter size={15} />,
+              run: () => setSelection({ source: panel.id, mark, label, picked }),
+            },
+      );
+      actions.push({
+        id: "rows",
+        label: "View transactions",
+        icon: <List size={15} />,
+        run: () => openRows(panel.id, `${panel.title}: ${label}`, config, mark),
+      });
+    }
+    const url = drillDownUrl(config, outcome, effectiveFilters(config.filters, filters), picked, categories);
+    if (url) {
+      actions.push({ id: "open", label: "Open in Transactions", icon: <ExternalLink size={15} />, run: () => router.push(url) });
+    }
+    return actions;
   }
 
   // --- render -----------------------------------------------------------------
@@ -384,8 +581,18 @@ export default function DashboardPage() {
                 />
                 {editing && (
                   <Button
+                    icon={<Sparkles size={16} />}
+                    onClick={() => setAgentOpen(true)}
+                    disabled={!detail || detail.panels.length >= MAX_PANELS}
+                    title="Describe a panel and let your own AI build it"
+                  >
+                    AI
+                  </Button>
+                )}
+                {editing && (
+                  <Button
                     icon={<Plus size={16} />}
-                    onClick={() => setEditor({ panel: null, title: "", config: defaultConfig("bar") })}
+                    onClick={() => setEditor({ panel: null, title: "", showTitle: true, config: defaultConfig("bar") })}
                     disabled={(detail?.panels.length ?? 0) >= MAX_PANELS}
                     title={`Up to ${MAX_PANELS} panels per dashboard`}
                   >
@@ -418,8 +625,18 @@ export default function DashboardPage() {
             onDelete={deleteDashboard}
           />
 
-          <div className="my-4">
+          <div className="my-4 space-y-3">
             <FilterBar filters={filters} categories={categories} onChange={changeFilters} />
+            {parameters && (
+              <ParameterBar catalogue={catalogue} parameters={parameters} used={used} onChange={changeParameters} />
+            )}
+            {selection && (
+              <SelectionBar
+                label={selection.label}
+                panelTitle={panelsById.get(selection.source)?.title ?? ""}
+                onClear={() => setSelection(null)}
+              />
+            )}
           </div>
 
           {error && (
@@ -443,16 +660,27 @@ export default function DashboardPage() {
               icon={<LayoutDashboard size={22} aria-hidden />}
               title="This dashboard has no panels yet"
               action={
-                <Button
-                  variant="primary"
-                  icon={<Plus size={16} />}
-                  onClick={() => {
-                    setEditing(true);
-                    setEditor({ panel: null, title: "", config: defaultConfig("bar") });
-                  }}
-                >
-                  Add your first panel
-                </Button>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Button
+                    variant="primary"
+                    icon={<Plus size={16} />}
+                    onClick={() => {
+                      setEditing(true);
+                      setEditor({ panel: null, title: "", showTitle: true, config: defaultConfig("bar") });
+                    }}
+                  >
+                    Add your first panel
+                  </Button>
+                  <Button
+                    icon={<Sparkles size={16} />}
+                    onClick={() => {
+                      setEditing(true);
+                      setAgentOpen(true);
+                    }}
+                  >
+                    Build one with AI
+                  </Button>
+                </div>
               }
             >
               A panel is one chart or number. Pick what goes on each axis, then drag and resize it.
@@ -468,19 +696,38 @@ export default function DashboardPage() {
                 return (
                   <PanelFrame
                     title={panel.title}
+                    showTitle={panel.show_title}
                     editing={editable}
                     onEdit={() =>
-                      setEditor({ panel, title: panel.title, config: panel.config ?? defaultConfig("bar") })
+                      setEditor({
+                        panel,
+                        title: panel.title,
+                        showTitle: panel.show_title,
+                        config: panel.config ?? defaultConfig("bar"),
+                      })
                     }
                     onDuplicate={() => duplicatePanel(panel)}
                     onDelete={() => deletePanel(panel)}
                   >
-                    <PanelBody
-                      config={panel.config}
-                      outcome={results[panel.id]}
+                    <PanelView
+                      config={configs.get(panel.id) ?? null}
+                      outcome={outcomeFor(panel)}
                       loading={querying}
                       categoryColors={categoryColors}
-                      onPick={editing ? undefined : (picked) => drillDown(panel, picked)}
+                      highlight={selection?.source === panel.id ? selection.picked.x : undefined}
+                      title={panel.title}
+                      trail={(drills[panel.id] ?? []).map((step) => step.label)}
+                      onTrail={(depth) => trimDrill(panel.id, depth)}
+                      interactive={!editing}
+                      actionsFor={(picked) => actionsFor(panel, picked)}
+                      labelFor={(picked) => {
+                        const config = configs.get(panel.id);
+                        return config && !isText(config) ? pickedLabel(config, picked) : "";
+                      }}
+                      onOpen={() => {
+                        const config = configs.get(panel.id);
+                        if (config && !isText(config)) openRows(panel.id, panel.title, config, {});
+                      }}
                     />
                   </PanelFrame>
                 );
@@ -490,12 +737,26 @@ export default function DashboardPage() {
         </>
       )}
 
+      {rowsView && <RowsDrawer title={rowsView.title} request={rowsView.request} onClose={() => setRowsView(null)} />}
+
+      {agentOpen && detail && (
+        <AgentDialog
+          dashboard={{ filters, parameters }}
+          categories={categories}
+          canAdd={detail.panels.length < MAX_PANELS}
+          onClose={() => setAgentOpen(false)}
+          onAdd={(title, config) => createPanel(title, true, config)}
+          onEditFirst={editAgentPanel}
+        />
+      )}
+
       {editor && detail && (
         <PanelEditor
-          key={editor.panel?.id ?? "new"}
+          key={editor.panel?.id ?? `new-${editor.seed ?? 0}`}
           catalogue={catalogue}
           categories={categories}
-          initial={{ title: editor.title, config: editor.config }}
+          parameters={parameters ?? catalogue.parameters.defaults}
+          initial={{ title: editor.title, showTitle: editor.showTitle, config: editor.config }}
           isNew={!editor.panel}
           dashboardFilters={filters}
           onCancel={() => setEditor(null)}

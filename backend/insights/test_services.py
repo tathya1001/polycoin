@@ -113,7 +113,7 @@ TODAY = date(2026, 5, 15)
 
 
 def panel(chart="kpi", measure="spend", **extra):
-    """A minimal raw spec. `extra` adds keys such as x, color, filters, compare."""
+    """A minimal raw spec. `extra` adds keys such as x, color, filters, kpi."""
     return {"chart": chart, "y": {"measure": measure}, **extra}
 
 
@@ -193,7 +193,7 @@ def test_kpi_compare_uses_the_previous_period(alice):
     # "this_month" on 2026-05-15 is May 1-15, so the previous period is April 16-30.
     make_txn(alice, date=date(2026, 5, 5), amount=Decimal("100.00"))
     make_txn(alice, date=date(2026, 4, 20), amount=Decimal("50.00"))
-    spec = panel(compare=True, filters={"date": {"preset": "this_month"}})
+    spec = panel(kpi={"compare": "previous"}, filters={"date": {"preset": "this_month"}})
     result = run(alice, [{"key": "k", "spec": spec}])["k"]
     assert result["rows"] == [["100.00", "50.00", "100.0"]]
 

@@ -147,6 +147,9 @@ export async function listChatModels(base: string): Promise<ChatModel[]> {
  *
  * `signal` cancels (the user pressed Stop): the promise then rejects with the abort's
  * DOMException, which callers treat as "stopped", not as a failure.
+ *
+ * `extra.format` is a JSON schema: Ollama then constrains the answer to JSON of that shape
+ * (structured outputs), still streamed.
  */
 export async function chatStream(
   base: string,
@@ -155,6 +158,7 @@ export async function chatStream(
   options: Record<string, number>,
   onToken: (text: string) => void,
   signal?: AbortSignal,
+  extra?: { format?: object },
 ): Promise<string> {
   const quiet = new AbortController();
   let timer = setTimeout(() => quiet.abort(), FIRST_TOKEN_MS);
@@ -166,7 +170,7 @@ export async function chatStream(
       res = await fetch(`${base}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model, messages, options, stream: true }),
+        body: JSON.stringify({ model, messages, options, stream: true, ...(extra?.format && { format: extra.format }) }),
         credentials: "omit",
         cache: "no-store",
         signal: stop,

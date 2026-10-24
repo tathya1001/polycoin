@@ -120,7 +120,7 @@ def test_create_from_template_builds_the_dashboard_and_its_panels(alice):
     assert len(panels) == len(TEMPLATES["overview"])
     first = services.decrypt_text(cipher, panels[0].title_enc, services.PANEL_TITLE)
     assert first == "Spend"
-    assert services.decrypt_config(cipher, panels[0].config_enc)["compare"] is True
+    assert services.decrypt_config(cipher, panels[0].config_enc)["kpi"]["compare"] == "previous"
 
 
 def test_a_failing_template_leaves_nothing_behind(alice, monkeypatch):

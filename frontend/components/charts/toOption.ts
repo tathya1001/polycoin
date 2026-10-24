@@ -8,27 +8,40 @@
 // custom HTML formatter anywhere here.
 
 import type { ComposeOption } from "echarts/core";
-import type { BarSeriesOption, LineSeriesOption, PieSeriesOption } from "echarts/charts";
+import type { BarSeriesOption, HeatmapSeriesOption, LineSeriesOption, PieSeriesOption } from "echarts/charts";
 import type {
+  CalendarComponentOption,
   GridComponentOption,
   LegendComponentOption,
   TooltipComponentOption,
+  VisualMapComponentOption,
 } from "echarts/components";
 import { FALLBACK_SERIES_COLORS } from "@/lib/colors";
-import { MEASURE_LABELS, formatLabel, formatValue, isCountLike } from "@/lib/insights";
+import { MEASURE_LABELS, defaultFormat, formatLabel, formatValue, isPercent, isPlainNumber } from "@/lib/insights";
 import type { Cell, Dimension, PanelConfig, QueryResult } from "@/lib/types";
 
 export type ChartOption = ComposeOption<
   | BarSeriesOption
+  | HeatmapSeriesOption
   | LineSeriesOption
   | PieSeriesOption
+  | CalendarComponentOption
   | GridComponentOption
   | LegendComponentOption
   | TooltipComponentOption
+  | VisualMapComponentOption
 >;
 
-// What a click on (seriesIndex, dataIndex) refers to, in the backend's raw values.
-export type ChartKeys = { x: Cell[]; colors: Cell[] };
+// What a click on (seriesIndex, dataIndex) refers to, in the backend's raw values. Marks that
+// sit on two axes (a calendar day, a heatmap cell) are listed in `cells`, by data index.
+export type ChartKeys = { x: Cell[]; colors: Cell[]; cells?: { x: Cell; row?: Cell }[] };
+
+// The x value a chart dims everything else against, because it was picked to filter the
+// other panels. Charts that draw one mark per x value (bars, slices) honour it.
+export type Highlight = Cell | undefined;
+
+const DIMMED = 0.3;
+const dimmed = (x: Cell, highlight: Highlight) => (highlight !== undefined && x !== highlight ? DIMMED : 1);
 
 export type BuiltChart = { option: ChartOption; keys: ChartKeys | null };
 
@@ -44,8 +57,51 @@ const toNumber = (value: Cell) => (value === null ? null : Number(value));
 
 const compact = new Intl.NumberFormat("en-IN", { notation: "compact", maximumFractionDigits: 1 });
 
+const formatOf = (config: PanelConfig) => config.format ?? defaultFormat();
+
+// Axis numbers: short by default (₹1.2L), or written out in full when the panel asks for it.
 function axisFormatter(config: PanelConfig) {
-  return (value: number) => (isCountLike(config) ? compact.format(value) : `₹${compact.format(value)}`);
+  const full = formatOf(config).number === "full";
+  const write = (value: number) => (full ? value.toLocaleString("en-IN") : compact.format(value));
+  return (value: number) => {
+    if (isPercent(config)) return `${write(value)}%`;
+    return isPlainNumber(config) ? write(value) : `₹${write(value)}`;
+  };
+}
+
+// A value as written on a label or in a tooltip: in full unless the panel asks for short numbers.
+function valueText(config: PanelConfig, value: number | null): string {
+  if (value === null || formatOf(config).number !== "compact") return formatValue(value, config);
+  if (isPercent(config)) return `${compact.format(value)}%`;
+  return isPlainNumber(config) ? compact.format(value) : `₹${compact.format(value)}`;
+}
+
+type LegendPosition = "top" | "bottom" | "right";
+
+// Where the legend goes, or null for none. "auto" keeps each chart's own default: shown when
+// there is more than one thing to tell apart.
+export function legendPosition(config: PanelConfig, wanted: boolean, fallback: "top" | "bottom"): LegendPosition | null {
+  const choice = formatOf(config).legend;
+  if (choice === "none") return null;
+  if (choice === "auto") return wanted ? fallback : null;
+  return choice;
+}
+
+function legendOption(position: LegendPosition | null): LegendComponentOption | undefined {
+  if (position === null) return undefined;
+  if (position === "right") return { type: "scroll", orient: "vertical", right: 0, top: "middle" };
+  return position === "top" ? { type: "scroll", top: 0 } : { type: "scroll", bottom: 0 };
+}
+
+// Value labels written on the marks, when the panel asks for them.
+function labelOption(config: PanelConfig, position: "top" | "right" | "inside") {
+  return formatOf(config).labels
+    ? {
+        show: true,
+        position,
+        formatter: (params: { value?: unknown }) => valueText(config, toNumber(params.value as Cell)),
+      }
+    : undefined;
 }
 
 function unique(values: Cell[]): Cell[] {
@@ -90,7 +146,7 @@ export function isEmptyResult(config: PanelConfig, result: QueryResult): boolean
 export type SeriesSwatch = { key: string; label: string; color: string };
 
 export function seriesSwatches(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors): SeriesSwatch[] {
-  if (config.chart === "kpi") return [];
+  if (config.chart === "kpi" || config.chart === "calendar" || config.chart === "heatmap") return []; // one colour scale
   if (config.chart === "histogram") {
     return [{ key: SINGLE_SERIES_KEY, label: MEASURE_LABELS[config.y.measure], color: resolveColor(SINGLE_SERIES_KEY, 0, undefined, config, categoryColors) }];
   }
@@ -144,6 +200,7 @@ function histogramChart(config: PanelConfig, result: QueryResult, categoryColors
           name: MEASURE_LABELS[config.y.measure],
           data: result.rows.map((row) => Number(row[2])),
           barCategoryGap: "4%",
+          label: formatOf(config).labels ? { show: true, position: "top" as const } : undefined,
           itemStyle: { color, borderColor: INK, borderWidth: 1, borderRadius: [4, 4, 0, 0] },
         },
       ],
@@ -151,26 +208,36 @@ function histogramChart(config: PanelConfig, result: QueryResult, categoryColors
   };
 }
 
-function pieChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors): BuiltChart {
+function pieChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors, highlight: Highlight): BuiltChart {
   const rows = result.rows.filter((row) => row[1] !== null && Number(row[1]) > 0);
+  const legend = legendPosition(config, true, "bottom");
   return {
     keys: { x: rows.map((row) => row[0]), colors: [] },
     option: {
-      tooltip: { trigger: "item", valueFormatter: (value) => formatValue(value as number, config) },
-      legend: { type: "scroll", bottom: 0 },
+      tooltip: { trigger: "item", valueFormatter: (value) => valueText(config, value as number) },
+      legend: legendOption(legend),
       series: [
         {
           type: "pie",
           name: MEASURE_LABELS[config.y.measure],
           radius: config.chart === "donut" ? ["45%", "70%"] : "70%",
-          center: ["50%", "45%"],
+          center: [legend === "right" ? "40%" : "50%", legend === "top" ? "55%" : legend === "bottom" ? "45%" : "50%"],
           avoidLabelOverlap: true,
-          label: { formatter: "{d}%" },
+          // Share by default; with labels on, the value as well.
+          label: formatOf(config).labels
+            ? {
+                formatter: (params: { value?: unknown; percent?: number }) =>
+                  `${valueText(config, Number(params.value))} (${Math.round((params.percent ?? 0) * 10) / 10}%)`,
+              }
+            : { formatter: "{d}%" },
           itemStyle: { borderColor: INK, borderWidth: 1.5 },
           data: rows.map((row, position) => ({
             name: formatLabel(row[0], config.x?.field),
             value: Number(row[1]),
-            itemStyle: { color: resolveColor(row[0], position, config.x?.field, config, categoryColors) },
+            itemStyle: {
+              color: resolveColor(row[0], position, config.x?.field, config, categoryColors),
+              opacity: dimmed(row[0], highlight),
+            },
           })),
         },
       ],
@@ -179,7 +246,7 @@ function pieChart(config: PanelConfig, result: QueryResult, categoryColors: Cate
 }
 
 // bar / line / area, with or without a colour split.
-function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors): BuiltChart {
+function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors, highlight: Highlight): BuiltChart {
   const split = result.columns.includes("color");
   const xKeys = unique(result.rows.map((row) => row[0]));
   const colorKeys = split ? unique(result.rows.map((row) => row[1])) : [null];
@@ -196,6 +263,7 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
   // Rounded data-ends only on bars that aren't stacked (a stack's inner ends must stay flat).
   const stackedBars = split && config.stacked;
   const radius = stackedBars ? 0 : 4;
+  const legend = legendPosition(config, split, "top");
 
   const series = colorKeys.map((colorKey, position) => {
     const data = xKeys.map((x) => toNumber(lookup.get(`${x}|${split ? colorKey : ""}`) ?? null));
@@ -215,13 +283,19 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
         name,
         stack,
         emphasis: { focus: "series" as const },
+        label: labelOption(config, stackedBars ? "inside" : horizontal ? "right" : "top"),
         itemStyle: barStyle,
-        data: perBar
-          ? data.map((value, index) => ({
-              value,
-              itemStyle: { ...barStyle, color: resolveColor(xKeys[index], index, config.x?.field, config, categoryColors) },
-            }))
-          : data,
+        data:
+          perBar || highlight !== undefined
+            ? data.map((value, index) => ({
+                value,
+                itemStyle: {
+                  ...barStyle,
+                  color: perBar ? resolveColor(xKeys[index], index, config.x?.field, config, categoryColors) : color,
+                  opacity: dimmed(xKeys[index], highlight),
+                },
+              }))
+            : data,
       };
     }
     return {
@@ -231,6 +305,7 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
       stack,
       showSymbol: !manyPoints,
       symbolSize: 8,
+      label: labelOption(config, "top"),
       lineStyle: { width: 2.5, color },
       itemStyle: { color, borderColor: "#ffffff", borderWidth: 2 },
       areaStyle: config.chart === "area" ? { opacity: 0.28, color } : undefined,
@@ -244,17 +319,28 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
     inverse: horizontal, // horizontal bars read top-down, biggest first
     boundaryGap: seriesType === "bar",
   };
-  const valueAxis = { type: "value" as const, axisLabel: { formatter: axisFormatter(config) } };
+  const { min, max } = formatOf(config).axis;
+  const valueAxis = {
+    type: "value" as const,
+    axisLabel: { formatter: axisFormatter(config) },
+    ...(min !== null ? { min } : {}),
+    ...(max !== null ? { max } : {}),
+  };
 
   return {
     keys: { x: xKeys, colors: split ? colorKeys : [] },
     option: {
-      grid: { left: 8, right: 16, top: split ? 36 : 16, bottom: 8 },
-      legend: split ? { type: "scroll", top: 0 } : undefined,
+      grid: {
+        left: 8,
+        right: legend === "right" ? 120 : 16,
+        top: legend === "top" ? 36 : 16,
+        bottom: legend === "bottom" ? 36 : 8,
+      },
+      legend: legendOption(legend),
       tooltip: {
         trigger: "axis",
         axisPointer: { type: seriesType === "bar" ? "shadow" : "line" },
-        valueFormatter: (value) => formatValue(value as number | null, config),
+        valueFormatter: (value) => valueText(config, value as number | null),
       },
       xAxis: horizontal ? valueAxis : categoryAxis,
       yAxis: horizontal ? categoryAxis : valueAxis,
@@ -263,8 +349,145 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
   };
 }
 
-export function toOption(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors = new Map()): BuiltChart {
+// --- heatmaps ---------------------------------------------------------------------------------
+
+const SEQUENTIAL = ["#EAF2FC", "#2A78D6", "#12407A"]; // light to dark blue
+const DIVERGING = ["#EB6834", "#F7F5F0", "#2A78D6"]; // orange (below zero) to blue (above), colour-blind safe
+
+// A tooltip body is HTML in ECharts. The other charts use its default markup, which escapes
+// user text; a heatmap's default is not what we want to show, so this writes the one line itself
+// and escapes every piece of it.
+export function escapeHtml(text: string): string {
+  return text.replace(/[&<>"']/g, (char) => (({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }) as Record<string, string>)[char]);
+}
+
+const tooltipLine = (name: string, value: string) => `${escapeHtml(name)}: <b>${escapeHtml(value)}</b>`;
+
+// The colour scale legend: one hue from small to large, or orange to blue around zero when
+// the measure goes negative (net).
+function colourScale(values: number[], config: PanelConfig): VisualMapComponentOption {
+  const low = values.length ? Math.min(...values) : 0;
+  const high = values.length ? Math.max(...values) : 1;
+  const diverging = low < 0;
+  const reach = Math.max(Math.abs(low), Math.abs(high)) || 1;
+  const write = axisFormatter(config);
+  return {
+    type: "continuous",
+    min: diverging ? -reach : low,
+    max: diverging ? reach : high === low ? low + 1 : high,
+    calculable: false,
+    orient: "horizontal",
+    left: "center",
+    bottom: 0,
+    itemWidth: 12,
+    itemHeight: 120,
+    formatter: (value) => write(Number(value)),
+    inRange: { color: diverging ? DIVERGING : SEQUENTIAL },
+  };
+}
+
+const cellStyle = { borderColor: "#ffffff", borderWidth: 2, borderRadius: 3 };
+
+function calendarChart(config: PanelConfig, result: QueryResult): BuiltChart {
+  const data: [string, number][] = result.rows.map((row) => [String(row[0]), Number(row[1])]);
+  return {
+    keys: { x: [], colors: [], cells: data.map(([day]) => ({ x: day })) },
+    option: {
+      tooltip: {
+        trigger: "item",
+        formatter: (params) => {
+          const [day, value] = (params as unknown as { value: [string, number] }).value;
+          return tooltipLine(formatLabel(day, "date", "day"), valueText(config, value));
+        },
+      },
+      visualMap: colourScale(data.map(([, value]) => value), config),
+      calendar: {
+        range: [result.period.from, result.period.to],
+        top: 26,
+        left: 34,
+        right: 12,
+        bottom: 44,
+        cellSize: ["auto", "auto"],
+        yearLabel: { show: false },
+        dayLabel: { firstDay: 1, nameMap: "en" },
+        monthLabel: { nameMap: "en" },
+        splitLine: { show: true, lineStyle: { color: INK, width: 1 } },
+        itemStyle: { color: "#F3F2EE", borderColor: "#ffffff", borderWidth: 2 },
+      },
+      series: [
+        {
+          type: "heatmap",
+          coordinateSystem: "calendar",
+          data,
+          itemStyle: cellStyle,
+          label: formatOf(config).labels
+            ? { show: true, formatter: (params) => valueText(config, (params.value as [string, number])[1]) }
+            : undefined,
+        },
+      ],
+    },
+  };
+}
+
+function matrixChart(config: PanelConfig, result: QueryResult): BuiltChart {
+  const xKeys = result.axes?.x ?? [];
+  const rowKeys = result.axes?.rows ?? [];
+  const xIndex = new Map(xKeys.map((key, index) => [key, index]));
+  const rowIndex = new Map(rowKeys.map((key, index) => [key, index]));
+  const data: [number, number, number][] = [];
+  const cells: { x: Cell; row: Cell }[] = []; // the raw keys of each data point, for clicks
+  for (const row of result.rows) {
+    const x = xIndex.get(row[0]);
+    const y = rowIndex.get(row[1]);
+    if (x === undefined || y === undefined) continue;
+    data.push([x, y, Number(row[2])]);
+    cells.push({ x: row[0], row: row[1] });
+  }
+  const xLabel = (index: number) => formatLabel(xKeys[index], config.x?.field, config.x?.granularity);
+  const rowLabel = (index: number) => formatLabel(rowKeys[index], config.rows?.field);
+
+  return {
+    keys: { x: [], colors: [], cells },
+    option: {
+      grid: { left: 8, right: 16, top: 8, bottom: 56 },
+      tooltip: {
+        trigger: "item",
+        formatter: (params) => {
+          const [x, y, value] = (params as unknown as { value: [number, number, number] }).value;
+          return tooltipLine(`${xLabel(x)} · ${rowLabel(y)}`, valueText(config, value));
+        },
+      },
+      xAxis: {
+        type: "category",
+        data: xKeys.map((_, index) => xLabel(index)),
+        splitArea: { show: true },
+        axisLabel: { interval: 0, hideOverlap: true },
+      },
+      yAxis: { type: "category", data: rowKeys.map((_, index) => rowLabel(index)), inverse: true, splitArea: { show: true } },
+      visualMap: colourScale(data.map(([, , value]) => value), config),
+      series: [
+        {
+          type: "heatmap",
+          data,
+          itemStyle: cellStyle,
+          label: formatOf(config).labels
+            ? { show: true, formatter: (params) => valueText(config, (params.value as [number, number, number])[2]) }
+            : undefined,
+        },
+      ],
+    },
+  };
+}
+
+export function toOption(
+  config: PanelConfig,
+  result: QueryResult,
+  categoryColors: CategoryColors = new Map(),
+  highlight?: Highlight,
+): BuiltChart {
+  if (config.chart === "calendar") return calendarChart(config, result);
+  if (config.chart === "heatmap") return matrixChart(config, result);
   if (config.chart === "histogram") return histogramChart(config, result, categoryColors);
-  if (config.chart === "pie" || config.chart === "donut") return pieChart(config, result, categoryColors);
-  return cartesianChart(config, result, categoryColors);
+  if (config.chart === "pie" || config.chart === "donut") return pieChart(config, result, categoryColors, highlight);
+  return cartesianChart(config, result, categoryColors, highlight);
 }

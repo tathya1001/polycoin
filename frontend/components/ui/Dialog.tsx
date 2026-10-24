@@ -18,7 +18,7 @@ export function Dialog({
   open: boolean;
   onClose: () => void;
   title: string;
-  size?: "sm" | "md";
+  size?: "sm" | "md" | "lg";
   footer?: ReactNode;
   children?: ReactNode;
 }) {
@@ -42,7 +42,7 @@ export function Dialog({
         "m-auto w-[min(92vw,var(--dialog-w))] rounded-lg border-[1.5px] border-ink bg-surface p-0 text-ink shadow-hard-lg",
         "open:animate-[pop-in_160ms_ease-out]",
       )}
-      style={{ "--dialog-w": size === "sm" ? "26rem" : "38rem" } as CSSProperties}
+      style={{ "--dialog-w": { sm: "26rem", md: "38rem", lg: "52rem" }[size] } as CSSProperties}
     >
       {open && (
         <div className="flex max-h-[85vh] flex-col">

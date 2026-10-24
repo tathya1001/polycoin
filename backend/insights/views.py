@@ -49,6 +49,9 @@ class QueryItemSerializer(serializers.Serializer):
 
 class QueryRequestSerializer(serializers.Serializer):
     filters = serializers.DictField(required=False, allow_null=True)
+    parameters = serializers.DictField(required=False, allow_null=True)
+    selection = serializers.DictField(required=False, allow_null=True)
+    selection_source = serializers.CharField(max_length=64, required=False, allow_null=True)
     queries = QueryItemSerializer(many=True, allow_empty=False, max_length=MAX_QUERIES)
 
     def validate_queries(self, queries):
@@ -56,6 +59,53 @@ class QueryRequestSerializer(serializers.Serializer):
         if len(set(keys)) != len(keys):
             raise serializers.ValidationError("Query keys must be unique.")
         return queries
+
+
+class SettingsSerializer(serializers.Serializer):
+    parameters = serializers.DictField()
+
+    def validate_parameters(self, value):
+        try:
+            return spec.validate_parameters(value)
+        except spec.SpecError as problem:
+            raise serializers.ValidationError(problem.detail) from None
+
+
+class RowsRequestSerializer(serializers.Serializer):
+    filters = serializers.DictField(required=False, allow_null=True)
+    parameters = serializers.DictField(required=False, allow_null=True)
+    spec = serializers.DictField()
+    mark = serializers.DictField(required=False, allow_null=True)
+    selection = serializers.DictField(required=False, allow_null=True)
+    offset = serializers.IntegerField(min_value=0, max_value=100_000, default=0)
+    limit = serializers.IntegerField(min_value=1, max_value=services.ROWS_PAGE_MAX, default=50)
+
+
+class RowsView(InsightsBase):
+    """The transactions behind a chart mark. Decrypts names, so it has its own, tighter throttle."""
+
+    throttle_scope = "insights_rows"
+
+    def post(self, request):
+        data = RowsRequestSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            body = services.list_rows(
+                request.user,
+                data.validated_data.get("filters") or {},
+                data.validated_data["spec"],
+                data.validated_data.get("mark"),
+                data.validated_data.get("parameters"),
+                data.validated_data["offset"],
+                data.validated_data["limit"],
+                selection=data.validated_data.get("selection"),
+            )
+        except services.TooManyRows:
+            raise spec.SpecError(
+                "too_many_rows",
+                "Too many transactions in the period. Pick a shorter date range or add filters.",
+            ) from None
+        return Response(body)
 
 
 class FieldsView(InsightsBase):
@@ -75,6 +125,9 @@ class QueryView(InsightsBase):
             request.user,
             data.validated_data.get("filters") or {},
             data.validated_data["queries"],
+            parameters=data.validated_data.get("parameters"),
+            selection=data.validated_data.get("selection"),
+            selection_source=data.validated_data.get("selection_source"),
         )
         return Response({"results": results})
 
@@ -132,6 +185,19 @@ class DashboardViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         panel = serializer.save()
         return Response(PanelSerializer(panel, context=context).data)
+
+    @action(detail=True, methods=["put"], url_path="settings")
+    def save_settings(self, request, pk=None):  # not "settings": APIView already has that attribute
+        """Save the dashboard's parameter values (encrypted), all or nothing."""
+        dashboard = self.get_object()
+        serializer = SettingsSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        cipher = self.get_serializer_context()["cipher"]
+        dashboard.settings_enc = services.encrypt_parameters(
+            cipher, serializer.validated_data["parameters"]
+        )
+        dashboard.save(update_fields=["settings_enc", "updated_at"])
+        return Response({"parameters": services.decrypt_parameters(cipher, dashboard.settings_enc)})
 
     @action(detail=True, methods=["put"], url_path="layout")
     def layout(self, request, pk=None):
