@@ -35,6 +35,8 @@ type Session = {
   preferences: Preferences;
   // Saves a change; resolves false (and rolls back) if the server refused it.
   updatePreferences: (change: Partial<Preferences>) => Promise<boolean>;
+  // Reads them again from the server, after something else changed them (a backup restore).
+  reloadPreferences: () => Promise<void>;
 };
 
 const SessionContext = createContext<Session | null>(null);
@@ -48,6 +50,12 @@ export function useSession(): Session {
 function applyFont(font: FontChoice) {
   if (font === DEFAULT_FONT) delete document.documentElement.dataset.font;
   else document.documentElement.dataset.font = font;
+}
+
+function adoptPreferences(data: unknown) {
+  const next = parsePreferences(data);
+  preferencesStore.set(next);
+  applyFont(next.font);
 }
 
 // Who is signed in and how they like the app to look. Preferences live on the server (so they
@@ -69,10 +77,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (cancelled) return;
         if (me.ok) setEmail((await me.json()).email ?? null);
         if (prefs.ok) {
-          const next = parsePreferences(await prefs.json());
-          if (cancelled) return;
-          preferencesStore.set(next);
-          applyFont(next.font);
+          const data = await prefs.json();
+          if (!cancelled) adoptPreferences(data);
         }
       } catch {
         // offline: keep the cached look
@@ -106,6 +112,18 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [preferences],
   );
 
-  const value = useMemo(() => ({ email, preferences, updatePreferences }), [email, preferences, updatePreferences]);
+  const reloadPreferences = useCallback(async () => {
+    try {
+      const res = await apiFetch("/api/accounts/preferences/");
+      if (res.ok) adoptPreferences(await res.json());
+    } catch {
+      // offline: keep the current look
+    }
+  }, []);
+
+  const value = useMemo(
+    () => ({ email, preferences, updatePreferences, reloadPreferences }),
+    [email, preferences, updatePreferences, reloadPreferences],
+  );
   return <SessionContext value={value}>{children}</SessionContext>;
 }

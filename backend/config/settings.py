@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     "transactions",
     "insights",
     "ai",
+    "backups",
 ]
 
 
@@ -157,6 +158,8 @@ REST_FRAMEWORK = {
         "rag_ask": "60/hour",
         # AI panel builder. One request is a turn plus a step per model call (about 3-5).
         "agent": "300/hour",
+        # Data Backup File. Each call decrypts or encrypts everything the user has.
+        "backup": "10/hour",
     },
 }
 
@@ -273,6 +276,13 @@ AGENT_MAX_STEPS = int(os.environ.get("AGENT_MAX_STEPS", "6"))  # model round tri
 AGENT_MERCHANT_SCAN = int(os.environ.get("AGENT_MERCHANT_SCAN", "5000"))
 AGENT_NUM_CTX = int(os.environ.get("AGENT_NUM_CTX", "4096"))  # model context, in tokens
 AGENT_NUM_PREDICT = int(os.environ.get("AGENT_NUM_PREDICT", "400"))  # longest model reply, in tokens
+
+# Data Backup File. Requests reach Django through the Vercel proxy, which refuses bodies over
+# 4.5 MB, so a file is capped below that both ways: a backup too big to upload is never made.
+BACKUP_MAX_BYTES = int(os.environ.get("BACKUP_MAX_BYTES", str(4 * 1024 * 1024)))
+# The JSON inside, after decompression: a bound on what one small file can expand into.
+BACKUP_MAX_JSON_BYTES = int(os.environ.get("BACKUP_MAX_JSON_BYTES", str(100 * 1024 * 1024)))
+BACKUP_MAX_TRANSACTIONS = int(os.environ.get("BACKUP_MAX_TRANSACTIONS", "100000"))
 
 # The agent's state is stored with LangGraph's serialiser. Strict mode refuses to rebuild any
 # object type that is not on its safe list, so a forged state cannot run code when it is loaded.

@@ -8,6 +8,7 @@ import { cn } from "@/lib/cn";
 import { FONT_OPTIONS, fontFamilyOf, type FontKind } from "@/lib/fonts";
 import type { ChartQuality, Preferences } from "@/lib/types";
 import { useSession } from "@/components/shell/Session";
+import { BackupCard } from "@/components/settings/BackupCard";
 import { DeleteDataDialog } from "@/components/settings/DeleteDataDialog";
 import { Button } from "@/components/ui/Button";
 import { Badge, Card } from "@/components/ui/Card";
@@ -108,7 +109,8 @@ export default function Settings() {
 
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Your data</h2>
-        <Card className="flex flex-wrap items-center justify-between gap-4 border-neg">
+        <BackupCard />
+        <Card className="mt-4 flex flex-wrap items-center justify-between gap-4 border-neg">
           <div className="max-w-xl">
             <p className="font-medium">Delete all my data</p>
             <p className="text-sm text-ink-2">

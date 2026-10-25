@@ -89,6 +89,9 @@ export function DeleteDataDialog({ open, onClose }: { open: boolean; onClose: ()
           <p className="text-ink-2">
             Your account, login and settings stay, so you can import a statement again right away.
           </p>
+          <p className="text-ink-2">
+            To keep a copy, download a Data Backup File first: you can restore it here later.
+          </p>
         </div>
         <Field label="Enter your password to confirm" error={fieldError}>
           <Input
