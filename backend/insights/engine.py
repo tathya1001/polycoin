@@ -5,10 +5,12 @@ engine as strings. Rows are dicts with the keys date, txn_type, category_name, a
 and balance, and the specs it reads are produced by `insights.spec.validate_spec`.
 """
 
+from collections.abc import Callable
 from datetime import date, timedelta
 from decimal import Decimal
+from functools import partial
 
-from .formula import FORMULA, evaluate_rows, parse_once
+from .formula import FORMULA, days_in, evaluate_rows, parse_once
 
 GRANULARITIES = ("day", "week", "month", "quarter", "year")
 MEASURES = ("spend", "income", "net", "amount", "count", "balance")
@@ -196,6 +198,24 @@ def aggregate(values: list[Decimal], agg: str) -> Decimal | None:
 # --- grouping -----------------------------------------------------------------
 
 
+def group_days(dims: list[tuple[str, str | None]], key: tuple, start: date, end: date) -> int:
+    """The calendar days one group covers: the days from start to end that its keys allow.
+
+    A month bucket covers its own days, cut to the range. A weekday or month-of-year group
+    covers those days in the range. A category, type or merchant group covers the whole range.
+    """
+    weekdays = months = None
+    for (field, granularity), value in zip(dims, key, strict=True):
+        if field == "date":
+            start = max(start, value)
+            end = min(end, next_bucket(value, granularity) - timedelta(days=1))
+        elif field == "weekday":
+            weekdays = {value}
+        elif field == "month_of_year":
+            months = {value}
+    return days_in(start, end, weekdays, months)
+
+
 def dimension_key(row: dict, dimension: str, granularity: str | None = None):
     """Which group `row` belongs to for this dimension. The result must be hashable."""
     if dimension == "date":
@@ -281,15 +301,16 @@ def histogram(values: list[Decimal], bins: int) -> list[tuple[Decimal, Decimal, 
 # --- runners ------------------------------------------------------------------
 
 
-def _y_cell(rows: list[dict], y: dict) -> Decimal | None:
+def _y_cell(rows: list[dict], y: dict, days: Callable[[], int] | None = None) -> Decimal | None:
     """One aggregated number for a group of rows, or None if no row contributes.
 
     None means "nothing to show here", not zero: a Salary group has no *spend*, so it must
     not appear in a spend chart. Real zeros for empty time buckets are added later, where
-    run_grouped fills the gaps.
+    run_grouped fills the gaps. `days` gives the calendar days the group covers; only a
+    calculated field that uses `days` calls it.
     """
     if y["measure"] == FORMULA:  # worked out from the whole group, not row by row
-        return evaluate_rows(y["formula"]["expression"], rows) if rows else None
+        return evaluate_rows(y["formula"]["expression"], rows, days) if rows else None
     values = []
     for row in rows:
         value = measure_value(row, y["measure"])
@@ -300,9 +321,9 @@ def _y_cell(rows: list[dict], y: dict) -> Decimal | None:
     return aggregate(values, y["agg"])
 
 
-def value_of(rows: list[dict], y: dict) -> str | None:
+def value_of(rows: list[dict], y: dict, days: Callable[[], int] | None = None) -> str | None:
     """The one number a panel's measure gives for `rows`, formatted as the charts format it."""
-    return _fmt(_or_zero(_y_cell(rows, y), y), y)
+    return _fmt(_or_zero(_y_cell(rows, y, days), y), y)
 
 
 def _money(value: Decimal) -> str:
@@ -324,7 +345,7 @@ def _label(key):
 
 
 # --- table calculations -------------------------------------------------------
-# They work on the aggregated chart values, not on rows (Tableau's "table calculations"), so they
+# They work on the aggregated chart values, not on rows (they are called "table calculations"), so they
 # cost one pass over the buckets. A value is None where nothing can be said, never a made-up 0.
 
 
@@ -373,7 +394,7 @@ def _apply_calc(calc: dict, table: dict, x_keys: list, colors: list, granularity
     """The calculated value for every (x, colour) cell of `table`, in the same shape.
 
     % of total is the share of the chart's total for one series, or each segment's share of its
-    own bar when the chart is split by colour (100% stacked, Tableau's "pane" scope). The other
+    own bar when the chart is split by colour (100% stacked: each bar is its own scope). The other
     calculations run along x, separately for each colour.
     """
     kind = calc["type"]
@@ -423,7 +444,11 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
     x_dim = (x["field"], x.get("granularity"))
     dims = [x_dim] + ([(color["field"], None)] if color else [])
 
-    cells = {key: _y_cell(group, y) for key, group in group_rows(rows, dims).items()}
+    span = (load_start(spec, period), period[1])  # the days the rows were loaded for
+    cells = {
+        key: _y_cell(group, y, partial(group_days, dims, key, *span))
+        for key, group in group_rows(rows, dims).items()
+    }
     values = {key: value for key, value in cells.items() if value is not None}
 
     # "No data in this slot" is a true zero for totals, but unknown for an average or a max.
@@ -439,7 +464,10 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
     elif x["field"] == "month_of_year":
         x_keys = list(range(1, 13))
     else:  # category / merchant / txn_type: rank the x values, keep the top few
-        x_only = {key[0]: _y_cell(group, y) for key, group in group_rows(rows, [x_dim]).items()}
+        x_only = {
+            key[0]: _y_cell(group, y, partial(group_days, [x_dim], key, *span))
+            for key, group in group_rows(rows, [x_dim]).items()
+        }
         ranked = top_n(
             [(label, value) for label, value in x_only.items() if value is not None],
             spec.get("limit", 10),
@@ -588,7 +616,7 @@ def _baseline(rows: list[dict], periods: list[tuple[date, date]], y: dict) -> De
     """The number a KPI is compared with: its value in the one comparison period, or the mean of
     its values over several. A period with no rows counts as 0 for totals, and is skipped for
     averages, minimums and maximums (unknown, not zero)."""
-    values = [_or_zero(_y_cell(_in_period(rows, *p), y), y) for p in periods]
+    values = [_or_zero(_y_cell(_in_period(rows, *p), y, partial(days_in, *p)), y) for p in periods]
     known = [value for value in values if value is not None]
     return sum(known, Decimal(0)) / len(known) if known else None
 
@@ -648,7 +676,7 @@ def run_kpi(
     """
     y, kpi = spec["y"], spec["kpi"]
     current_rows = _in_period(rows, *period)
-    current = _or_zero(_y_cell(current_rows, y), y)
+    current = _or_zero(_y_cell(current_rows, y, partial(days_in, *period)), y)
 
     previous = change = None
     periods = comparison_periods(kpi, period)

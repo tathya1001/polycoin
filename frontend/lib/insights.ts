@@ -19,6 +19,7 @@ import type {
   FormatOptions,
   Formula,
   FormulaForm,
+  FormulaFunctionGroup,
   Granularity,
   KpiCompare,
   KpiDirection,
@@ -108,6 +109,46 @@ export const FORMULA_FORM_LABELS: Record<FormulaForm, string> = {
 
 // What a new calculated field starts as: the share of income that was not spent.
 export const DEFAULT_FORMULA: Formula = { expression: "(income - spend) / income * 100", as: "percent" };
+
+// Ready-made formulas the editor offers, to show what the language can say.
+export const FORMULA_EXAMPLES: { label: string; formula: Formula }[] = [
+  { label: "Savings rate", formula: DEFAULT_FORMULA },
+  {
+    label: "Grocery share",
+    formula: { expression: 'SUM(IF [Category] = "Groceries" THEN [Spend] END) / spend * 100', as: "percent" },
+  },
+  { label: "Daily spend", formula: { expression: "spend / days", as: "money" } },
+  {
+    label: "Weekend share",
+    formula: { expression: "SUM(IF WEEKDAY([Date]) >= 6 THEN [Spend] END) / spend * 100", as: "percent" },
+  },
+  { label: "Merchants", formula: { expression: "COUNTD([Merchant])", as: "number" } },
+];
+
+export const FORMULA_GROUP_LABELS: Record<FormulaFunctionGroup, string> = {
+  aggregate: "Aggregations",
+  logic: "Logic and missing values",
+  number: "Numbers",
+  text: "Text",
+  date: "Dates",
+};
+
+// Put `before` and `after` around the selection [start, end) of `text`. With nothing selected
+// the cursor lands between them (inside the brackets of "SUM(" + ")"); with a selection it
+// lands after both, so selecting [Spend] and picking SUM gives "SUM([Spend])".
+export function insertAt(
+  text: string,
+  start: number,
+  end: number,
+  before: string,
+  after = "",
+): { text: string; cursor: number } {
+  const selected = text.slice(start, end);
+  return {
+    text: text.slice(0, start) + before + selected + after + text.slice(end),
+    cursor: start + before.length + selected.length + (selected ? after.length : 0),
+  };
+}
 
 export const AGG_LABELS: Record<Agg, string> = {
   sum: "Total",

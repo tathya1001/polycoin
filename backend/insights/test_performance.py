@@ -6,7 +6,7 @@ Seeding 20,000 encrypted rows takes a while, so this is skipped unless asked for
 
 Gates: the batch takes under 2 s on a normal CPU and under 12 s at Render's 0.1 CPU (measured:
 0.5 s and 7 s), and neither table calculations, calculated fields nor a click selection make it
-more than 1.5x slower. Listing the transactions behind one mark must fit the same budget. Run it at Render's
+more than 1.5x slower (2x for a calculated field that tests each transaction). Listing the transactions behind one mark must fit the same budget. Run it at Render's
 limits with (PowerShell):
 
     docker run --rm --cpus 0.1 --memory 512m --memory-swap 512m --network polycoin_default `
@@ -54,6 +54,17 @@ MAX_FORMULA_SLOWDOWN = 1.5  # calculated fields vs the same panels with plain me
 FORMULA = {
     "measure": "formula",
     "formula": {"expression": "(income - spend) / max(income, 1) * 100", "as": "percent"},
+}
+# A formula that reads every transaction, not only the totals, costs more.
+MAX_ROW_FORMULA_SLOWDOWN = 2.0
+ROW_FORMULA = {
+    "measure": "formula",
+    "formula": {
+        "expression": (
+            'SUM(IF [Category] IN ("Food", "Groceries") THEN [Spend] END) / MAX(spend, 1) * 100'
+        ),
+        "as": "percent",
+    },
 }
 
 # Twelve panels: the seven from Overview plus five that need the merchant name and balance,
@@ -116,6 +127,18 @@ def test_a_twelve_panel_batch_over_twenty_thousand_rows(settings):
     print(f"the same batch with {formulas} calculated fields: {formula_elapsed:.2f} s")
     assert all("error" not in result for result in formula_results.values())
 
+    # The same again, with formulas that test each transaction.
+    with_row_formulas = [
+        {**query, "spec": _formula_for(query["spec"], ROW_FORMULA)} for query in queries
+    ]
+    started = time.perf_counter()
+    row_formula_results = services.run_queries(
+        user, filters, with_row_formulas, today=timezone.localdate()
+    )
+    row_formula_elapsed = time.perf_counter() - started
+    print(f"the same batch with per-transaction formulas: {row_formula_elapsed:.2f} s")
+    assert all("error" not in result for result in row_formula_results.values())
+
     # The transactions behind one bar.
     started = time.perf_counter()
     listing = services.list_rows(user, filters, specs[0], {"categories": ["Food"]})
@@ -128,14 +151,15 @@ def test_a_twelve_panel_batch_over_twenty_thousand_rows(settings):
     assert calc_elapsed < elapsed * MAX_CALC_SLOWDOWN
     assert selection_elapsed < elapsed * MAX_SELECTION_SLOWDOWN
     assert formula_elapsed < elapsed * MAX_FORMULA_SLOWDOWN
+    assert row_formula_elapsed < elapsed * MAX_ROW_FORMULA_SLOWDOWN
     assert rows_elapsed < budget
 
 
-def _formula_for(spec: dict) -> dict:
+def _formula_for(spec: dict, formula: dict = FORMULA) -> dict:
     """The panel with a calculated field instead of its measure, where it can take one."""
     if spec["chart"] not in ("bar", "line", "area", "kpi"):
         return spec
-    changed = {**spec, "y": FORMULA}
+    changed = {**spec, "y": formula}
     if spec["chart"] == "kpi":
         # The money figures under a KPI need a money measure; the count still works.
         kpi = dict(spec.get("kpi") or {})

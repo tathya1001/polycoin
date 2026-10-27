@@ -256,6 +256,11 @@ export type Measure = "spend" | "income" | "net" | "amount" | "count" | "balance
 // How a calculated field's result reads: a plain number, a percentage, or money.
 export type FormulaForm = "number" | "percent" | "money";
 export type Formula = { expression: string; as: FormulaForm };
+// The formula language as the catalogue describes it, for the editor's reference list.
+export type FormulaVariable = { name: string; help: string };
+export type FormulaField = { name: string; type: "number" | "text" | "date"; help: string };
+export type FormulaFunctionGroup = "aggregate" | "logic" | "number" | "text" | "date";
+export type FormulaFunction = { name: string; signature: string; group: FormulaFunctionGroup; help: string };
 export type Agg = "sum" | "avg" | "min" | "max" | "median" | "count" | "last";
 export type DatePreset =
   | "this_month"
@@ -389,10 +394,12 @@ export type Catalogue = {
   formula: {
     charts: DataChartType[]; // where a calculated field can be used
     agg: Agg; // the one aggregation a formula panel stores
-    variables: string[];
-    functions: Record<string, number>; // name -> number of arguments
     forms: FormulaForm[];
     max_length: number;
+    variables: FormulaVariable[]; // totals for the whole group: spend, income...
+    fields: FormulaField[]; // one value per transaction, written in brackets
+    functions: FormulaFunction[];
+    keywords: string[];
   };
   parameters: {
     defaults: DashboardParameters;

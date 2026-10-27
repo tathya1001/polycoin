@@ -11,6 +11,7 @@ builder for starter templates.
 import json
 from datetime import date
 from decimal import Decimal
+from functools import partial
 
 from django.conf import settings
 from django.db import transaction
@@ -21,7 +22,7 @@ from transactions.models import Transaction
 from vault.services import UserCipher
 
 from . import engine
-from .formula import FORMULA
+from .formula import FORMULA, days_in, fields_used
 from .models import Dashboard, Panel
 from .spec import (
     MIN_DATE,
@@ -126,6 +127,8 @@ def _fields_needed(spec: dict, filters: dict) -> set:
         need.add("name")
     if spec["y"]["measure"] == "balance":
         need.add("balance")
+    if spec["y"]["measure"] == FORMULA:  # [Merchant] needs the name, [Balance] the balance
+        need |= fields_used(spec["y"]["formula"]["expression"])
     return need
 
 
@@ -162,6 +165,19 @@ def _selected(rows: list[dict], selection: dict) -> list[dict]:
         and (not weekdays or row["date"].weekday() in weekdays)
         and (not months or row["date"].month in months)
     ]
+
+
+def _day_keys(*selections: dict) -> tuple[set | None, set | None]:
+    """The weekdays and months that every selection allows (None: any)."""
+    weekdays = months = None
+    for selection in selections:
+        if selection.get("weekdays"):
+            picked = set(selection["weekdays"])
+            weekdays = picked if weekdays is None else weekdays & picked
+        if selection.get("months"):
+            picked = set(selection["months"])
+            months = picked if months is None else months & picked
+    return weekdays, months
 
 
 def _narrow(period: tuple[date, date], selection: dict) -> tuple[date, date] | None:
@@ -338,7 +354,7 @@ def list_rows(
             *period,
             types=(filters["type"],) if filters["type"] else (),
             category_ids=tuple(filters["categories"]),
-            need=frozenset({"name", "id"} | ({"balance"} if measure == "balance" else set())),
+            need=frozenset({"name", "id"} | _fields_needed(spec, filters)),
         )
         rows = _selected(_selected(_matching(rows, filters), selection), mark)
         if measure != FORMULA:  # a formula reads every transaction, whatever its type
@@ -348,7 +364,9 @@ def list_rows(
     page = rows[offset : offset + min(limit, ROWS_PAGE_MAX)]
     return {
         "total": len(rows),
-        "value": engine.value_of(rows, spec["y"]),
+        "value": engine.value_of(
+            rows, spec["y"], partial(days_in, *shown, *_day_keys(selection, mark))
+        ),
         "totals": {
             kind: _money(sum((row["amount"] for row in rows if row["txn_type"] == kind), Decimal(0)))
             for kind in ("debit", "credit")

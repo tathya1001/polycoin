@@ -257,3 +257,178 @@ def test_run_queries_never_includes_another_users_transactions(alice, bob):
 def test_invalid_dashboard_filters_raise(alice):
     with pytest.raises(SpecError):
         run(alice, [], global_filters={"type": "nope"})
+
+
+# --- a panel's own categories and the dashboard's ---------------------------------
+# A panel with categories of its own uses only those; one without follows the dashboard bar.
+
+
+def category_ids(user, *names):
+    return [str(Category.objects.get(user=user, name=name).id) for name in names]
+
+
+@pytest.fixture
+def month(alice):
+    """Food 40, Groceries 25, Health 15 and Rent 300 out, Salary 100 in, all this month."""
+    for day, name, kind, amount in (
+        (5, "Food", "debit", "40.00"),
+        (6, "Groceries", "debit", "25.00"),
+        (7, "Health", "debit", "15.00"),
+        (8, "Salary", "credit", "100.00"),
+        (9, "Rent", "debit", "300.00"),
+    ):
+        make_txn(
+            alice,
+            date=date(2026, 5, day),
+            txn_type=kind,
+            amount=Decimal(amount),
+            category=Category.objects.get(user=alice, name=name),
+        )
+    return alice
+
+
+def value(results, key):
+    return results[key]["rows"][0][0]
+
+
+def test_a_panels_own_categories_beat_the_dashboards(month):
+    spec = panel(filters={"categories": category_ids(month, "Food", "Groceries")})
+    results = run(
+        month,
+        [{"key": "k", "spec": spec}],
+        global_filters={"categories": category_ids(month, "Rent")},
+    )
+    assert value(results, "k") == "65.00"
+
+
+def test_a_panels_own_categories_beat_a_dashboard_that_picks_every_category(month):
+    every = [str(category.id) for category in Category.objects.filter(user=month)]
+    spec = panel(filters={"categories": category_ids(month, "Food", "Groceries")})
+    results = run(month, [{"key": "k", "spec": spec}], global_filters={"categories": every})
+    assert value(results, "k") == "65.00"
+
+
+def test_a_panel_without_categories_follows_the_dashboards(month):
+    results = run(
+        month,
+        [{"key": "k", "spec": panel()}],
+        global_filters={"categories": category_ids(month, "Rent", "Health")},
+    )
+    assert value(results, "k") == "315.00"
+
+
+def test_without_categories_on_either_a_panel_sees_every_category(month):
+    assert value(run(month, [{"key": "k", "spec": panel()}]), "k") == "380.00"
+
+
+@pytest.mark.parametrize(
+    ("measure", "expected"),
+    [("spend", "65.00"), ("income", "100.00"), ("net", "35.00"), ("count", "3")],
+)
+def test_a_panels_own_categories_win_for_every_measure(month, measure, expected):
+    spec = panel(
+        measure=measure,
+        filters={"categories": category_ids(month, "Food", "Groceries", "Salary")},
+    )
+    results = run(
+        month,
+        [{"key": "k", "spec": spec}],
+        global_filters={"categories": category_ids(month, "Rent")},
+    )
+    assert value(results, "k") == expected
+
+
+def test_a_panels_own_categories_win_for_a_calculated_field(month):
+    spec = {
+        "chart": "kpi",
+        "y": {"measure": "formula", "formula": {"expression": "income - spend"}},
+        "filters": {"categories": category_ids(month, "Food", "Groceries", "Salary")},
+    }
+    results = run(
+        month,
+        [{"key": "k", "spec": spec}],
+        global_filters={"categories": category_ids(month, "Rent")},
+    )
+    assert Decimal(value(results, "k")) == Decimal("35")
+
+
+def test_one_batch_serves_panels_with_and_without_their_own_categories(month):
+    # The batch loads its rows once, narrowed to what the panels ask for between them: each
+    # panel must still get every row it needs, and no row it does not.
+    queries = [
+        {"key": "food", "spec": panel(filters={"categories": category_ids(month, "Food")})},
+        {"key": "health", "spec": panel(filters={"categories": category_ids(month, "Health")})},
+        {"key": "inherits", "spec": panel()},
+    ]
+    results = run(month, queries, global_filters={"categories": category_ids(month, "Rent")})
+    assert value(results, "food") == "40.00"
+    assert value(results, "health") == "15.00"
+    assert value(results, "inherits") == "300.00"
+
+
+def test_the_dashboards_type_still_applies_to_a_panel_with_its_own_categories(month):
+    # Each filter falls back on its own: own categories do not drop the dashboard's type.
+    spec = panel(measure="count", filters={"categories": category_ids(month, "Food", "Salary")})
+    results = run(month, [{"key": "k", "spec": spec}], global_filters={"type": "credit"})
+    assert value(results, "k") == "1"
+
+
+def test_a_click_on_another_panel_narrows_within_the_panels_own_categories(month):
+    own = panel(filters={"categories": category_ids(month, "Food", "Groceries")})
+    queries = [
+        {"key": "k", "spec": own},
+        {"key": "source", "spec": panel("bar", x={"field": "category"})},
+    ]
+    every = [str(category.id) for category in Category.objects.filter(user=month)]
+
+    def clicked(name):
+        return services.run_queries(
+            month,
+            {"categories": every},
+            queries,
+            today=TODAY,
+            selection={"categories": [name]},
+            selection_source="source",
+        )
+
+    assert value(clicked("Groceries"), "k") == "25.00"
+    assert value(clicked("Rent"), "k") == "0.00"  # outside the panel's categories
+
+
+def test_a_kpi_compares_with_the_panels_own_categories_too(month):
+    # "this_month" on 2026-05-15 is May 1-15, so the previous period is April 16-30.
+    for name, amount in (("Food", "10.00"), ("Rent", "500.00")):
+        make_txn(
+            month,
+            date=date(2026, 4, 20),
+            amount=Decimal(amount),
+            category=Category.objects.get(user=month, name=name),
+        )
+    spec = panel(
+        kpi={"compare": "previous"},
+        filters={
+            "date": {"preset": "this_month"},
+            "categories": category_ids(month, "Food", "Groceries"),
+        },
+    )
+    results = run(
+        month,
+        [{"key": "k", "spec": spec}],
+        global_filters={"categories": category_ids(month, "Rent")},
+    )
+    assert results["k"]["rows"][0][:2] == ["65.00", "10.00"]
+
+
+def test_the_rows_behind_a_panel_follow_its_own_categories(month):
+    spec = panel(filters={"categories": category_ids(month, "Food", "Groceries")})
+    body = services.list_rows(
+        month, {"categories": category_ids(month, "Rent")}, spec, None, today=TODAY
+    )
+    assert sorted(row["category"] for row in body["rows"]) == ["Food", "Groceries"]
+
+
+def test_the_rows_behind_a_panel_without_categories_follow_the_dashboards(month):
+    body = services.list_rows(
+        month, {"categories": category_ids(month, "Rent")}, panel(), None, today=TODAY
+    )
+    assert [row["category"] for row in body["rows"]] == ["Rent"]

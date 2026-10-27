@@ -1,5 +1,5 @@
 {
- "version": 7,
+ "version": 8,
  "dimensions": [
   {
    "id": "date",
@@ -287,23 +287,285 @@
    "kpi"
   ],
   "agg": "avg",
-  "variables": [
-   "spend",
-   "income",
-   "net",
-   "count"
-  ],
-  "functions": {
-   "abs": 1,
-   "min": 2,
-   "max": 2
-  },
   "forms": [
    "number",
    "percent",
    "money"
   ],
-  "max_length": 200
+  "max_length": 500,
+  "variables": [
+   {
+    "name": "spend",
+    "help": "The group's total spend: SUM([Spend])."
+   },
+   {
+    "name": "income",
+    "help": "The group's total income: SUM([Income])."
+   },
+   {
+    "name": "net",
+    "help": "Income minus spend: SUM([Net])."
+   },
+   {
+    "name": "count",
+    "help": "The number of transactions: COUNT([Amount])."
+   },
+   {
+    "name": "days",
+    "help": "The number of calendar days the group covers."
+   }
+  ],
+  "fields": [
+   {
+    "name": "Amount",
+    "type": "number",
+    "help": "The amount, always positive."
+   },
+   {
+    "name": "Spend",
+    "type": "number",
+    "help": "The amount of a debit. Missing for a credit."
+   },
+   {
+    "name": "Income",
+    "type": "number",
+    "help": "The amount of a credit. Missing for a debit."
+   },
+   {
+    "name": "Net",
+    "type": "number",
+    "help": "The amount, negative for a debit."
+   },
+   {
+    "name": "Type",
+    "type": "text",
+    "help": "\"debit\" or \"credit\"."
+   },
+   {
+    "name": "Category",
+    "type": "text",
+    "help": "The category's name."
+   },
+   {
+    "name": "Merchant",
+    "type": "text",
+    "help": "The merchant, written as the charts group it."
+   },
+   {
+    "name": "Date",
+    "type": "date",
+    "help": "The day of the transaction."
+   },
+   {
+    "name": "Balance",
+    "type": "number",
+    "help": "The balance after the transaction. Missing if the statement had none."
+   }
+  ],
+  "functions": [
+   {
+    "name": "SUM",
+    "signature": "SUM(x)",
+    "group": "aggregate",
+    "help": "Adds up x over the group's transactions."
+   },
+   {
+    "name": "AVG",
+    "signature": "AVG(x)",
+    "group": "aggregate",
+    "help": "The average of x."
+   },
+   {
+    "name": "MEDIAN",
+    "signature": "MEDIAN(x)",
+    "group": "aggregate",
+    "help": "The middle value of x."
+   },
+   {
+    "name": "MIN",
+    "signature": "MIN(x)",
+    "group": "aggregate",
+    "help": "The smallest x. MIN(a, b, \u2026) is the smallest of its values."
+   },
+   {
+    "name": "MAX",
+    "signature": "MAX(x)",
+    "group": "aggregate",
+    "help": "The largest x. MAX(a, b, \u2026) is the largest of its values."
+   },
+   {
+    "name": "COUNT",
+    "signature": "COUNT(x)",
+    "group": "aggregate",
+    "help": "How many transactions have a value for x."
+   },
+   {
+    "name": "COUNTD",
+    "signature": "COUNTD(x)",
+    "group": "aggregate",
+    "help": "How many different values x has."
+   },
+   {
+    "name": "IIF",
+    "signature": "IIF(test, then, else)",
+    "group": "logic",
+    "help": "then if the test is true, otherwise else."
+   },
+   {
+    "name": "ZN",
+    "signature": "ZN(x)",
+    "group": "logic",
+    "help": "x, or 0 if x is missing."
+   },
+   {
+    "name": "IFNULL",
+    "signature": "IFNULL(x, other)",
+    "group": "logic",
+    "help": "x, or other if x is missing."
+   },
+   {
+    "name": "COALESCE",
+    "signature": "COALESCE(a, b, \u2026)",
+    "group": "logic",
+    "help": "The first value that is not missing."
+   },
+   {
+    "name": "NULLIF",
+    "signature": "NULLIF(a, b)",
+    "group": "logic",
+    "help": "Missing if a equals b, otherwise a."
+   },
+   {
+    "name": "ISNULL",
+    "signature": "ISNULL(x)",
+    "group": "logic",
+    "help": "True if x is missing."
+   },
+   {
+    "name": "ABS",
+    "signature": "ABS(x)",
+    "group": "number",
+    "help": "x without its minus sign."
+   },
+   {
+    "name": "ROUND",
+    "signature": "ROUND(x, places)",
+    "group": "number",
+    "help": "x rounded half up, to 0 to 6 decimal places."
+   },
+   {
+    "name": "FLOOR",
+    "signature": "FLOOR(x)",
+    "group": "number",
+    "help": "x rounded down to a whole number."
+   },
+   {
+    "name": "CEILING",
+    "signature": "CEILING(x)",
+    "group": "number",
+    "help": "x rounded up to a whole number. CEIL works too."
+   },
+   {
+    "name": "CEIL",
+    "signature": "CEIL(x)",
+    "group": "number",
+    "help": "The same as CEILING(x)."
+   },
+   {
+    "name": "POWER",
+    "signature": "POWER(x, y)",
+    "group": "number",
+    "help": "x to the power y (y from -100 to 100)."
+   },
+   {
+    "name": "SQRT",
+    "signature": "SQRT(x)",
+    "group": "number",
+    "help": "The square root of x. Missing if x is negative."
+   },
+   {
+    "name": "SIGN",
+    "signature": "SIGN(x)",
+    "group": "number",
+    "help": "-1, 0 or 1."
+   },
+   {
+    "name": "CONTAINS",
+    "signature": "CONTAINS(text, part)",
+    "group": "text",
+    "help": "True if the text holds the part. Ignores case."
+   },
+   {
+    "name": "STARTSWITH",
+    "signature": "STARTSWITH(text, part)",
+    "group": "text",
+    "help": "True if the text starts with the part."
+   },
+   {
+    "name": "ENDSWITH",
+    "signature": "ENDSWITH(text, part)",
+    "group": "text",
+    "help": "True if the text ends with the part."
+   },
+   {
+    "name": "DATE",
+    "signature": "DATE(\"YYYY-MM-DD\")",
+    "group": "date",
+    "help": "A fixed date, to compare [Date] with."
+   },
+   {
+    "name": "YEAR",
+    "signature": "YEAR(date)",
+    "group": "date",
+    "help": "The year, such as 2026."
+   },
+   {
+    "name": "QUARTER",
+    "signature": "QUARTER(date)",
+    "group": "date",
+    "help": "1 to 4."
+   },
+   {
+    "name": "MONTH",
+    "signature": "MONTH(date)",
+    "group": "date",
+    "help": "1 to 12."
+   },
+   {
+    "name": "DAY",
+    "signature": "DAY(date)",
+    "group": "date",
+    "help": "The day of the month, 1 to 31."
+   },
+   {
+    "name": "WEEKDAY",
+    "signature": "WEEKDAY(date)",
+    "group": "date",
+    "help": "1 = Monday \u2026 7 = Sunday."
+   },
+   {
+    "name": "DATEPART",
+    "signature": "DATEPART('part', date)",
+    "group": "date",
+    "help": "The 'year', 'quarter', 'month', 'day' or 'weekday' of a date."
+   }
+  ],
+  "keywords": [
+   "IF",
+   "THEN",
+   "ELSEIF",
+   "ELSE",
+   "END",
+   "CASE",
+   "WHEN",
+   "AND",
+   "OR",
+   "NOT",
+   "IN",
+   "TRUE",
+   "FALSE",
+   "NULL"
+  ]
  },
  "parameters": {
   "defaults": {

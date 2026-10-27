@@ -123,7 +123,7 @@ def test_the_names_cover_both_kinds_of_transaction():
         ("spnd", "Unknown name 'spnd' at position 1"),
         ("income - bogus", "Unknown name 'bogus' at position 10"),
         ("os.system('x')", "Unexpected character '.'"),
-        ("__import__('os')", "Unexpected character"),
+        ("__import__('os')", "Unknown function '__import__'"),
         ("spend; income", "Unexpected character ';'"),
         ("spend ** 2", "Unexpected '*'"),
         ("spend +", "ends too soon"),
@@ -133,11 +133,11 @@ def test_the_names_cover_both_kinds_of_transaction():
         ("+spend", "Unexpected '+'"),
         ("abs()", "Unexpected ')'"),
         ("abs(1, 2)", "takes 1"),
-        ("min(1)", "takes 2"),
-        ("round(spend)", "Unknown function 'round'"),
+        ("min()", "Unexpected ')'"),
+        ("roundup(spend)", "Unknown function 'roundup'"),
         ("spend(1)", "Unknown function 'spend'"),
-        ("income = 5", "Unexpected character '='"),
-        ("'text'", "Unexpected character"),
+        ("income = 5", "must give a number, not true/false"),
+        ("'text'", "must give a number, not text"),
         ("1e5", "Unexpected 'e5'"),
         ("0x10", "Unexpected 'x10'"),
         ("1.", "Unexpected character '.'"),
@@ -218,8 +218,9 @@ def test_text_that_is_not_a_string_is_refused_before_any_lookup():
 
 
 def test_the_names_and_functions_are_listed():
-    assert VARIABLES == ("spend", "income", "net", "count")
-    assert FUNCTIONS == {"abs": 1, "min": 2, "max": 2}
+    assert list(VARIABLES) == ["spend", "income", "net", "count", "days"]
+    for name in ("ABS", "MIN", "MAX", "SUM", "IIF", "ROUND", "CONTAINS", "DATEPART"):
+        assert name in FUNCTIONS
 
 
 # --- as a panel's measure ------------------------------------------------------------------------
@@ -339,8 +340,10 @@ def test_a_kpi_formula_cannot_have_a_money_figure_under_it():
 
 def test_the_catalogue_describes_the_language_for_the_editor():
     formula = catalogue()["formula"]
-    assert formula["variables"] == list(VARIABLES)
-    assert formula["functions"] == {"abs": 1, "min": 2, "max": 2}
+    assert [variable["name"] for variable in formula["variables"]] == list(VARIABLES)
+    assert [function["name"] for function in formula["functions"]] == list(FUNCTIONS)
+    assert {"name": "Category", "type": "text", "help": "The category's name."} in formula["fields"]
+    assert {"IF", "THEN", "END", "CASE", "IN"} <= set(formula["keywords"])
     assert formula["charts"] == ["bar", "line", "area", "kpi"]
     assert formula["agg"] == "avg"
     assert formula["forms"] == ["number", "percent", "money"]
@@ -349,8 +352,15 @@ def test_the_catalogue_describes_the_language_for_the_editor():
 
 def test_a_version_six_spec_still_loads():
     old = {"v": 6, "chart": "bar", "x": {"field": "category"}, "y": {"measure": "spend"}}
-    assert upgrade(old)["v"] == SPEC_VERSION == 7
+    assert upgrade(old)["v"] == SPEC_VERSION == 8
     assert validate_spec(old)["y"] == {"measure": "spend", "agg": "sum"}
+
+
+def test_a_version_seven_formula_panel_still_loads_unchanged():
+    old = {"v": 7, **formula_spec("(income - spend) / max(income, 1) * 100")}
+    clean = validate_spec(old)
+    assert clean["v"] == 8
+    assert clean["y"]["formula"]["expression"] == "(income - spend) / max(income, 1) * 100"
 
 
 # --- the engine ----------------------------------------------------------------------------------

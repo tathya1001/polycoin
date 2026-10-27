@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import catalogueJson from "./__fixtures__/catalogue.json";
 import {
   DEFAULT_FORMULA,
+  FORMULA_EXAMPLES,
   bindingAllowed,
   calcAllowed,
   defaultConfig,
   formatValue,
   formulaAllowed,
+  insertAt,
   isPercent,
   isPlainNumber,
   normalizeConfig,
@@ -51,7 +53,7 @@ describe("a calculated field in the editor draft", () => {
   it("keeps the text as typed (the server tidies it) but within the length limit", () => {
     const typed = formula("bar", "number", "income  -  ");
     expect(typed.y.formula?.expression).toBe("income  -  ");
-    const long = formula("bar", "number", "1+".repeat(200));
+    const long = formula("bar", "number", "1+".repeat(catalogue.formula.max_length));
     expect(long.y.formula?.expression).toHaveLength(catalogue.formula.max_length);
   });
 
@@ -114,5 +116,38 @@ describe("how a calculated field's values read", () => {
 
   it("shows no value as a dash", () => {
     expect(formatValue(null, formula())).toBe("–");
+  });
+});
+
+describe("typing from the formula reference", () => {
+  it("puts the cursor between the brackets when nothing is selected", () => {
+    expect(insertAt("spend / ", 8, 8, "SUM(", ")")).toEqual({ text: "spend / SUM()", cursor: 12 });
+  });
+
+  it("wraps a selection and puts the cursor after it", () => {
+    expect(insertAt("[Spend] / spend", 0, 7, "SUM(", ")")).toEqual({ text: "SUM([Spend]) / spend", cursor: 12 });
+  });
+
+  it("replaces nothing when it types a plain name", () => {
+    expect(insertAt("spend /  * 100", 8, 8, "days")).toEqual({ text: "spend / days * 100", cursor: 12 });
+  });
+});
+
+describe("the example formulas", () => {
+  it("use only the totals, fields and functions the catalogue lists", () => {
+    const rules = catalogue.formula;
+    const names = new Set([
+      ...rules.variables.map((v) => v.name),
+      ...rules.functions.map((f) => f.name),
+      ...rules.keywords,
+    ]);
+    const fields = new Set(rules.fields.map((f) => f.name));
+    for (const { formula } of FORMULA_EXAMPLES) {
+      const text = formula.expression.replace(/"[^"]*"|'[^']*'/g, "");
+      for (const [, field] of text.matchAll(/\[([^\]]*)\]/g)) expect(fields).toContain(field);
+      for (const [word] of text.replace(/\[[^\]]*\]/g, "").matchAll(/[A-Za-z_]+/g)) expect(names).toContain(word);
+      expect(rules.forms).toContain(formula.as);
+      expect(formula.expression.length).toBeLessThanOrEqual(rules.max_length);
+    }
   });
 });

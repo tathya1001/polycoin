@@ -7,7 +7,7 @@
 // normalizeConfig, so the draft always obeys the chart rules, and a live preview re-queries
 // the backend half a second after you stop changing things.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   ChartArea,
@@ -38,7 +38,9 @@ import {
   CHART_LABELS,
   DEFAULT_FORMULA,
   DIMENSION_LABELS,
+  FORMULA_EXAMPLES,
   FORMULA_FORM_LABELS,
+  FORMULA_GROUP_LABELS,
   GRANULARITY_LABELS,
   KPI_COMPARE_LABELS,
   KPI_DIRECTION_LABELS,
@@ -57,6 +59,7 @@ import {
   defaultKpi,
   figureAllowed,
   formulaAllowed,
+  insertAt,
   isError,
   measuresFor,
   normalizeConfig,
@@ -77,6 +80,7 @@ import type {
   FormatOptions,
   Formula,
   FormulaForm,
+  FormulaFunctionGroup,
   Granularity,
   KpiCompare,
   KpiDirection,
@@ -90,6 +94,7 @@ import type {
   TextConfig,
 } from "@/lib/types";
 import { Button, IconButton } from "@/components/ui/Button";
+import { Chip } from "@/components/ui/Card";
 import { ColorPicker } from "@/components/ui/ColorPicker";
 import { ErrorNote } from "@/components/ui/Feedback";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/Field";
@@ -662,10 +667,9 @@ function clamp(value: number, [low, high]: [number, number]): number {
   return Number.isFinite(value) ? Math.min(Math.max(Math.round(value), low), high) : low;
 }
 
-// The table calculation picker. Options the draft can't use stay visible but disabled, and the
-// hint says why, so the rule is learnable rather than hidden.
 // A calculated field: the formula and how its result reads. The server checks the formula and
 // the live preview shows its message, so the rules live in one place (spec.validate_formula).
+// The reference list comes from the catalogue; picking an entry types it at the cursor.
 function FormulaFields({
   config,
   catalogue,
@@ -677,21 +681,52 @@ function FormulaFields({
 }) {
   const formula = config.y.formula ?? DEFAULT_FORMULA;
   const rules = catalogue.formula;
-  const functions = Object.entries(rules.functions).map(([name, arity]) =>
-    arity === 1 ? `${name}(x)` : `${name}(a, b)`,
-  );
+  const box = useRef<HTMLTextAreaElement>(null);
+  const cursor = useRef<number | null>(null);
+
+  // After an insert has re-rendered the text, put the cursor where the insert left it.
+  useEffect(() => {
+    if (cursor.current === null || !box.current) return;
+    box.current.focus();
+    box.current.setSelectionRange(cursor.current, cursor.current);
+    cursor.current = null;
+  });
+
+  function insert(before: string, after = "") {
+    const start = box.current?.selectionStart ?? formula.expression.length;
+    const end = box.current?.selectionEnd ?? start;
+    const next = insertAt(formula.expression, start, end, before, after);
+    if (next.text.length > rules.max_length) return;
+    cursor.current = next.cursor;
+    onChange({ ...formula, expression: next.text });
+  }
+
+  const groups = (Object.keys(FORMULA_GROUP_LABELS) as FormulaFunctionGroup[]).map((group) => ({
+    title: FORMULA_GROUP_LABELS[group],
+    items: rules.functions
+      .filter((fn) => fn.group === group)
+      .map((fn) => ({
+        label: fn.signature,
+        help: fn.help,
+        before: fn.name === "DATE" ? 'DATE("' : `${fn.name}(`,
+        after: fn.name === "DATE" ? '")' : ")",
+      })),
+  }));
+
   return (
     <div className="col-span-2 space-y-3">
       <Field
         label="Formula"
         hint={
           <>
-            Names: {rules.variables.join(", ")} (each group&apos;s totals). Use + − × ÷ as + - * /, brackets,
-            and {functions.join(", ")}. A division by zero leaves that point empty.
+            Totals for each group: {rules.variables.map((v) => v.name).join(", ")}. Fields hold one value per
+            transaction: write them in brackets, such as [Category], inside SUM(), COUNT()… A division by zero
+            leaves that point empty.
           </>
         }
       >
         <Textarea
+          ref={box}
           className="min-h-16 font-mono"
           value={formula.expression}
           maxLength={rules.max_length}
@@ -700,6 +735,40 @@ function FormulaFields({
           placeholder={DEFAULT_FORMULA.expression}
         />
       </Field>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs text-ink-2">Examples:</span>
+        {FORMULA_EXAMPLES.map((example) => (
+          <Chip
+            key={example.label}
+            active={formula.expression === example.formula.expression}
+            onClick={() => onChange(example.formula)}
+          >
+            {example.label}
+          </Chip>
+        ))}
+      </div>
+      <details className="text-sm">
+        <summary className="cursor-pointer text-ink-2">Fields and functions</summary>
+        <div className="mt-2 max-h-72 space-y-3 overflow-y-auto pr-1">
+          <FormulaReference
+            title="Totals"
+            items={rules.variables.map((v) => ({ label: v.name, help: v.help, before: v.name }))}
+            onPick={insert}
+          />
+          <FormulaReference
+            title="Fields"
+            items={rules.fields.map((f) => ({ label: `[${f.name}]`, help: f.help, before: `[${f.name}]` }))}
+            onPick={insert}
+          />
+          {groups.map((group) => (
+            <FormulaReference key={group.title} {...group} onPick={insert} />
+          ))}
+          <p className="text-xs text-ink-2">
+            Also: IF … THEN … ELSEIF … ELSE … END, CASE WHEN … THEN … ELSE … END, AND, OR, NOT, IN (…), the
+            comparisons = &lt;&gt; &lt; &lt;= &gt; &gt;=, and text in quotes. Text matches ignore letter case.
+          </p>
+        </div>
+      </details>
       <Field label="Show the result as" className="w-48">
         <Select
           dense
@@ -718,6 +787,40 @@ function FormulaFields({
   );
 }
 
+// One group of the formula reference. Picking an entry types `before` + `after` at the cursor.
+function FormulaReference({
+  title,
+  items,
+  onPick,
+}: {
+  title: string;
+  items: { label: string; help: string; before: string; after?: string }[];
+  onPick: (before: string, after?: string) => void;
+}) {
+  if (!items.length) return null;
+  return (
+    <div>
+      <p className="mb-1 text-xs font-semibold">{title}</p>
+      <ul className="space-y-0.5">
+        {items.map((item) => (
+          <li key={item.label}>
+            <button
+              type="button"
+              onClick={() => onPick(item.before, item.after)}
+              className="w-full rounded-sm px-1.5 py-1 text-left transition-colors duration-150 hover:bg-wash"
+            >
+              <span className="font-mono text-[13px]">{item.label}</span>{" "}
+              <span className="text-xs text-ink-2">{item.help}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// The table calculation picker. Options the draft can't use stay visible but disabled, and the
+// hint says why, so the rule is learnable rather than hidden.
 function CalcFields({
   config,
   catalogue,

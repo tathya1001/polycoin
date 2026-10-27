@@ -14,11 +14,11 @@ from categories.colors import is_hex_color
 from .engine import DIMENSIONS, GRANULARITIES, GROUPED_CHARTS, MEASURES, add_months
 from .formula import (
     FORMULA,
-    FUNCTIONS,
     RESULT_FORMS,
-    VARIABLES,
     FormulaError,
     compile_expression,
+    language,
+    tidy,
 )
 from .formula import (
     MAX_LENGTH as FORMULA_MAX_LENGTH,
@@ -26,7 +26,7 @@ from .formula import (
 
 # Bumped whenever the shape of a spec changes; `upgrade` brings older saved specs forward one
 # version at a time, so a panel saved by any earlier version keeps working unchanged.
-SPEC_VERSION = 7
+SPEC_VERSION = 8
 
 CATEGORICAL = tuple(dimension for dimension in DIMENSIONS if dimension != "date")
 CHARTS = (
@@ -86,7 +86,7 @@ MAX_TEXT_LENGTH = 2000  # characters in a text panel
 CALENDAR_MAX_DAYS = 366  # a calendar heatmap shows at most a year of days
 
 # Dashboard parameters: a few values the whole dashboard shares. A panel follows one only where
-# it is bound to it (`bind`), as in Tableau: an unbound field keeps its own value.
+# it is bound to it (`bind`); an unbound field keeps its own value.
 PARAMETER_DEFAULTS = {
     "top_n": 10,
     "granularity": "month",
@@ -210,7 +210,7 @@ def validate_formula(raw) -> dict:
     expression = raw.get("expression")
     if not isinstance(expression, str):
         raise _bad("y.formula.expression must be text.")
-    expression = " ".join(expression.split())
+    expression = tidy(expression)  # spaces inside quoted text are part of the text
     try:
         compile_expression(expression)
     except FormulaError as problem:
@@ -624,10 +624,9 @@ def catalogue() -> dict:
         "formula": {
             "charts": list(FORMULA_CHARTS),
             "agg": default_agg(FORMULA),  # the one aggregation a formula panel stores
-            "variables": list(VARIABLES),
-            "functions": {name: arity for name, arity in FUNCTIONS.items()},
             "forms": list(RESULT_FORMS),
             "max_length": FORMULA_MAX_LENGTH,
+            **language(),  # the names, fields, functions and keywords the editor lists
         },
         "parameters": {
             "defaults": dict(PARAMETER_DEFAULTS),
@@ -782,6 +781,11 @@ def _v6_to_v7(raw: dict) -> dict:
     return {**raw, "v": 7}
 
 
+def _v7_to_v8(raw: dict) -> dict:
+    """Version 8 only widened the formula language, so a version 7 spec is already valid."""
+    return {**raw, "v": 8}
+
+
 # version -> the function that turns a spec of that version into the next one
 UPGRADES = {
     1: _v1_to_v2,
@@ -790,6 +794,7 @@ UPGRADES = {
     4: _v4_to_v5,
     5: _v5_to_v6,
     6: _v6_to_v7,
+    7: _v7_to_v8,
 }
 
 

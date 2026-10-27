@@ -8,6 +8,9 @@ import {
   defaultConfig,
   defaultFormat,
   defaultKpi,
+  DEFAULT_DASHBOARD_FILTERS,
+  effectiveFilters,
+  EMPTY_FILTERS,
   formatBaseline,
   formatFigure,
   formatValue,
@@ -16,7 +19,7 @@ import {
   normalizeConfig,
   usedParameters,
 } from "./insights";
-import type { Catalogue, FormatOptions, KpiOptions, PanelConfig } from "./types";
+import type { Catalogue, FormatOptions, KpiOptions, PanelConfig, PanelFilters } from "./types";
 
 // The backend's real catalogue; backend/insights/test_catalogue_contract.py keeps this copy current.
 const catalogue = catalogueJson as unknown as Catalogue; // JSON arrays type as number[], not tuples
@@ -270,5 +273,58 @@ describe("bindings", () => {
     expect(usedParameters(panels)).toEqual(["top_n", "measure"]);
     expect(usedParameters([panel(bar())])).toEqual([]);
     expect(usedParameters([])).toEqual([]);
+  });
+});
+
+// --- a panel's own filters and the dashboard's ----------------------------------------
+
+describe("effectiveFilters", () => {
+  const dashboard: PanelFilters = {
+    date: { preset: "this_month" },
+    type: "debit",
+    categories: ["c-rent"],
+    merchant_contains: "fuel",
+  };
+
+  it("uses the panel's own categories over the dashboard's", () => {
+    const panel = { ...EMPTY_FILTERS, categories: ["c-food", "c-groceries"] };
+    expect(effectiveFilters(panel, dashboard).categories).toEqual(["c-food", "c-groceries"]);
+  });
+
+  it("uses the panel's own categories when the dashboard picks every category", () => {
+    const every = { ...DEFAULT_DASHBOARD_FILTERS, categories: ["c-food", "c-groceries", "c-rent", "c-salary"] };
+    const panel = { ...EMPTY_FILTERS, categories: ["c-food"] };
+    expect(effectiveFilters(panel, every).categories).toEqual(["c-food"]);
+  });
+
+  it("follows the dashboard's categories when the panel has none", () => {
+    expect(effectiveFilters(EMPTY_FILTERS, dashboard).categories).toEqual(["c-rent"]);
+  });
+
+  it("falls back for each filter on its own", () => {
+    const panel = { ...EMPTY_FILTERS, categories: ["c-food"] };
+    expect(effectiveFilters(panel, dashboard)).toEqual({
+      date: { preset: "this_month" },
+      type: "debit",
+      categories: ["c-food"],
+      merchant_contains: "fuel",
+    });
+  });
+
+  it("keeps every filter the panel sets", () => {
+    const panel: PanelFilters = {
+      date: { preset: "last_3_months" },
+      type: "credit",
+      categories: ["c-salary"],
+      merchant_contains: "payroll",
+    };
+    expect(effectiveFilters(panel, dashboard)).toEqual(panel);
+  });
+
+  it("leaves both sides unchanged", () => {
+    const panel = { ...EMPTY_FILTERS, categories: ["c-food"] };
+    effectiveFilters(panel, dashboard);
+    expect(panel.categories).toEqual(["c-food"]);
+    expect(dashboard.categories).toEqual(["c-rent"]);
   });
 });
