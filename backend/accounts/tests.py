@@ -164,6 +164,16 @@ def test_reusing_a_rotated_refresh_token_is_rejected(client, user):
     assert client.post(REFRESH, **headers).status_code == 401
 
 
+def test_refresh_is_not_limited_by_failed_logins(client, user):
+    # Refresh has its own, looser limit: the login limit being used up must not end a session.
+    login(client)
+    for _ in range(4):
+        login(client, password="wrong-password-123")
+    assert login(client).status_code == 429  # the login limit is used up
+    headers = csrf_header(client)
+    assert all(client.post(REFRESH, **headers).status_code == 200 for _ in range(6))
+
+
 # --- logout -----------------------------------------------------------------
 
 

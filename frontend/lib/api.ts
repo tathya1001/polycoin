@@ -35,30 +35,63 @@ async function ensureCsrfToken(): Promise<string> {
   return token;
 }
 
+// What a refresh attempt found out:
+//   ok           new cookies are set: retry the request
+//   expired      the server rejected the session (401/403): it is really over, log out
+//   unavailable  the server didn't answer properly (waking up from sleep, a 5xx, a 429, offline):
+//                the session may be fine, so the user must NOT be logged out
+export type RefreshOutcome = "ok" | "expired" | "unavailable";
+
+// A sleeping backend takes up to about a minute to wake, and its database can need a few seconds
+// more. Retrying an "unavailable" refresh on this schedule covers most of that window.
+export const REFRESH_RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 10000, 15000];
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function refreshOnce(): Promise<RefreshOutcome> {
+  try {
+    // Plain fetch, not apiFetch: a failed refresh must not trigger another refresh.
+    const res = await fetch(`${API}/refresh/`, {
+      method: "POST",
+      headers: { "X-CSRFToken": await ensureCsrfToken() },
+      credentials: "include",
+    });
+    if (res.ok) return "ok";
+    return res.status === 401 || res.status === 403 ? "expired" : "unavailable";
+  } catch {
+    return "unavailable"; // network error, or the CSRF cookie couldn't be fetched
+  }
+}
+
 // One shared in-flight refresh. If several requests get a 401 at the same moment,
 // they all await the same promise. A second refresh would reuse the already-rotated
 // (blacklisted) refresh token, get a 401, and log the user out for no reason.
-let refreshPromise: Promise<boolean> | null = null;
+let refreshPromise: Promise<RefreshOutcome> | null = null;
 
-function refreshSession(): Promise<boolean> {
+export function refreshSession(): Promise<RefreshOutcome> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
-      try {
-        // Plain fetch, not apiFetch: a failed refresh must not trigger another refresh.
-        const res = await fetch(`${API}/refresh/`, {
-          method: "POST",
-          headers: { "X-CSRFToken": await ensureCsrfToken() },
-          credentials: "include",
-        });
-        return res.ok;
-      } catch {
-        return false;
+      let outcome = await refreshOnce();
+      for (const delay of REFRESH_RETRY_DELAYS_MS) {
+        if (outcome !== "unavailable") break;
+        await sleep(delay);
+        outcome = await refreshOnce();
       }
+      return outcome;
     })().finally(() => {
       refreshPromise = null; // allow a later expiry to refresh again
     });
   }
   return refreshPromise;
+}
+
+// Handed back instead of the 401 when the session couldn't be checked: pages show its detail
+// through readError, and the user stays signed in to try again.
+function serverUnavailable(): Response {
+  return new Response(
+    JSON.stringify({ detail: "The server is waking up or can't be reached. Try again in a moment." }),
+    { status: 503, headers: { "Content-Type": "application/json" } },
+  );
 }
 
 function redirectToLogin() {
@@ -97,9 +130,9 @@ async function send(
 
   const isAuthEndpoint = NO_REFRESH_PREFIXES.some((p) => path.startsWith(p));
   if (res.status === 401 && canRetry && !isAuthEndpoint) {
-    if (await refreshSession()) {
-      return send(path, options, false); // retry exactly once
-    }
+    const outcome = await refreshSession();
+    if (outcome === "ok") return send(path, options, false); // retry exactly once
+    if (outcome === "unavailable") return serverUnavailable();
     redirectToLogin();
   }
   return res;

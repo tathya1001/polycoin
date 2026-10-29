@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { LogoMark, Wordmark } from "@/components/shell/Logo";
+import { WakeServer } from "./WakeServer";
 
 // Split screen: a bold ink panel on the left (hidden on phones), the form on the right.
 export function AuthLayout({
@@ -16,6 +17,7 @@ export function AuthLayout({
 }) {
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
+      <WakeServer />
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-fill p-12 text-on-fill lg:flex">
         <Link href="/" className="flex items-center gap-3">
           <LogoMark size={36} className="text-on-fill" />

@@ -88,7 +88,10 @@ class RefreshView(APIView):
     # Skip cookie-JWT auth: the access token is usually expired when we get here.
     authentication_classes = []
     permission_classes = [AllowAny]
-    throttle_scope = "auth"
+    # Not the strict login limit: a refresh proves itself with a signed token, so there is
+    # nothing to guess, and several open tabs refresh at about the same time. Sharing "auth"
+    # (5/min) turned that into 429s, which the browser treated as a lost session.
+    throttle_scope = "refresh"
 
     def post(self, request):
         enforce_csrf(request)  # authentication_classes=[] disabled the automatic check

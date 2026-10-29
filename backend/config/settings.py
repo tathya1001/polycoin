@@ -146,6 +146,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "auth": "5/min",
+        "refresh": "30/min",
         "import": "10/hour",
         "import_preview": "60/hour",
         "ai": "20/hour",

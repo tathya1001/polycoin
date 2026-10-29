@@ -1,11 +1,17 @@
 name: Keep-alive
 
 # Render's free web service sleeps after 15 minutes without traffic, and waking takes ~1 minute.
-# This pings it every 10 minutes. Cron is UTC and best effort; odd minutes avoid the
-# top-of-the-hour queue when GitHub delays scheduled runs most.
+#
+# This is only a FALLBACK. GitHub runs scheduled workflows on a best-effort basis and throttles them
+# hard on quiet repositories: asked for every 10 minutes, it ran every 2-6 hours, so the service
+# still slept. The real keep-alive is an external uptime monitor calling the same /api/ping/ every
+# 5 minutes (see the deploy notes).
+#
+# Every 5 minutes (GitHub's shortest interval), at minutes 2, 7, 12, ... 57: offset from the top of
+# the hour, when GitHub's scheduled-run queue is longest.
 on:
   schedule:
-    - cron: "4,14,24,34,44,54 * * * *"
+    - cron: "2-59/5 * * * *"
   workflow_dispatch:
 
 permissions: {}
