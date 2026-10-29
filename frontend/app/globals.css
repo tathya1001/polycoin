@@ -1,8 +1,10 @@
 @import "tailwindcss";
 
-/* Polycoin design tokens: "soft neo-brutalist". Black-and-white chrome, colourful charts.
-   Light only for now. A dark theme later is one extra block under [data-theme="dark"]
-   that redefines the --color-* tokens below. */
+/* Polycoin design tokens. Three colour modes, set by Settings > Appearance as data-theme on <html>:
+   - Classic (no attribute): "soft neo-brutalist". Black-and-white chrome, colourful charts.
+   - Light / Dark: soft and modern. Quiet structural lines, gentle depth, calm contrast (body
+     text about 13:1, never pure black on pure white). Buttons keep the hard offset shadow.
+   Components use only the semantic tokens in @theme; a mode is one block that redefines them. */
 
 :root {
   --app-font: var(--font-geist-sans), system-ui, sans-serif;
@@ -78,26 +80,105 @@ html[data-font="instrument-serif"] {
   --font-sans: var(--app-font);
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  --color-canvas: #f7f6f2;
-  --color-surface: #ffffff;
-  --color-ink: #111111;
-  --color-ink-2: #4a4a4a;
-  --color-muted: #8a8a85;
-  --color-hairline: #e4e2dc;
+  /* Classic values. Light and Dark override them below. */
+  --color-canvas: #f7f6f2; /* the page */
+  --color-surface: #ffffff; /* cards, panels, inputs */
+  --color-ink: #111111; /* text */
+  --color-fill: #111111; /* solid emphasis: primary button, active chip, the selected nav item */
+  --color-on-fill: #ffffff; /* text and icons on a fill */
+  --color-ink-2: #4a4a4a; /* secondary text */
+  --color-muted: #8a8a85; /* hints, axis labels */
+  --color-hairline: #e4e2dc; /* dividers inside a surface */
+  --color-line: #111111; /* the outline of a structure: card, input, table, popover */
+  --color-edge: #111111; /* the outline of a control: button, chip, checkbox */
+  --color-shadow: #111111; /* the hard offset shadow under raised controls */
   --color-wash: #efede6; /* hover / subtle fill on canvas */
+  --color-select: #fff8db; /* a selected table row */
+  --color-select-hover: #fff3c4;
   --color-pos: #15803d;
+  --color-pos-bg: #dcfce7;
   --color-neg: #dc2626;
+  --color-neg-bg: #fee2e2;
+  --color-neg-wash: #fff1f1; /* the inside of an error note */
   --color-warn-bg: #fff4d6;
+  --color-warn-ink: #8a5a00;
+  --color-backdrop: rgb(17 17 17 / 0.35); /* behind a dialog */
 
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 16px;
 
-  --shadow-hard-sm: 2px 2px 0 0 #111111;
-  --shadow-hard: 4px 4px 0 0 #111111;
-  --shadow-hard-lg: 8px 8px 0 0 #111111;
+  --shadow-hard-sm: 2px 2px 0 0 var(--color-shadow);
+  --shadow-hard: 4px 4px 0 0 var(--color-shadow);
+  --shadow-hard-lg: 8px 8px 0 0 var(--color-shadow);
+  --shadow-card: 2px 2px 0 0 var(--color-shadow); /* a resting card */
+  --shadow-pop: 4px 4px 0 0 var(--color-shadow); /* menus, popovers, toasts, the sidebar */
+  --shadow-overlay: 8px 8px 0 0 var(--color-shadow); /* dialogs and drawers */
 
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Light: a true white tone (never pure #fff, and no grey or blue cast) with near-black neutral ink.
+   Contrast on the page: ink 13.6, ink-2 7.0, muted 4.9, pos 5.2, neg 5.5. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-canvas: #fbfbf9;
+  --color-surface: #fefefd;
+  --color-ink: #2b2b2e;
+  --color-fill: #2b2b2e;
+  --color-on-fill: #fefefd;
+  --color-ink-2: #56565c;
+  --color-muted: #6e6e74;
+  --color-hairline: #eeede9;
+  --color-line: #e4e3df;
+  --color-edge: #3a3a3f;
+  --color-shadow: #d2d1cc;
+  --color-wash: #f3f2ee;
+  --color-select: #fbf4df;
+  --color-select-hover: #f8edcf;
+  --color-pos: #1c7a4b;
+  --color-pos-bg: #e5f3ea;
+  --color-neg: #b93838;
+  --color-neg-bg: #fbeae9;
+  --color-neg-wash: #fdf3f2;
+  --color-warn-bg: #fbf1d9;
+  --color-warn-ink: #7a5300;
+  --color-backdrop: rgb(20 20 22 / 0.28);
+  --shadow-card: 0 1px 2px rgb(20 20 22 / 0.05);
+  --shadow-pop: 0 12px 32px -10px rgb(20 20 22 / 0.18), 0 2px 6px rgb(20 20 22 / 0.05);
+  --shadow-overlay: 0 24px 60px -16px rgb(20 20 22 / 0.26), 0 4px 12px rgb(20 20 22 / 0.07);
+}
+
+/* Dark: neutral black (no blue cast), with soft off-white ink rather than pure white.
+   Contrast on the page: ink 13.1, ink-2 8.1, muted 5.3, pos 8.5, neg 7.1. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #0f0f10;
+  --color-surface: #161618;
+  --color-ink: #d6d6d8;
+  /* A raised charcoal, not a near-white block: emphasis without glare (its text 11:1). */
+  --color-fill: #2e2e33;
+  --color-on-fill: #ececed;
+  --color-ink-2: #a8a8ad;
+  --color-muted: #86868c;
+  --color-hairline: #222224;
+  --color-line: #2c2c2f;
+  --color-edge: #8a8a90;
+  --color-shadow: #000000;
+  --color-wash: #1e1e21;
+  --color-select: #26272c;
+  --color-select-hover: #2e2f35;
+  --color-pos: #52c08a;
+  --color-pos-bg: #14291f;
+  --color-neg: #f07b74;
+  --color-neg-bg: #33201f;
+  --color-neg-wash: #261a1a;
+  --color-warn-bg: #2f2919;
+  --color-warn-ink: #e8c36a;
+  --color-backdrop: rgb(0 0 0 / 0.6);
+  --shadow-card: 0 0 #0000;
+  --shadow-pop: 0 14px 36px -10px rgb(0 0 0 / 0.7);
+  --shadow-overlay: 0 28px 70px -16px rgb(0 0 0 / 0.8);
 }
 
 html {
@@ -119,12 +200,12 @@ body {
 }
 
 ::selection {
-  background: #111111;
-  color: #ffffff;
+  background: var(--color-ink);
+  color: var(--color-surface);
 }
 
 dialog::backdrop {
-  background: rgb(17 17 17 / 0.35);
+  background: var(--color-backdrop);
 }
 
 /* Toast entrance */

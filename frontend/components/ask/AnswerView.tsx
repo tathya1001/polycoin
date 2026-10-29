@@ -41,7 +41,7 @@ export function AnswerView({
                 type="button"
                 onClick={() => onCite(segment.source.n)}
                 title={`${segment.source.name}, ${segment.source.date}`}
-                className="mx-0.5 inline-grid h-5 min-w-5 place-items-center rounded-full border-[1.5px] border-ink bg-surface px-1 align-[0.1em] text-[11px] font-semibold hover:bg-wash"
+                className="mx-0.5 inline-grid h-5 min-w-5 place-items-center rounded-full border-[1.5px] border-edge bg-surface px-1 align-[0.1em] text-[11px] font-semibold hover:bg-wash"
               >
                 {segment.source.n}
               </button>

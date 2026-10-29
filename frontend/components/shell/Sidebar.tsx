@@ -60,7 +60,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
         title={collapsed ? nav.label : undefined}
         className={cn(
           "relative z-10 flex h-10 items-center gap-3 rounded-md px-3.5 text-sm font-medium transition-colors duration-200",
-          active ? "text-white" : "text-ink-2 hover:bg-wash hover:text-ink",
+          active ? "text-on-fill" : "text-ink-2 hover:bg-wash hover:text-ink",
         )}
       >
         <Icon size={20} strokeWidth={1.75} className="shrink-0" aria-hidden />
@@ -72,7 +72,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
   return (
     <aside
       className={cn(
-        "fixed top-3 bottom-3 left-3 z-50 flex w-68 flex-col rounded-lg border-[1.5px] border-ink bg-surface shadow-hard",
+        "fixed top-3 bottom-3 left-3 z-50 flex w-68 flex-col rounded-lg border-[1.5px] border-line bg-surface shadow-pop",
         "transition-[width,transform] duration-300 ease-out",
         "md:sticky md:z-20 md:h-[calc(100dvh-1.5rem)] md:translate-x-0 md:shrink-0 md:self-start",
         collapsed ? "md:w-[72px]" : "md:w-62",
@@ -112,7 +112,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
       <nav aria-label="Main" className="relative flex min-h-0 flex-1 flex-col overflow-x-clip overflow-y-auto px-3 pb-2">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-3 z-0 rounded-md bg-ink"
+          className="pointer-events-none absolute inset-x-3 z-0 rounded-md bg-fill"
           style={{
             height: pill?.height ?? 0,
             opacity: pill ? 1 : 0,
@@ -142,7 +142,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
         <div className="flex h-10 items-center gap-3 px-1.5" title={collapsed ? (email ?? undefined) : undefined}>
           <span
             aria-hidden
-            className="grid size-8 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-wash text-xs font-semibold uppercase"
+            className="grid size-8 shrink-0 place-items-center rounded-full border-[1.5px] border-line bg-wash text-xs font-semibold uppercase"
           >
             {email?.[0] ?? "·"}
           </span>

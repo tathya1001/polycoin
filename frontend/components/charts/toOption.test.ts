@@ -67,7 +67,13 @@ describe("labels", () => {
   it("add the value to a pie slice's share", () => {
     const [pie] = series(chart("pie", { labels: true }), PIE);
     expect(pie.label.formatter({ value: 30, percent: 30 })).toBe("₹30.00 (30%)");
-    expect(series(chart("pie"), PIE)[0].label).toEqual({ formatter: "{d}%" }); // the old default
+    // The old default, in the mode's text colour with no halo (ECharts' own smears on dark).
+    expect(series(chart("pie"), PIE)[0].label).toEqual({
+      formatter: "{d}%",
+      color: "#111111",
+      textBorderColor: "transparent",
+      textBorderWidth: 0,
+    });
   });
 
   it("show a histogram's counts", () => {

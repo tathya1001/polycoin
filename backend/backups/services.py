@@ -165,6 +165,7 @@ def _preferences(user) -> dict:
         "chart_quality": (
             preferences.chart_quality if preferences else UserPreferences.DEFAULT_CHART_QUALITY
         ),
+        "theme": preferences.theme if preferences else UserPreferences.DEFAULT_THEME,
     }
 
 
@@ -478,14 +479,17 @@ def _restore_dashboards(user, cipher: UserCipher, dashboards: list[dict], mappin
 
 
 def _restore_preferences(user, preferences: dict) -> None:
-    """Only values this version knows: a font removed since the backup keeps the current one."""
+    """Only values this version knows: a font removed since the backup, or a setting an older
+    backup doesn't have (such as the theme), keeps the current one."""
     current, _ = UserPreferences.objects.get_or_create(user=user)
-    fonts = {key for key, _ in UserPreferences.FONT_CHOICES}
-    qualities = {key for key, _ in UserPreferences.CHART_QUALITY_CHOICES}
-    if preferences.get("font") in fonts:
-        current.font = preferences["font"]
-    if preferences.get("chart_quality") in qualities:
-        current.chart_quality = preferences["chart_quality"]
+    known = {
+        "font": UserPreferences.FONT_CHOICES,
+        "chart_quality": UserPreferences.CHART_QUALITY_CHOICES,
+        "theme": UserPreferences.THEME_CHOICES,
+    }
+    for field, choices in known.items():
+        if preferences.get(field) in {key for key, _ in choices}:
+            setattr(current, field, preferences[field])
     current.save()
 
 

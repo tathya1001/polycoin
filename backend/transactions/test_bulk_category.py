@@ -134,3 +134,40 @@ def test_there_is_a_size_limit(alice):
 def test_post_on_the_list_still_cannot_create_a_transaction(alice):
     res = client_for(alice).post("/api/transactions/", {"name": "x"}, format="json")
     assert res.status_code == 405
+
+
+# --- deleting -------------------------------------------------------------------------------
+
+DELETE_URL = "/api/transactions/bulk-delete/"
+
+
+def delete(user, ids):
+    return client_for(user).post(DELETE_URL, {"transactions": [str(i) for i in ids]}, format="json")
+
+
+def test_many_transactions_are_deleted(alice):
+    rows = three(alice)
+    res = delete(alice, [r.id for r in rows[:2]])
+    assert res.status_code == 200
+    assert res.json() == {"deleted": 2, "missing": []}
+    assert list(Transaction.objects.filter(user=alice).values_list("id", flat=True)) == [rows[2].id]
+
+
+def test_bulk_delete_never_touches_another_users_rows(alice, bob):
+    mine, theirs = three(alice)[0], three(bob)[0]
+    unknown = uuid.uuid4()
+    res = delete(alice, [mine.id, theirs.id, unknown])
+    assert res.json() == {"deleted": 1, "missing": sorted([str(theirs.id), str(unknown)])}
+    assert Transaction.objects.filter(pk=theirs.pk).exists()
+
+
+def test_bulk_delete_validates_its_input(alice):
+    assert delete(alice, []).status_code == 400
+    assert delete(alice, [uuid.uuid4()] * (MAX_BULK_TRANSACTIONS + 1)).status_code == 400
+    bad = client_for(alice).post(DELETE_URL, {"transactions": ["nope"]}, format="json")
+    assert bad.status_code == 400
+
+
+def test_anonymous_bulk_delete_is_refused():
+    res = APIClient().post(DELETE_URL, {"transactions": [str(uuid.uuid4())]}, format="json")
+    assert res.status_code in (401, 403)

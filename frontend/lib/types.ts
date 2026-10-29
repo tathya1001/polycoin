@@ -1,4 +1,5 @@
 import type { FontChoice } from "@/lib/fonts";
+import type { ThemeChoice } from "@/lib/theme";
 
 // A word or phrase that helps the AI recognise a category. The category's own name is
 // always used too, so it is not listed here.
@@ -476,9 +477,10 @@ export type QueryOutcome = QueryResult | QueryError;
 // --- Preferences (Settings page) ---
 
 export type { FontChoice } from "@/lib/fonts";
+export type { ThemeChoice } from "@/lib/theme";
 
 // "quality": charts are sharp vector graphics (SVG). "performance": a pixel canvas, faster
 // for charts with thousands of points.
 export type ChartQuality = "quality" | "performance";
 
-export type Preferences = { font: FontChoice; chart_quality: ChartQuality };
+export type Preferences = { font: FontChoice; chart_quality: ChartQuality; theme: ThemeChoice };

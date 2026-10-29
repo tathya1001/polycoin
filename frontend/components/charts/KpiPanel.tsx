@@ -14,8 +14,8 @@ import type { PanelConfig, QueryResult } from "@/lib/types";
 import Sparkline from "./Sparkline";
 
 const TONES: Record<Tone, string> = {
-  good: "bg-[#dcfce7] text-pos",
-  bad: "bg-[#fee2e2] text-neg",
+  good: "bg-pos-bg text-pos",
+  bad: "bg-neg-bg text-neg",
   flat: "bg-wash text-ink-2",
 };
 

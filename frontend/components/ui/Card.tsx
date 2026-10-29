@@ -11,7 +11,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-md border-[1.5px] border-ink bg-surface shadow-hard-sm",
+        "rounded-md border-[1.5px] border-line bg-surface shadow-card",
         padded && "p-5",
         interactive && "transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-hard",
         className,
@@ -33,8 +33,8 @@ type ChipProps = {
 // A pill: a filter, a keyword, a choice. Becomes a button when it can be clicked.
 export function Chip({ active, onClick, onRemove, icon, className, children }: ChipProps) {
   const look = cn(
-    "inline-flex h-8 items-center gap-1.5 rounded-full border-[1.5px] border-ink px-3 text-[13px] font-medium whitespace-nowrap transition-colors duration-150",
-    active ? "bg-ink text-white" : "bg-surface text-ink",
+    "inline-flex h-8 items-center gap-1.5 rounded-full border-[1.5px] border-edge px-3 text-[13px] font-medium whitespace-nowrap transition-colors duration-150",
+    active ? "bg-fill text-on-fill" : "bg-surface text-ink",
     onClick && !active && "hover:bg-wash",
     className,
   );
@@ -72,10 +72,10 @@ export type BadgeTone = "neutral" | "pos" | "neg" | "warn" | "ink";
 
 const TONES: Record<BadgeTone, string> = {
   neutral: "bg-wash text-ink-2",
-  pos: "bg-[#dcfce7] text-pos",
-  neg: "bg-[#fee2e2] text-neg",
-  warn: "bg-warn-bg text-[#8a5a00]",
-  ink: "bg-ink text-white",
+  pos: "bg-pos-bg text-pos",
+  neg: "bg-neg-bg text-neg",
+  warn: "bg-warn-bg text-warn-ink",
+  ink: "bg-fill text-on-fill",
 };
 
 export function Badge({ tone = "neutral", className, ...rest }: ComponentProps<"span"> & { tone?: BadgeTone }) {

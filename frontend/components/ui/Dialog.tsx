@@ -39,7 +39,7 @@ export function Dialog({
         if (e.target === e.currentTarget) onClose(); // a click on the backdrop
       }}
       className={cn(
-        "m-auto w-[min(92vw,var(--dialog-w))] rounded-lg border-[1.5px] border-ink bg-surface p-0 text-ink shadow-hard-lg",
+        "m-auto w-[min(92vw,var(--dialog-w))] rounded-lg border-[1.5px] border-line bg-surface p-0 text-ink shadow-overlay",
         "open:animate-[pop-in_160ms_ease-out]",
       )}
       style={{ "--dialog-w": { sm: "26rem", md: "38rem", lg: "52rem" }[size] } as CSSProperties}

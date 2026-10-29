@@ -3,15 +3,16 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type DragEvent } from "react";
-import { ArrowLeft, ArrowRight, FileUp, GripVertical, Receipt, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileUp, GripVertical, Receipt, Sparkles, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { readError } from "@/lib/errors";
 import { money } from "@/lib/format";
 import type { Category, Page, Transaction } from "@/lib/types";
 import { BucketBar, TXN_DRAG_TYPE } from "@/components/transactions/BucketBar";
-import { Button, buttonClass } from "@/components/ui/Button";
+import { Button, buttonClass, IconButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { useConfirm } from "@/components/ui/Confirm";
 import { EmptyState, ErrorNote, Loading } from "@/components/ui/Feedback";
 import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -20,6 +21,7 @@ import { useToast } from "@/components/ui/Toast";
 
 const URL = "/api/transactions/";
 const BULK_URL = "/api/transactions/bulk-category/";
+const BULK_DELETE_URL = "/api/transactions/bulk-delete/";
 const PAGE_SIZE = 50; // matches TransactionPagination on the backend
 
 // useSearchParams needs a Suspense boundary, or the production build refuses to prerender.
@@ -36,8 +38,9 @@ function dragBadge(count: number): HTMLElement {
   const el = document.createElement("div");
   el.textContent = count === 1 ? "1 transaction" : `${count} transactions`;
   el.style.cssText =
-    "position:fixed;top:-100px;left:-100px;padding:6px 12px;border:1.5px solid #111;border-radius:999px;" +
-    "background:#111;color:#fff;font:600 13px system-ui,sans-serif;box-shadow:3px 3px 0 #111;";
+    "position:fixed;top:-100px;left:-100px;padding:6px 12px;border:1.5px solid var(--color-fill);" +
+    "border-radius:999px;background:var(--color-fill);color:var(--color-on-fill);" +
+    "font:600 13px system-ui,sans-serif;box-shadow:3px 3px 0 var(--color-shadow);";
   document.body.appendChild(el);
   return el;
 }
@@ -47,6 +50,7 @@ function Transactions() {
   // so the filters start from the URL. After that they are ordinary page state.
   const searchParams = useSearchParams();
   const toast = useToast();
+  const confirm = useConfirm();
   const [data, setData] = useState<Page<Transaction> | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -203,6 +207,37 @@ function Transactions() {
     );
   }
 
+  // --- deleting --------------------------------------------------------------------
+
+  // A real delete. The same statement imported again brings the rows back, new and in "Others".
+  async function deleteRows(ids: string[]) {
+    const one = ids.length === 1;
+    const ok = await confirm({
+      title: one ? "Delete this transaction?" : `Delete ${ids.length} transactions?`,
+      message:
+        "This can't be undone. Importing the same statement again brings " +
+        (one ? "it back as a new transaction" : "them back as new transactions") +
+        " in Others, without the category or notes.",
+      confirmLabel: "Delete",
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      const res = one
+        ? await apiFetch(`${URL}${ids[0]}/`, { method: "DELETE" })
+        : await apiFetch(BULK_DELETE_URL, { method: "POST", body: JSON.stringify({ transactions: ids }) });
+      if (!res.ok) {
+        toast.error(await readError(res, "Could not delete."));
+        return;
+      }
+      toast.success(one ? "Transaction deleted." : `${ids.length} transactions deleted.`);
+      setSelected(new Set());
+      setReloadKey((k) => k + 1); // the page refills from the next rows (or steps back if emptied)
+    } catch {
+      toast.error("Cannot reach the server.");
+    }
+  }
+
   // --- selection --------------------------------------------------------------------
 
   function toggleRow(index: number, checked: boolean) {
@@ -308,12 +343,12 @@ function Transactions() {
 
       {/* What to do with the selection, for keyboards and touch screens (no dragging needed). */}
       {someSelected && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-ink bg-ink px-4 py-2 text-sm text-white shadow-hard-sm">
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-fill bg-fill px-4 py-2 text-sm text-on-fill shadow-hard-sm">
           <span className="font-semibold">{selected.size} selected</span>
           <label className="flex items-center gap-2">
             Move to
             <select
-              className="h-8 rounded-sm border-[1.5px] border-white bg-ink px-2 text-white"
+              className="h-8 rounded-sm border-[1.5px] border-on-fill bg-fill px-2 text-on-fill"
               value=""
               onChange={(e) => e.target.value && moveInto(e.target.value, [...selected])}
             >
@@ -325,7 +360,14 @@ function Transactions() {
               ))}
             </select>
           </label>
-          <span className="hidden text-white/60 sm:inline">or drag them onto a bucket</span>
+          <span className="hidden text-on-fill/60 sm:inline">or drag them onto a bucket</span>
+          <button
+            type="button"
+            className="inline-flex h-8 items-center gap-1.5 rounded-sm border-[1.5px] border-on-fill px-2 font-medium hover:bg-on-fill/10"
+            onClick={() => deleteRows([...selected])}
+          >
+            <Trash2 size={14} aria-hidden /> Delete
+          </button>
           <button type="button" className="ml-auto underline underline-offset-2" onClick={() => setSelected(new Set())}>
             Clear selection
           </button>
@@ -364,6 +406,9 @@ function Transactions() {
                 <Th align="right">Balance</Th>
                 <Th>Category</Th>
                 <Th>Notes</Th>
+                <Th className="w-12">
+                  <span className="sr-only">Delete</span>
+                </Th>
               </Tr>
             </thead>
             <tbody className={loading ? "opacity-50 transition-opacity" : "transition-opacity"}>
@@ -379,7 +424,7 @@ function Transactions() {
                     className={cn(
                       "group",
                       !editing && "cursor-grab active:cursor-grabbing",
-                      isSelected && "bg-[#fff8db] hover:bg-[#fff3c4]",
+                      isSelected && "bg-select hover:bg-select-hover",
                     )}
                   >
                     <Td className="w-10">
@@ -437,7 +482,7 @@ function Transactions() {
                       <span className="flex items-center gap-2">
                         <span
                           aria-hidden
-                          className="size-3 shrink-0 rounded-full border border-ink"
+                          className="size-3 shrink-0 rounded-full border border-edge"
                           style={{ backgroundColor: colorOf(txn.category) }}
                         />
                         <Select
@@ -480,6 +525,16 @@ function Transactions() {
                           {txn.notes || "Add note"}
                         </button>
                       )}
+                    </Td>
+                    <Td className="w-12">
+                      {/* Shown on hover or focus where there is a pointer; always on touch screens. */}
+                      <IconButton
+                        size="sm"
+                        label={`Delete ${txn.name}`}
+                        icon={<Trash2 size={15} />}
+                        className="text-muted hover:bg-neg-bg hover:text-neg focus-visible:opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                        onClick={() => deleteRows([txn.id])}
+                      />
                     </Td>
                   </Tr>
                 );

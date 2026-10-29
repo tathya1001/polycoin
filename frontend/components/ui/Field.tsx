@@ -3,8 +3,8 @@ import { Check, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const CONTROL =
-  "w-full border-[1.5px] border-ink bg-surface text-ink placeholder:text-muted " +
-  "transition-shadow duration-150 focus-visible:shadow-hard-sm " +
+  "w-full border-[1.5px] border-line bg-surface text-ink placeholder:text-muted " +
+  "transition-[box-shadow,border-color] duration-150 focus-visible:border-edge focus-visible:shadow-hard-sm " +
   "aria-[invalid=true]:border-neg disabled:cursor-not-allowed disabled:bg-wash disabled:text-muted";
 
 type Dense = { dense?: boolean };
@@ -61,7 +61,7 @@ export function Checkbox({ label, onChange, className, ...rest }: CheckboxProps)
       <input type="checkbox" className="peer sr-only" onChange={(e) => onChange?.(e.target.checked)} {...rest} />
       <span
         aria-hidden
-        className="grid size-[18px] shrink-0 place-items-center rounded-[5px] border-[1.5px] border-ink bg-surface text-white transition-colors peer-checked:bg-ink peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink [&>svg]:opacity-0 peer-checked:[&>svg]:opacity-100"
+        className="grid size-[18px] shrink-0 place-items-center rounded-[5px] border-[1.5px] border-edge bg-surface text-on-fill transition-colors peer-checked:border-fill peer-checked:bg-fill peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ink [&>svg]:opacity-0 peer-checked:[&>svg]:opacity-100"
       >
         <Check size={13} strokeWidth={3} />
       </span>

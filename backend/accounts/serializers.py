@@ -39,12 +39,12 @@ class UserSerializer(serializers.ModelSerializer):
 
 class PreferencesSerializer(serializers.ModelSerializer):
     """Whitelisted by construction: only the fields listed here can ever be written, and
-    `font` and `chart_quality` are ChoiceFields, so only the values listed in UserPreferences
-    are accepted."""
+    `font`, `chart_quality` and `theme` are ChoiceFields, so only the values listed in
+    UserPreferences are accepted."""
 
     class Meta:
         model = UserPreferences
-        fields = ("font", "chart_quality")
+        fields = ("font", "chart_quality", "theme")
 
 
 class DeleteDataSerializer(serializers.Serializer):

@@ -8,6 +8,7 @@ from django.db.models import ProtectedError
 from django.test import Client
 
 from accounts.models import User
+from categories.models import Category
 from categories.services import get_default_category, seed_default_categories
 from transactions.models import Transaction
 from transactions.services import create_transaction
@@ -708,3 +709,27 @@ def test_preview_has_its_own_rate_limit(alice, monkeypatch):
         assert post_file(alice, make_csv(SAMPLE_ROWS), url=PREVIEW_URL).status_code == 200
     assert post_file(alice, make_csv(SAMPLE_ROWS)).status_code == 200
     assert post_file(alice, make_csv(SAMPLE_ROWS)).status_code == 429
+
+
+# --- deleting, then importing again -------------------------------------------
+
+def test_a_deleted_transaction_comes_back_fresh_on_reimport(alice):
+    post_import(alice)
+    coffee = Transaction.objects.get(user=alice, date=date(2026, 4, 1))
+    food = Category.objects.get(user=alice, name="Food")
+    coffee.category = food
+    coffee.save()
+
+    assert client_for(alice).delete(f"{URL}{coffee.id}/").status_code == 204
+    again = post_import(alice).json()
+
+    assert (again["imported"], again["duplicates"]) == (1, 2)
+    back = Transaction.objects.get(user=alice, date=date(2026, 4, 1))
+    assert back.id != coffee.id
+    assert back.category == get_default_category(alice)  # fresh, in "Others"
+
+
+def test_another_users_transaction_cannot_be_deleted(alice, bob):
+    txn = make_txn(alice)
+    assert client_for(bob).delete(f"{URL}{txn.id}/").status_code == 404
+    assert Transaction.objects.filter(pk=txn.pk).exists()

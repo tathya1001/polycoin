@@ -22,6 +22,31 @@ export const CATEGORY_COLORS = [
 
 export const OTHERS_COLOR = "#9CA3AF";
 
+// Dark mode draws charts on a dark surface, where the light steps above sit too dark or too
+// loud. Each default colour has a dark step of the same hue: slots 1-8 are the reference
+// palette's validated dark steps (they pass every colour-blind and contrast check on the dark
+// surface #0F0F10); 9-12 and Others are lifted to clear 3:1 there. A colour the user picked
+// themselves is not in this table and is drawn as chosen.
+const DARK_STEPS: Record<string, string> = {
+  "#2A78D6": "#3987E5",
+  "#EB6834": "#D95926",
+  "#1BAF7A": "#199E70",
+  "#EDA100": "#C98500",
+  "#E87BA4": "#D55181",
+  "#008300": "#008300",
+  "#6250D6": "#9085E9",
+  "#E34948": "#E66767",
+  "#0E9FB5": "#1AA9BF",
+  "#8D6E63": "#A1887F",
+  "#84A912": "#8DB31A",
+  "#5B6B7F": "#8796AA",
+  [OTHERS_COLOR]: "#8B93A1",
+};
+
+export function darkStep(color: string): string {
+  return DARK_STEPS[color.toUpperCase()] ?? color;
+}
+
 // Used for series that have no category colour and no override: position decides.
 export const FALLBACK_SERIES_COLORS = CATEGORY_COLORS;
 

@@ -10,6 +10,7 @@ import { CalendarComponent, GridComponent, LegendComponent, TooltipComponent, Vi
 import { CanvasRenderer, SVGRenderer } from "echarts/renderers";
 import { CATEGORY_COLORS } from "@/lib/colors";
 import { CHART_TEXT_SCALE } from "@/lib/fonts";
+import { CHART_LOOKS, type ChartLook } from "@/lib/theme";
 import { useSession } from "@/components/shell/Session";
 import type { ChartOption } from "./toOption";
 
@@ -28,49 +29,55 @@ echarts.use([
   CanvasRenderer,
 ]);
 
-// The Polycoin look: ink text and axes, hairline dashed grid lines, a tooltip that is a
-// small brutalist card. Series colours are set per series in toOption; `color` is only the
-// fallback ECharts uses for anything we did not colour.
-const INK = "#111111";
-const MUTED = "#4a4a4a";
-const HAIRLINE = "#e4e2dc";
-
-function themeFor(fontFamily: string, scale: number) {
+// The chart chrome comes from the colour mode (lib/theme.ts CHART_LOOKS): text, axes, a recessive
+// dashed grid, and a tooltip that is a small flat card (dashboards carry no shadows). Series
+// colours are set per series in toOption; `color` is only the fallback ECharts uses for
+// anything we did not colour.
+function themeFor(fontFamily: string, scale: number, look: ChartLook) {
   const size = (px: number) => Math.round(px * scale * 10) / 10;
-  const axisLabel = { color: MUTED, fontSize: size(12) };
+  const axisLabel = { color: look.muted, fontSize: size(12) };
   return {
-    color: [...CATEGORY_COLORS],
+    color: CATEGORY_COLORS.map(look.series),
     backgroundColor: "transparent",
-    textStyle: { fontFamily, color: INK, fontSize: size(12) },
+    textStyle: { fontFamily, color: look.text, fontSize: size(12) },
     categoryAxis: {
-      axisLine: { show: true, lineStyle: { color: INK, width: 1.5 } },
+      axisLine: { show: true, lineStyle: { color: look.axis, width: 1.5 } },
       axisTick: { show: false },
       axisLabel,
       splitLine: { show: false },
+      splitArea: { areaStyle: { color: ["transparent", look.band] } },
     },
     valueAxis: {
       axisLine: { show: false },
       axisTick: { show: false },
       axisLabel,
-      splitLine: { show: true, lineStyle: { color: HAIRLINE, type: "dashed" as const } },
+      splitLine: { show: true, lineStyle: { color: look.grid, type: "dashed" as const } },
     },
     legend: {
       icon: "roundRect",
       itemWidth: 12,
       itemHeight: 12,
       itemGap: 14,
-      textStyle: { color: MUTED, fontSize: size(12) },
+      textStyle: { color: look.muted, fontSize: size(12) },
+      pageIconColor: look.pager.active,
+      pageIconInactiveColor: look.pager.inactive,
+      pageTextStyle: { color: look.muted },
+    },
+    visualMap: { textStyle: { color: look.muted, fontSize: size(12) } },
+    calendar: {
+      dayLabel: { color: look.muted },
+      monthLabel: { color: look.muted },
     },
     tooltip: {
-      backgroundColor: "#ffffff",
-      borderColor: INK,
+      backgroundColor: look.tooltip.background,
+      borderColor: look.tooltip.border,
       borderWidth: 1.5,
       padding: [8, 12],
-      textStyle: { color: INK, fontSize: size(13) },
-      extraCssText: "border-radius:12px;box-shadow:3px 3px 0 #111111;",
+      textStyle: { color: look.text, fontSize: size(13) },
+      extraCssText: "border-radius:12px;box-shadow:none;",
       axisPointer: {
-        lineStyle: { color: INK, width: 1 },
-        shadowStyle: { color: "rgba(17,17,17,0.06)" },
+        lineStyle: { color: look.muted, width: 1 },
+        shadowStyle: { color: look.band },
       },
     },
   };
@@ -86,7 +93,7 @@ type Props = {
 export default function EChart({ option, onPick }: Props) {
   // Settings > Charts: "quality" draws SVG (vector, sharp at any zoom), "performance" draws a
   // pixel canvas (faster when a chart has thousands of points).
-  const { preferences } = useSession();
+  const { preferences, theme } = useSession();
   const renderer = preferences.chart_quality === "performance" ? "canvas" : "svg";
   const font = preferences.font;
   const element = useRef<HTMLDivElement>(null);
@@ -100,7 +107,7 @@ export default function EChart({ option, onPick }: Props) {
     latestPick.current = onPick;
   });
 
-  // Create the chart (again whenever the renderer or the font changes), keep it sized to its box (panels
+  // Create the chart (again whenever the renderer, the font or the colour mode changes), keep it sized to its box (panels
   // are resized by dragging), and dispose of it when the panel goes away.
   useEffect(() => {
     const node = element.current;
@@ -110,8 +117,8 @@ export default function EChart({ option, onPick }: Props) {
     // whichever the user picked in Settings) as a plain string.
     const fontFamily = getComputedStyle(document.body).fontFamily;
     const scale = CHART_TEXT_SCALE[font] ?? 1;
-    const themeName = `polycoin-${fontFamily}-${scale}`;
-    echarts.registerTheme(themeName, themeFor(fontFamily, scale));
+    const themeName = `polycoin-${theme}-${fontFamily}-${scale}`;
+    echarts.registerTheme(themeName, themeFor(fontFamily, scale, CHART_LOOKS[theme]));
 
     const instance = echarts.init(node, themeName, { renderer });
     instance.setOption(latestOption.current);
@@ -131,7 +138,7 @@ export default function EChart({ option, onPick }: Props) {
       instance.dispose();
       chart.current = null;
     };
-  }, [renderer, font]); // switching the renderer or the font in Settings re-creates the chart
+  }, [renderer, font, theme]); // switching the renderer, font or colour mode re-creates the chart
 
   // New data or new settings: replace the whole option, so nothing from the old one lingers.
   useEffect(() => {

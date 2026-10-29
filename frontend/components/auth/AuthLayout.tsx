@@ -16,15 +16,15 @@ export function AuthLayout({
 }) {
   return (
     <main className="grid min-h-screen lg:grid-cols-[1.1fr_1fr]">
-      <aside className="relative hidden flex-col justify-between overflow-hidden bg-ink p-12 text-white lg:flex">
+      <aside className="relative hidden flex-col justify-between overflow-hidden bg-fill p-12 text-on-fill lg:flex">
         <Link href="/" className="flex items-center gap-3">
-          <LogoMark size={36} className="text-white" />
+          <LogoMark size={36} className="text-on-fill" />
           <Wordmark className="text-xl" />
         </Link>
 
         <div className="relative z-10 max-w-md">
           <h2 className="text-5xl leading-[1.05] font-semibold tracking-tight">Where did your money go?</h2>
-          <p className="mt-5 text-lg text-white/70">
+          <p className="mt-5 text-lg text-on-fill/70">
             Import a bank statement, let the app sort it, and build dashboards that answer it.
           </p>
         </div>

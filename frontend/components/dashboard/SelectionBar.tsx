@@ -13,7 +13,7 @@ export default function SelectionBar({ label, panelTitle, onClear }: Props) {
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-2 rounded-md border-[1.5px] border-ink bg-wash px-3 py-1.5 text-sm"
+      className="flex flex-wrap items-center gap-2 rounded-md border-[1.5px] border-line bg-wash px-3 py-1.5 text-sm"
     >
       <Filter size={15} aria-hidden />
       <span>

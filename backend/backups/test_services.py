@@ -322,6 +322,23 @@ def test_an_unknown_font_keeps_the_current_one(alice):
     assert (preferences.font, preferences.chart_quality) == ("bitter", "performance")
 
 
+def test_the_theme_comes_back_from_a_backup(alice):
+    UserPreferences.objects.update_or_create(user=alice, defaults={"theme": "dark"})
+    content = build_backup(alice)
+    UserPreferences.objects.filter(user=alice).update(theme="classic")
+
+    restore_backup(alice, content)
+
+    assert UserPreferences.objects.get(user=alice).theme == "dark"
+
+
+def test_a_backup_made_before_themes_keeps_the_current_theme(alice):
+    UserPreferences.objects.update_or_create(user=alice, defaults={"theme": "light"})
+    restore(alice, {"categories": [], "transactions": [], "dashboards": [],
+                    "preferences": {"font": "geist", "chart_quality": "quality"}})  # fmt: skip
+    assert UserPreferences.objects.get(user=alice).theme == "light"
+
+
 # --- refusing a bad file -----------------------------------------------------------------------
 
 

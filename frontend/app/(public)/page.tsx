@@ -30,7 +30,7 @@ export default function Home() {
 
       <section className="flex flex-1 flex-col justify-center py-16">
         <h1 className="max-w-3xl text-5xl leading-[1.02] font-semibold tracking-tight sm:text-7xl">
-          Your bank statement, <span className="rounded-md bg-ink px-3 text-white">finally</span> readable.
+          Your bank statement, <span className="rounded-md bg-fill px-3 text-on-fill">finally</span> readable.
         </h1>
         <p className="mt-6 max-w-xl text-lg text-ink-2">
           Import a statement, let Polycoin sort every transaction, and build colourful dashboards that show where
@@ -47,7 +47,7 @@ export default function Home() {
 
         <ul className="mt-16 grid gap-4 sm:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, text }) => (
-            <li key={title} className="rounded-md border-[1.5px] border-ink bg-surface p-5 shadow-hard-sm">
+            <li key={title} className="rounded-md border-[1.5px] border-line bg-surface p-5 shadow-card">
               <Icon size={22} strokeWidth={1.75} aria-hidden />
               <h2 className="mt-3 font-semibold">{title}</h2>
               <p className="mt-1 text-ink-2">{text}</p>

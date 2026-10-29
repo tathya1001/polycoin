@@ -69,8 +69,8 @@ export function BucketBar({ categories, activeId, dragCount, onFilter, onDropInt
           onClick={() => onFilter("")}
           aria-pressed={activeId === ""}
           className={cn(
-            "flex h-10 items-center gap-2 rounded-md border-[1.5px] border-ink px-3 text-sm font-medium transition-[transform,box-shadow,background-color] duration-150",
-            activeId === "" ? "bg-ink text-white shadow-hard-sm" : "bg-surface hover:-translate-y-px hover:shadow-hard-sm",
+            "flex h-10 items-center gap-2 rounded-md border-[1.5px] border-edge px-3 text-sm font-medium transition-[transform,box-shadow,background-color] duration-150",
+            activeId === "" ? "bg-fill text-on-fill shadow-hard-sm" : "bg-surface hover:-translate-y-px hover:shadow-hard-sm",
             dragging && "opacity-40",
           )}
         >
@@ -95,7 +95,7 @@ export function BucketBar({ categories, activeId, dragCount, onFilter, onDropInt
               style={hot ? { backgroundColor: category.color, color: readableOn(category.color) } : undefined}
               className={cn(
                 "flex h-10 items-center gap-2 rounded-md border-[1.5px] px-3 text-sm font-medium transition-[transform,box-shadow,background-color] duration-150",
-                active ? "border-ink bg-ink text-white shadow-hard-sm" : "border-ink bg-surface",
+                active ? "border-fill bg-fill text-on-fill shadow-hard-sm" : "border-edge bg-surface",
                 !dragging && !active && "hover:-translate-y-px hover:shadow-hard-sm",
                 // While dragging, every bucket shows it can take the rows; the one under the
                 // pointer fills with its own colour and lifts.
@@ -105,7 +105,7 @@ export function BucketBar({ categories, activeId, dragCount, onFilter, onDropInt
             >
               <span
                 aria-hidden
-                className="size-3 shrink-0 rounded-full border border-ink"
+                className="size-3 shrink-0 rounded-full border border-edge"
                 style={{ backgroundColor: category.color }}
               />
               {category.name}

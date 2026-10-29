@@ -5,7 +5,7 @@ import { signedMoney } from "@/lib/format";
 // <Table><thead><Tr><Th/>…</Tr></thead><tbody><Tr><Td/>…</Tr></tbody></Table>
 export function Table({ className, children, ...rest }: ComponentProps<"table">) {
   return (
-    <div className="overflow-x-auto rounded-md border-[1.5px] border-ink bg-surface shadow-hard-sm">
+    <div className="overflow-x-auto rounded-md border-[1.5px] border-line bg-surface shadow-card">
       <table className={cn("w-full border-collapse text-sm", className)} {...rest}>
         {children}
       </table>
@@ -26,7 +26,7 @@ export function Th({ align = "left", className, ...rest }: ComponentProps<"th"> 
   return (
     <th
       className={cn(
-        "border-b-[1.5px] border-ink bg-wash px-3 py-2.5 text-xs font-semibold tracking-wide whitespace-nowrap text-ink-2 uppercase",
+        "border-b-[1.5px] border-line bg-wash px-3 py-2.5 text-xs font-semibold tracking-wide whitespace-nowrap text-ink-2 uppercase",
         align === "right" ? "text-right" : "text-left",
         className,
       )}

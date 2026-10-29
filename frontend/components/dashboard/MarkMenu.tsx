@@ -64,7 +64,7 @@ export default function MarkMenu({ at, title, actions, onClose }: Props) {
       aria-label={title ? `Actions for ${title}` : "Actions"}
       onKeyDown={onKeyDown}
       style={{ left: place.left, top: place.top }}
-      className="fixed z-50 w-60 animate-[pop-in_140ms_ease-out] rounded-md border-[1.5px] border-ink bg-surface p-1.5 text-sm shadow-hard"
+      className="fixed z-50 w-60 animate-[pop-in_140ms_ease-out] rounded-md border-[1.5px] border-line bg-surface p-1.5 text-sm shadow-pop"
     >
       {title && <p className="truncate px-2.5 pt-1 pb-1.5 text-xs font-semibold text-ink-2 uppercase">{title}</p>}
       {actions.map((action) => (

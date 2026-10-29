@@ -60,7 +60,7 @@ export default function DashboardTabs(props: Props) {
   }
 
   return (
-    <div role="tablist" aria-label="Dashboards" className="flex flex-wrap items-end gap-1.5 border-b-[1.5px] border-ink">
+    <div role="tablist" aria-label="Dashboards" className="flex flex-wrap items-end gap-1.5 border-b-[1.5px] border-line">
       {dashboards.map((dashboard) => {
         const active = dashboard.id === activeId;
         return (
@@ -69,7 +69,7 @@ export default function DashboardTabs(props: Props) {
             className={cn(
               "mb-[-1.5px] flex h-10 items-center gap-1.5 rounded-t-md border-[1.5px] px-4 text-sm transition-colors duration-150",
               active
-                ? "border-ink border-b-surface bg-surface font-semibold"
+                ? "border-line border-b-surface bg-surface font-semibold"
                 : "border-transparent text-ink-2 hover:bg-wash hover:text-ink",
             )}
           >
@@ -84,7 +84,7 @@ export default function DashboardTabs(props: Props) {
                   if (e.key === "Enter") finishRename();
                   if (e.key === "Escape") setRenaming(null);
                 }}
-                className="w-40 border-b-[1.5px] border-ink bg-transparent outline-none"
+                className="w-40 border-b-[1.5px] border-edge bg-transparent outline-none"
                 aria-label="Dashboard name"
               />
             ) : (
@@ -102,7 +102,7 @@ export default function DashboardTabs(props: Props) {
             {active && editing && renaming !== dashboard.id && (
               <button
                 onClick={() => askDelete(dashboard)}
-                className="grid size-5 place-items-center rounded-full text-muted hover:bg-[#fee2e2] hover:text-neg"
+                className="grid size-5 place-items-center rounded-full text-muted hover:bg-neg-bg hover:text-neg"
                 aria-label={`Delete ${dashboard.name}`}
                 title="Delete this dashboard"
               >

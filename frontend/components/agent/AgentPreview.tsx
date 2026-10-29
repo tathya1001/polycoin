@@ -29,7 +29,7 @@ export default function AgentPreview({
       <Field label="Title" hint={preview.summary}>
         <Input value={title} maxLength={MAX_TITLE} onChange={(e) => onTitle(e.target.value)} />
       </Field>
-      <div className="h-64 rounded-md border-[1.5px] border-ink bg-surface p-2 shadow-hard-sm">
+      <div className="h-64 rounded-md border-[1.5px] border-line bg-canvas p-2">
         <PanelBody config={preview.config} outcome={preview.result} loading={false} categoryColors={categoryColors} />
       </div>
       {preview.notes.length > 0 && (

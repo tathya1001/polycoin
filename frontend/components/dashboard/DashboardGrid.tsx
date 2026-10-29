@@ -250,7 +250,7 @@ export default function DashboardGrid({ boxes, editing, onCommit, renderPanel }:
         // Where the dragged panel will land, drawn under the panels.
         <div
           aria-hidden
-          className="absolute top-0 left-0 z-0 rounded-md border-[1.5px] border-dashed border-ink/60 bg-ink/4 transition-transform duration-150 ease-out"
+          className="absolute top-0 left-0 z-0 rounded-md border-[1.5px] border-dashed border-edge/60 bg-ink/4 transition-transform duration-150 ease-out"
           style={(() => {
             const { left, top, width: w, height: h } = toPixels(target, width);
             return { transform: translate(left, top), width: w, height: h };
@@ -269,7 +269,7 @@ export default function DashboardGrid({ boxes, editing, onCommit, renderPanel }:
               key={box.id}
               className={`absolute top-0 left-0 ${
                 moving
-                  ? "z-20 rounded-md shadow-hard-lg will-change-transform"
+                  ? "z-20 rounded-md ring-[1.5px] ring-edge will-change-transform"
                   : `z-10 transition-transform duration-150 ease-out ${canEdit ? "will-change-transform" : ""}`
               }`}
               style={{ transform: translate(at.left, at.top), width: w, height: h }}
@@ -290,7 +290,7 @@ export default function DashboardGrid({ boxes, editing, onCommit, renderPanel }:
                   {...handle(box.id, "resize")}
                   aria-label="Resize panel"
                   title="Drag to resize"
-                  className="absolute right-1 bottom-1 h-4 w-4 rounded-br-sm border-r-2 border-b-2 border-ink/50 hover:border-ink"
+                  className="absolute right-1 bottom-1 h-4 w-4 rounded-br-sm border-r-2 border-b-2 border-edge/50 hover:border-edge"
                 />
               )}
             </div>

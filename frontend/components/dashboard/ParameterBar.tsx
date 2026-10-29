@@ -23,7 +23,7 @@ export default function ParameterBar({
 
   return (
     <div
-      className="flex flex-wrap items-end gap-x-4 gap-y-2 rounded-md border-[1.5px] border-ink bg-surface px-4 py-3 shadow-hard-sm"
+      className="flex flex-wrap items-end gap-x-4 gap-y-2 rounded-md bg-surface px-4 py-3"
       aria-label="Dashboard parameters"
     >
       <span className="pb-2 text-[13px] font-semibold tracking-wide text-ink-2 uppercase">Parameters</span>

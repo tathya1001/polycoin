@@ -15,9 +15,9 @@ const RAISED =
   "hover:-translate-y-px active:translate-x-0.5 active:translate-y-0.5 active:shadow-none";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: `${RAISED} border-ink bg-ink text-white shadow-hard-sm hover:shadow-hard`,
-  secondary: `${RAISED} border-ink bg-surface text-ink shadow-hard-sm hover:shadow-hard`,
-  danger: `${RAISED} border-neg bg-surface text-neg shadow-[2px_2px_0_0_#dc2626] hover:shadow-[4px_4px_0_0_#dc2626]`,
+  primary: `${RAISED} border-fill bg-fill text-on-fill shadow-hard-sm hover:shadow-hard`,
+  secondary: `${RAISED} border-edge bg-surface text-ink shadow-hard-sm hover:shadow-hard`,
+  danger: `${RAISED} border-neg bg-surface text-neg shadow-[2px_2px_0_0_var(--color-neg)] hover:shadow-[4px_4px_0_0_var(--color-neg)]`,
   ghost: "border-transparent bg-transparent text-ink hover:bg-wash active:bg-hairline",
 };
 

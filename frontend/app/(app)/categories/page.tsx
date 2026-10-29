@@ -235,7 +235,7 @@ export default function Categories() {
                           label={`Delete ${category.name}`}
                           size="sm"
                           icon={<Trash2 size={15} />}
-                          className="text-neg hover:bg-[#fee2e2]"
+                          className="text-neg hover:bg-neg-bg"
                           onClick={() => handleDelete(category)}
                         />
                       </>

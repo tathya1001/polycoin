@@ -40,7 +40,7 @@ export function EmptyState({
         className,
       )}
     >
-      {icon && <div className="grid size-12 place-items-center rounded-full border-[1.5px] border-ink bg-surface">{icon}</div>}
+      {icon && <div className="grid size-12 place-items-center rounded-full border-[1.5px] border-line bg-surface">{icon}</div>}
       <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
       {children && <p className="max-w-md text-ink-2">{children}</p>}
       {action}
@@ -53,7 +53,7 @@ export function ErrorNote({ children, className }: { children: ReactNode; classN
   return (
     <p
       role="alert"
-      className={cn("rounded-sm border-[1.5px] border-neg bg-[#fff1f1] px-3 py-2 text-sm font-medium text-neg", className)}
+      className={cn("rounded-sm border-[1.5px] border-neg bg-neg-wash px-3 py-2 text-sm font-medium text-neg", className)}
     >
       {children}
     </p>

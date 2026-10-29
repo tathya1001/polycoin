@@ -37,7 +37,7 @@ export function ColorPicker({
           aria-expanded={p["aria-expanded"]}
           aria-haspopup="dialog"
           style={{ backgroundColor: value, width: size, height: size }}
-          className="shrink-0 rounded-full border-[1.5px] border-ink transition-transform duration-150 hover:scale-110"
+          className="shrink-0 rounded-full border-[1.5px] border-edge transition-transform duration-150 hover:scale-110"
         />
       )}
       className="w-64"
@@ -79,7 +79,7 @@ function Picker({
             onClick={() => commit(hex)}
             style={{ backgroundColor: hex }}
             className={cn(
-              "size-7 rounded-full border-[1.5px] border-ink transition-transform hover:scale-110",
+              "size-7 rounded-full border-[1.5px] border-edge transition-transform hover:scale-110",
               hex.toLowerCase() === value.toLowerCase() && "outline-2 outline-offset-2 outline-ink",
             )}
           />

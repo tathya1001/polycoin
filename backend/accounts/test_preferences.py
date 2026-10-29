@@ -39,7 +39,7 @@ def test_the_first_read_creates_the_defaults(alice):
     assert not UserPreferences.objects.filter(user=alice).exists()
     res = client_for(alice).get(URL)
     assert res.status_code == 200
-    assert res.json() == {"font": "geist", "chart_quality": "quality"}
+    assert res.json() == {"font": "geist", "chart_quality": "quality", "theme": "classic"}
     assert UserPreferences.objects.filter(user=alice).count() == 1
 
 
@@ -54,8 +54,8 @@ def test_patch_changes_the_font_and_it_sticks(alice):
     client = client_for(alice)
     res = client.patch(URL, {"font": "inter"}, format="json")
     assert res.status_code == 200
-    assert res.json() == {"font": "inter", "chart_quality": "quality"}
-    assert client.get(URL).json() == {"font": "inter", "chart_quality": "quality"}
+    assert res.json() == {"font": "inter", "chart_quality": "quality", "theme": "classic"}
+    assert client.get(URL).json() == {"font": "inter", "chart_quality": "quality", "theme": "classic"}
     assert UserPreferences.objects.get(user=alice).font == "inter"
 
 
@@ -77,7 +77,7 @@ def test_unknown_fonts_are_rejected(alice, bad):
 def test_unknown_fields_are_ignored_not_written(alice):
     res = client_for(alice).patch(URL, {"font": "inter", "user": 1, "id": 99}, format="json")
     assert res.status_code == 200
-    assert res.json() == {"font": "inter", "chart_quality": "quality"}
+    assert res.json() == {"font": "inter", "chart_quality": "quality", "theme": "classic"}
     assert UserPreferences.objects.get(user=alice).user_id == alice.id
 
 
@@ -87,8 +87,8 @@ def test_put_is_not_allowed(alice):
 
 def test_each_user_has_their_own_preferences(alice, bob):
     client_for(alice).patch(URL, {"font": "inter"}, format="json")
-    assert client_for(bob).get(URL).json() == {"font": "geist", "chart_quality": "quality"}
-    assert client_for(alice).get(URL).json() == {"font": "inter", "chart_quality": "quality"}
+    assert client_for(bob).get(URL).json() == {"font": "geist", "chart_quality": "quality", "theme": "classic"}
+    assert client_for(alice).get(URL).json() == {"font": "inter", "chart_quality": "quality", "theme": "classic"}
 
 
 def test_deleting_a_user_deletes_their_preferences(alice):
@@ -116,7 +116,7 @@ def test_changing_one_preference_leaves_the_other_alone(alice):
     client = client_for(alice)
     client.patch(URL, {"font": "inter"}, format="json")
     client.patch(URL, {"chart_quality": "performance"}, format="json")
-    assert client.get(URL).json() == {"font": "inter", "chart_quality": "performance"}
+    assert client.get(URL).json() == {"font": "inter", "chart_quality": "performance", "theme": "classic"}
 
 
 @pytest.mark.parametrize("bad", ["canvas", "svg", "", "QUALITY", None, 1, ["quality"]])
@@ -162,3 +162,31 @@ def test_font_names_must_match_an_id_exactly(alice, bad):
     res = client.patch(URL, {"font": bad}, format="json")
     assert res.status_code == 400
     assert UserPreferences.objects.get(user=alice).font == "bitter"  # unchanged
+
+
+# --- theme --------------------------------------------------------------------
+
+
+def test_theme_defaults_to_classic(alice):
+    assert client_for(alice).get(URL).json()["theme"] == "classic"
+
+
+@pytest.mark.parametrize("theme", ["light", "dark", "system", "classic"])
+def test_patch_sets_each_theme(alice, theme):
+    client = client_for(alice)
+    assert client.patch(URL, {"theme": theme}, format="json").status_code == 200
+    assert UserPreferences.objects.get(user=alice).theme == theme
+
+
+@pytest.mark.parametrize("bad", ["white", "black", "", "DARK", None, 1, ["dark"]])
+def test_unknown_themes_are_rejected(alice, bad):
+    client = client_for(alice)
+    client.patch(URL, {"theme": "dark"}, format="json")
+    res = client.patch(URL, {"theme": bad}, format="json")
+    assert res.status_code == 400
+    assert UserPreferences.objects.get(user=alice).theme == "dark"  # unchanged
+
+
+def test_theme_ids_fit_the_column():
+    longest = UserPreferences._meta.get_field("theme").max_length
+    assert all(len(key) <= longest for key, _ in UserPreferences.THEME_CHOICES)

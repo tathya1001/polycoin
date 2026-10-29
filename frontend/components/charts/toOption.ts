@@ -17,6 +17,7 @@ import type {
   VisualMapComponentOption,
 } from "echarts/components";
 import { FALLBACK_SERIES_COLORS } from "@/lib/colors";
+import { CHART_LOOKS, type ChartLook } from "@/lib/theme";
 import { MEASURE_LABELS, defaultFormat, formatLabel, formatValue, isPercent, isPlainNumber } from "@/lib/insights";
 import type { Cell, Dimension, PanelConfig, QueryResult } from "@/lib/types";
 
@@ -51,7 +52,6 @@ export type CategoryColors = ReadonlyMap<string, string>;
 // The key under which a chart with a single series stores its colour in series_colors.
 export const SINGLE_SERIES_KEY = "_";
 
-const INK = "#111111";
 
 const toNumber = (value: Cell) => (value === null ? null : Number(value));
 
@@ -119,15 +119,16 @@ export function resolveColor(
   field: Dimension | undefined,
   config: Pick<PanelConfig, "series_colors">,
   categoryColors: CategoryColors,
+  look: ChartLook = CHART_LOOKS.classic,
 ): string {
   const text = String(key);
   const override = config.series_colors?.[text];
-  if (override) return override;
+  if (override) return look.series(override);
   if (field === "category" && key !== null) {
     const own = categoryColors.get(text.toLowerCase());
-    if (own) return own;
+    if (own) return look.series(own);
   }
-  return FALLBACK_SERIES_COLORS[position % FALLBACK_SERIES_COLORS.length];
+  return look.series(FALLBACK_SERIES_COLORS[position % FALLBACK_SERIES_COLORS.length]);
 }
 
 // Nothing to draw: no rows, or every value is empty or zero.
@@ -145,10 +146,15 @@ export function isEmptyResult(config: PanelConfig, result: QueryResult): boolean
 // Colors section lists these so the user can recolour any of them.
 export type SeriesSwatch = { key: string; label: string; color: string };
 
-export function seriesSwatches(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors): SeriesSwatch[] {
+export function seriesSwatches(
+  config: PanelConfig,
+  result: QueryResult,
+  categoryColors: CategoryColors,
+  look: ChartLook = CHART_LOOKS.classic,
+): SeriesSwatch[] {
   if (config.chart === "kpi" || config.chart === "calendar" || config.chart === "heatmap") return []; // one colour scale
   if (config.chart === "histogram") {
-    return [{ key: SINGLE_SERIES_KEY, label: MEASURE_LABELS[config.y.measure], color: resolveColor(SINGLE_SERIES_KEY, 0, undefined, config, categoryColors) }];
+    return [{ key: SINGLE_SERIES_KEY, label: MEASURE_LABELS[config.y.measure], color: resolveColor(SINGLE_SERIES_KEY, 0, undefined, config, categoryColors, look) }];
   }
 
   const split = result.columns.includes("color");
@@ -169,20 +175,20 @@ export function seriesSwatches(config: PanelConfig, result: QueryResult, categor
       {
         key: SINGLE_SERIES_KEY,
         label: MEASURE_LABELS[config.y.measure],
-        color: resolveColor(SINGLE_SERIES_KEY, 0, undefined, config, categoryColors),
+        color: resolveColor(SINGLE_SERIES_KEY, 0, undefined, config, categoryColors, look),
       },
     ];
   }
   return keys.map((key, position) => ({
     key: String(key),
     label: formatLabel(key, field),
-    color: resolveColor(key, position, field, config, categoryColors),
+    color: resolveColor(key, position, field, config, categoryColors, look),
   }));
 }
 
-function histogramChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors): BuiltChart {
+function histogramChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors, look: ChartLook): BuiltChart {
   const labels = result.rows.map(([start, end]) => `${compact.format(Number(start))}–${compact.format(Number(end))}`);
-  const color = resolveColor(SINGLE_SERIES_KEY, 0, undefined, config, categoryColors);
+  const color = resolveColor(SINGLE_SERIES_KEY, 0, undefined, config, categoryColors, look);
   return {
     keys: null, // a bin is a range of amounts, which /transactions can't filter on
     option: {
@@ -201,14 +207,16 @@ function histogramChart(config: PanelConfig, result: QueryResult, categoryColors
           data: result.rows.map((row) => Number(row[2])),
           barCategoryGap: "4%",
           label: formatOf(config).labels ? { show: true, position: "top" as const } : undefined,
-          itemStyle: { color, borderColor: INK, borderWidth: 1, borderRadius: [4, 4, 0, 0] },
+          itemStyle: { color, borderColor: look.barEdge.color, borderWidth: look.barEdge.width, borderRadius: [4, 4, 0, 0] },
         },
       ],
     },
   };
 }
 
-function pieChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors, highlight: Highlight): BuiltChart {
+const pieLabelStyle = (look: ChartLook) => ({ color: look.text, textBorderColor: "transparent", textBorderWidth: 0 });
+
+function pieChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors, highlight: Highlight, look: ChartLook): BuiltChart {
   const rows = result.rows.filter((row) => row[1] !== null && Number(row[1]) > 0);
   const legend = legendPosition(config, true, "bottom");
   return {
@@ -223,19 +231,21 @@ function pieChart(config: PanelConfig, result: QueryResult, categoryColors: Cate
           radius: config.chart === "donut" ? ["45%", "70%"] : "70%",
           center: [legend === "right" ? "40%" : "50%", legend === "top" ? "55%" : legend === "bottom" ? "45%" : "50%"],
           avoidLabelOverlap: true,
-          // Share by default; with labels on, the value as well.
+          // Share by default; with labels on, the value as well. ECharts colours outside labels
+          // itself (dark grey in a white halo), which smears on a dark surface: use the mode's text.
           label: formatOf(config).labels
             ? {
+                ...pieLabelStyle(look),
                 formatter: (params: { value?: unknown; percent?: number }) =>
                   `${valueText(config, Number(params.value))} (${Math.round((params.percent ?? 0) * 10) / 10}%)`,
               }
-            : { formatter: "{d}%" },
-          itemStyle: { borderColor: INK, borderWidth: 1.5 },
+            : { ...pieLabelStyle(look), formatter: "{d}%" },
+          itemStyle: { borderColor: look.sliceEdge.color, borderWidth: look.sliceEdge.width },
           data: rows.map((row, position) => ({
             name: formatLabel(row[0], config.x?.field),
             value: Number(row[1]),
             itemStyle: {
-              color: resolveColor(row[0], position, config.x?.field, config, categoryColors),
+              color: resolveColor(row[0], position, config.x?.field, config, categoryColors, look),
               opacity: dimmed(row[0], highlight),
             },
           })),
@@ -246,7 +256,13 @@ function pieChart(config: PanelConfig, result: QueryResult, categoryColors: Cate
 }
 
 // bar / line / area, with or without a colour split.
-function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors: CategoryColors, highlight: Highlight): BuiltChart {
+function cartesianChart(
+  config: PanelConfig,
+  result: QueryResult,
+  categoryColors: CategoryColors,
+  highlight: Highlight,
+  look: ChartLook,
+): BuiltChart {
   const split = result.columns.includes("color");
   const xKeys = unique(result.rows.map((row) => row[0]));
   const colorKeys = split ? unique(result.rows.map((row) => row[1])) : [null];
@@ -269,13 +285,13 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
     const data = xKeys.map((x) => toNumber(lookup.get(`${x}|${split ? colorKey : ""}`) ?? null));
     const name = split ? formatLabel(colorKey, config.color?.field) : MEASURE_LABELS[config.y.measure];
     const stack = split && (config.stacked || config.chart === "area") ? "total" : undefined;
-    const color = resolveColor(split ? colorKey : SINGLE_SERIES_KEY, position, split ? config.color?.field : undefined, config, categoryColors);
+    const color = resolveColor(split ? colorKey : SINGLE_SERIES_KEY, position, split ? config.color?.field : undefined, config, categoryColors, look);
 
     if (seriesType === "bar") {
       const barStyle = {
         color,
-        borderColor: INK,
-        borderWidth: 1,
+        borderColor: look.barEdge.color,
+        borderWidth: look.barEdge.width,
         borderRadius: horizontal ? [0, radius, radius, 0] : [radius, radius, 0, 0],
       };
       return {
@@ -291,7 +307,7 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
                 value,
                 itemStyle: {
                   ...barStyle,
-                  color: perBar ? resolveColor(xKeys[index], index, config.x?.field, config, categoryColors) : color,
+                  color: perBar ? resolveColor(xKeys[index], index, config.x?.field, config, categoryColors, look) : color,
                   opacity: dimmed(xKeys[index], highlight),
                 },
               }))
@@ -307,7 +323,7 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
       symbolSize: 8,
       label: labelOption(config, "top"),
       lineStyle: { width: 2.5, color },
-      itemStyle: { color, borderColor: "#ffffff", borderWidth: 2 },
+      itemStyle: { color, borderColor: look.surface, borderWidth: 2 },
       areaStyle: config.chart === "area" ? { opacity: 0.28, color } : undefined,
       emphasis: { focus: "series" as const },
     };
@@ -351,8 +367,6 @@ function cartesianChart(config: PanelConfig, result: QueryResult, categoryColors
 
 // --- heatmaps ---------------------------------------------------------------------------------
 
-const SEQUENTIAL = ["#EAF2FC", "#2A78D6", "#12407A"]; // light to dark blue
-const DIVERGING = ["#EB6834", "#F7F5F0", "#2A78D6"]; // orange (below zero) to blue (above), colour-blind safe
 
 // A tooltip body is HTML in ECharts. The other charts use its default markup, which escapes
 // user text; a heatmap's default is not what we want to show, so this writes the one line itself
@@ -365,7 +379,7 @@ const tooltipLine = (name: string, value: string) => `${escapeHtml(name)}: <b>${
 
 // The colour scale legend: one hue from small to large, or orange to blue around zero when
 // the measure goes negative (net).
-function colourScale(values: number[], config: PanelConfig): VisualMapComponentOption {
+function colourScale(values: number[], config: PanelConfig, look: ChartLook): VisualMapComponentOption {
   const low = values.length ? Math.min(...values) : 0;
   const high = values.length ? Math.max(...values) : 1;
   const diverging = low < 0;
@@ -382,13 +396,14 @@ function colourScale(values: number[], config: PanelConfig): VisualMapComponentO
     itemWidth: 12,
     itemHeight: 120,
     formatter: (value) => write(Number(value)),
-    inRange: { color: diverging ? DIVERGING : SEQUENTIAL },
+    inRange: { color: diverging ? look.diverging : look.sequential },
   };
 }
 
-const cellStyle = { borderColor: "#ffffff", borderWidth: 2, borderRadius: 3 };
+// A 2px gap the colour of the surface between neighbouring cells.
+const cellStyle = (look: ChartLook) => ({ borderColor: look.surface, borderWidth: 2, borderRadius: 3 });
 
-function calendarChart(config: PanelConfig, result: QueryResult): BuiltChart {
+function calendarChart(config: PanelConfig, result: QueryResult, look: ChartLook): BuiltChart {
   const data: [string, number][] = result.rows.map((row) => [String(row[0]), Number(row[1])]);
   return {
     keys: { x: [], colors: [], cells: data.map(([day]) => ({ x: day })) },
@@ -400,7 +415,7 @@ function calendarChart(config: PanelConfig, result: QueryResult): BuiltChart {
           return tooltipLine(formatLabel(day, "date", "day"), valueText(config, value));
         },
       },
-      visualMap: colourScale(data.map(([, value]) => value), config),
+      visualMap: colourScale(data.map(([, value]) => value), config, look),
       calendar: {
         range: [result.period.from, result.period.to],
         top: 26,
@@ -411,15 +426,15 @@ function calendarChart(config: PanelConfig, result: QueryResult): BuiltChart {
         yearLabel: { show: false },
         dayLabel: { firstDay: 1, nameMap: "en" },
         monthLabel: { nameMap: "en" },
-        splitLine: { show: true, lineStyle: { color: INK, width: 1 } },
-        itemStyle: { color: "#F3F2EE", borderColor: "#ffffff", borderWidth: 2 },
+        splitLine: { show: true, lineStyle: { color: look.calendarLine, width: 1 } },
+        itemStyle: { color: look.emptyCell, borderColor: look.surface, borderWidth: 2 },
       },
       series: [
         {
           type: "heatmap",
           coordinateSystem: "calendar",
           data,
-          itemStyle: cellStyle,
+          itemStyle: cellStyle(look),
           label: formatOf(config).labels
             ? { show: true, formatter: (params) => valueText(config, (params.value as [string, number])[1]) }
             : undefined,
@@ -429,7 +444,7 @@ function calendarChart(config: PanelConfig, result: QueryResult): BuiltChart {
   };
 }
 
-function matrixChart(config: PanelConfig, result: QueryResult): BuiltChart {
+function matrixChart(config: PanelConfig, result: QueryResult, look: ChartLook): BuiltChart {
   const xKeys = result.axes?.x ?? [];
   const rowKeys = result.axes?.rows ?? [];
   const xIndex = new Map(xKeys.map((key, index) => [key, index]));
@@ -464,12 +479,12 @@ function matrixChart(config: PanelConfig, result: QueryResult): BuiltChart {
         axisLabel: { interval: 0, hideOverlap: true },
       },
       yAxis: { type: "category", data: rowKeys.map((_, index) => rowLabel(index)), inverse: true, splitArea: { show: true } },
-      visualMap: colourScale(data.map(([, , value]) => value), config),
+      visualMap: colourScale(data.map(([, , value]) => value), config, look),
       series: [
         {
           type: "heatmap",
           data,
-          itemStyle: cellStyle,
+          itemStyle: cellStyle(look),
           label: formatOf(config).labels
             ? { show: true, formatter: (params) => valueText(config, (params.value as [number, number, number])[2]) }
             : undefined,
@@ -484,10 +499,11 @@ export function toOption(
   result: QueryResult,
   categoryColors: CategoryColors = new Map(),
   highlight?: Highlight,
+  look: ChartLook = CHART_LOOKS.classic,
 ): BuiltChart {
-  if (config.chart === "calendar") return calendarChart(config, result);
-  if (config.chart === "heatmap") return matrixChart(config, result);
-  if (config.chart === "histogram") return histogramChart(config, result, categoryColors);
-  if (config.chart === "pie" || config.chart === "donut") return pieChart(config, result, categoryColors, highlight);
-  return cartesianChart(config, result, categoryColors, highlight);
+  if (config.chart === "calendar") return calendarChart(config, result, look);
+  if (config.chart === "heatmap") return matrixChart(config, result, look);
+  if (config.chart === "histogram") return histogramChart(config, result, categoryColors, look);
+  if (config.chart === "pie" || config.chart === "donut") return pieChart(config, result, categoryColors, highlight, look);
+  return cartesianChart(config, result, categoryColors, highlight, look);
 }

@@ -3,6 +3,8 @@
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
 import { isError } from "@/lib/insights";
+import { CHART_LOOKS } from "@/lib/theme";
+import { useSession } from "@/components/shell/Session";
 import { isText, type AnyPanelConfig, type Picked, type QueryOutcome } from "@/lib/types";
 import KpiPanel from "./KpiPanel";
 import TextPanel from "./TextPanel";
@@ -38,12 +40,13 @@ type Props = {
 
 // What goes inside a panel: the chart, or a loading / empty / error message instead.
 export default function PanelBody({ config, outcome, loading, categoryColors, onPick, onOpen, highlight }: Props) {
+  const { theme } = useSession();
   const built = useMemo(
     () =>
       config && !isText(config) && outcome && !isError(outcome)
-        ? toOption(config, outcome, categoryColors, highlight)
+        ? toOption(config, outcome, categoryColors, highlight, CHART_LOOKS[theme])
         : null,
-    [config, outcome, categoryColors, highlight],
+    [config, outcome, categoryColors, highlight, theme],
   );
 
   if (!config) return <Message tone="error">This panel&apos;s settings no longer work. Edit it to fix them.</Message>;
@@ -63,7 +66,7 @@ export default function PanelBody({ config, outcome, loading, categoryColors, on
         type="button"
         onClick={onOpen}
         title="Show the transactions behind this number"
-        className="block h-full w-full cursor-pointer rounded-sm text-left hover:bg-canvas/60"
+        className="block h-full w-full cursor-pointer rounded-sm text-left hover:bg-wash"
       >
         {card}
       </button>

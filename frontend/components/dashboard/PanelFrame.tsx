@@ -34,11 +34,13 @@ export default function PanelFrame({ title, showTitle, editing, onEdit, onDuplic
   }
 
   return (
+    // Dashboards are flat in every colour mode: a panel is the page's own colour, with no shadow,
+    // and no outline unless editing. Charts draw on that same colour (lib/theme.ts CHART_LOOKS).
     <section
       aria-label={title || undefined}
       className={cn(
-        "flex h-full flex-col overflow-hidden rounded-md border-[1.5px] bg-surface transition-shadow duration-150",
-        editing ? "border-dashed border-ink" : "border-ink shadow-hard-sm",
+        "flex h-full flex-col overflow-hidden rounded-md border-[1.5px] bg-canvas transition-shadow duration-150",
+        editing ? "border-dashed border-edge" : "border-transparent",
       )}
     >
       {(showTitle || editing) && (
@@ -108,7 +110,7 @@ function MenuItem({
       onClick={onClick}
       className={cn(
         "flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-left hover:bg-wash",
-        danger && "text-neg hover:bg-[#fee2e2]",
+        danger && "text-neg hover:bg-neg-bg",
       )}
     >
       {icon}

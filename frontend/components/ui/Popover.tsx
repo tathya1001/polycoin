@@ -51,7 +51,7 @@ export function Popover({
         <div
           role="dialog"
           className={cn(
-            "absolute top-full z-50 mt-2 min-w-56 animate-[pop-in_140ms_ease-out] rounded-md border-[1.5px] border-ink bg-surface p-3 shadow-hard",
+            "absolute top-full z-50 mt-2 min-w-56 animate-[pop-in_140ms_ease-out] rounded-md border-[1.5px] border-line bg-surface p-3 shadow-pop",
             align === "right" ? "right-0" : "left-0",
             className,
           )}

@@ -59,7 +59,7 @@ export default function CategoryPicker({ categories, selected, onChange, label =
             onChange={() => toggle(category.id)}
             label={
               <span className="flex items-center gap-2">
-                <span aria-hidden className="size-2.5 rounded-full border border-ink" style={{ backgroundColor: category.color }} />
+                <span aria-hidden className="size-2.5 rounded-full border border-edge" style={{ backgroundColor: category.color }} />
                 {category.name}
               </span>
             }

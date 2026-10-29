@@ -8,16 +8,17 @@ export const metadata: Metadata = {
   description: "Secure Smart Personal Bank Statement Analyzer",
 };
 
-// Runs before first paint so a saved font never flashes the default one. It only reads the
-// cached copy of the preferences (localStorage); the real value is fetched after sign-in.
-// The id is checked against a strict pattern, and an id with no CSS rule just means "default".
-const APPLY_FONT = `try{var f=JSON.parse(localStorage.getItem("polycoin.prefs")||"{}").font;if(typeof f==="string"&&/^[a-z0-9-]{1,32}$/.test(f)&&f!=="geist")document.documentElement.dataset.font=f}catch(e){}`;
+// Runs before first paint so a saved font or colour mode never flashes the default one. It only
+// reads the cached copy of the preferences (localStorage); the real values are fetched after
+// sign-in. The font id is checked against a strict pattern (an id with no CSS rule just means
+// "default"); the theme must be one of the known modes, and "system" asks the device.
+const APPLY_LOOK = `try{var d=document.documentElement,p=JSON.parse(localStorage.getItem("polycoin.prefs")||"{}"),f=p.font,t=p.theme;if(typeof f==="string"&&/^[a-z0-9-]{1,32}$/.test(f)&&f!=="geist")d.dataset.font=f;if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";if(t==="light"||t==="dark")d.dataset.theme=t}catch(e){}`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${fontVariables} h-full antialiased`} suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: APPLY_FONT }} />
+        <script dangerouslySetInnerHTML={{ __html: APPLY_LOOK }} />
       </head>
       <body className="flex min-h-full flex-col">
         <UiProviders>{children}</UiProviders>

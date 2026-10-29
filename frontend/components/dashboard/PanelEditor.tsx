@@ -23,6 +23,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import PanelBody from "@/components/charts/PanelBody";
+import { useSession } from "@/components/shell/Session";
 import { seriesSwatches } from "@/components/charts/toOption";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
@@ -65,6 +66,7 @@ import {
   normalizeConfig,
   todayLocal,
 } from "@/lib/insights";
+import { CHART_LOOKS } from "@/lib/theme";
 import { isText } from "@/lib/types";
 import type {
   Agg,
@@ -130,6 +132,7 @@ type Props = {
 
 export default function PanelEditor(props: Props) {
   const { catalogue, categories, parameters, initial, isNew, dashboardFilters, onCancel, onSave } = props;
+  const { theme } = useSession();
   const [title, setTitle] = useState(initial.title);
   const [showTitle, setShowTitle] = useState(initial.showTitle);
   // A note and a chart are different shapes. The chart draft is always a valid chart (so the
@@ -153,8 +156,8 @@ export default function PanelEditor(props: Props) {
 
   // The series the preview draws, each with its current colour: the Colors section below.
   const swatches = useMemo(
-    () => (preview && !isError(preview) ? seriesSwatches(config, preview, categoryColors) : []),
-    [config, preview, categoryColors],
+    () => (preview && !isError(preview) ? seriesSwatches(config, preview, categoryColors, CHART_LOOKS[theme]) : []),
+    [config, preview, categoryColors, theme],
   );
 
   function update(change: Partial<PanelConfig>) {
@@ -237,11 +240,11 @@ export default function PanelEditor(props: Props) {
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-ink/35" onClick={onCancel}>
       <aside
-        className="flex h-full w-full max-w-5xl flex-col border-l-[1.5px] border-ink bg-canvas shadow-hard-lg"
+        className="flex h-full w-full max-w-5xl flex-col border-l-[1.5px] border-line bg-canvas shadow-overlay"
         onClick={(e) => e.stopPropagation()}
         aria-label="Panel editor"
       >
-        <div className="flex items-center justify-between border-b-[1.5px] border-ink bg-surface px-5 py-3">
+        <div className="flex items-center justify-between border-b-[1.5px] border-line bg-surface px-5 py-3">
           <h2 className="text-lg font-semibold tracking-tight">{isNew ? "Add panel" : "Edit panel"}</h2>
           <IconButton label="Close" icon={<X size={18} />} onClick={onCancel} />
         </div>
@@ -249,7 +252,7 @@ export default function PanelEditor(props: Props) {
         <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-5 lg:grid-cols-[1fr_minmax(0,1.1fr)] lg:overflow-hidden">
           {/* Live preview: first on phones, sticky on the right on wide screens */}
           <div className="lg:order-2 lg:flex lg:flex-col">
-            <div className="h-72 rounded-md border-[1.5px] border-ink bg-surface p-2 shadow-hard-sm lg:h-auto lg:flex-1">
+            <div className="h-72 rounded-md border-[1.5px] border-line bg-canvas p-2 lg:h-auto lg:flex-1">
               {previewError && !textMode ? (
                 <p className="flex h-full items-center justify-center font-medium text-neg">{previewError}</p>
               ) : (
@@ -295,8 +298,8 @@ export default function PanelEditor(props: Props) {
                       className={cn(
                         "flex flex-col items-center gap-1 rounded-md border-[1.5px] p-2 text-xs font-medium transition-[transform,background-color] duration-150",
                         on
-                          ? "border-ink bg-ink text-white"
-                          : "border-ink/25 bg-surface text-ink-2 hover:border-ink hover:text-ink",
+                          ? "border-fill bg-fill text-on-fill"
+                          : "border-line bg-surface text-ink-2 hover:border-edge hover:text-ink",
                       )}
                     >
                       <Icon size={20} strokeWidth={1.75} aria-hidden />
@@ -643,7 +646,7 @@ export default function PanelEditor(props: Props) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3 border-t-[1.5px] border-ink bg-surface px-5 py-3">
+        <div className="flex items-center gap-3 border-t-[1.5px] border-line bg-surface px-5 py-3">
           <Button variant="primary" loading={saving} onClick={save}>
             {saving ? "Saving…" : isNew ? "Add to dashboard" : "Save"}
           </Button>

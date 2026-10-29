@@ -49,7 +49,6 @@ class UserPreferences(models.Model):
 
     Add a new font: one more entry in FONT_CHOICES here, plus the other places listed at the top
     of frontend/lib/fonts.ts.
-    Later: a theme field goes here too.
     """
 
     # The ids must match frontend/lib/fonts.ts (FONT_OPTIONS).
@@ -73,12 +72,22 @@ class UserPreferences(models.Model):
     # canvas, faster when a chart has thousands of points.
     CHART_QUALITY_CHOICES = [("quality", "High quality"), ("performance", "Performance")]
     DEFAULT_CHART_QUALITY = "quality"
+    # Colour mode. "system" follows the device's light/dark setting. The ids must match
+    # frontend/lib/theme.ts (THEME_OPTIONS).
+    THEME_CHOICES = [
+        ("classic", "Classic"),
+        ("light", "Light"),
+        ("dark", "Dark"),
+        ("system", "Match device"),
+    ]
+    DEFAULT_THEME = "classic"
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="preferences")
     font = models.CharField(max_length=32, choices=FONT_CHOICES, default=DEFAULT_FONT)
     chart_quality = models.CharField(
         max_length=16, choices=CHART_QUALITY_CHOICES, default=DEFAULT_CHART_QUALITY
     )
+    theme = models.CharField(max_length=16, choices=THEME_CHOICES, default=DEFAULT_THEME)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

@@ -772,7 +772,7 @@ function Welcome({ onCreate }: { onCreate: (name: string, template: "overview" |
   return (
     <section className="mx-auto mt-10 max-w-xl">
       <Card className="flex flex-col items-center gap-4 p-8! text-center">
-        <span className="grid size-14 place-items-center rounded-full border-[1.5px] border-ink bg-canvas">
+        <span className="grid size-14 place-items-center rounded-full border-[1.5px] border-line bg-canvas">
           <LayoutDashboard size={26} strokeWidth={1.75} aria-hidden />
         </span>
         <h1 className="text-[28px] font-semibold tracking-tight">Where did my money go?</h1>

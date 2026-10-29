@@ -102,6 +102,14 @@ class TransactionSerializer(serializers.ModelSerializer):
 MAX_BULK_TRANSACTIONS = 200  # one drop onto a bucket; a page shows 50
 
 
+class BulkDeleteSerializer(serializers.Serializer):
+    """POST /api/transactions/bulk-delete/: delete many transactions at once."""
+
+    transactions = serializers.ListField(
+        child=serializers.UUIDField(), min_length=1, max_length=MAX_BULK_TRANSACTIONS
+    )
+
+
 class BulkCategorySerializer(serializers.Serializer):
     """POST /api/transactions/bulk-category/: move many transactions into one category
     (dropping rows onto a bucket on the Transactions page)."""

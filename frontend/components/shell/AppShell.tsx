@@ -36,7 +36,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen md:flex md:gap-3 md:p-3">
-      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b-[1.5px] border-ink bg-canvas px-3 md:hidden">
+      <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b-[1.5px] border-line bg-canvas px-3 md:hidden">
         <IconButton label="Open menu" icon={<Menu size={20} />} onClick={() => setOpenedOn(pathname)} />
         <LogoMark size={26} />
         <Wordmark />

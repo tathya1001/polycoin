@@ -12,8 +12,8 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
           <li key={label} className="flex items-center gap-2" aria-current={active ? "step" : undefined}>
             <span
               className={cn(
-                "grid size-7 place-items-center rounded-full border-[1.5px] border-ink text-xs font-semibold transition-colors",
-                done && "bg-ink text-white",
+                "grid size-7 place-items-center rounded-full border-[1.5px] border-edge text-xs font-semibold transition-colors",
+                done && "bg-fill text-on-fill",
                 active && "bg-surface shadow-hard-sm",
                 !done && !active && "border-ink/30 text-muted",
               )}

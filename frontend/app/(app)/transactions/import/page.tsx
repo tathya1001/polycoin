@@ -214,9 +214,9 @@ export default function ImportStatement() {
       {!result && (
         <label
           htmlFor="statement"
-          className="mb-5 flex cursor-pointer items-center gap-4 rounded-md border-[1.5px] border-dashed border-ink bg-surface p-5 transition-colors hover:bg-wash has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink"
+          className="mb-5 flex cursor-pointer items-center gap-4 rounded-md border-[1.5px] border-dashed border-edge bg-surface p-5 transition-colors hover:bg-wash has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink"
         >
-          <span className="grid size-12 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-canvas">
+          <span className="grid size-12 shrink-0 place-items-center rounded-full border-[1.5px] border-line bg-canvas">
             {!file ? (
               <Upload size={22} aria-hidden />
             ) : fromPdf ? (
@@ -398,7 +398,7 @@ function RowErrors({
     return page ? `Page ${page}` : `Row ${row}`;
   };
   return (
-    <div className="rounded-sm border-[1.5px] border-neg bg-[#fff1f1] p-3 text-sm text-neg">
+    <div className="rounded-sm border-[1.5px] border-neg bg-neg-wash p-3 text-sm text-neg">
       <p className="font-medium">
         Rows we couldn&apos;t read{total > errors.length ? ` (showing ${errors.length} of ${total})` : ""}:
       </p>

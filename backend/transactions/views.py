@@ -25,7 +25,7 @@ from .importer import (
 )
 from .models import Transaction
 from .readers import read_statement
-from .serializers import BulkCategorySerializer, TransactionSerializer
+from .serializers import BulkCategorySerializer, BulkDeleteSerializer, TransactionSerializer
 from .services import create_transaction
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -45,7 +45,10 @@ class TransactionViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    """No create: transactions only arrive through the statement import."""
+    """No create: transactions only arrive through the statement import.
+
+    A delete is a real delete (the row, its fingerprint and its Ask document go). So importing
+    the same statement again brings a deleted transaction back, as a new row in "Others"."""
 
     queryset = Transaction.objects.select_related("category")
     serializer_class = TransactionSerializer
@@ -100,6 +103,25 @@ class TransactionViewSet(
         updated = mine.update(category=category, updated_at=timezone.now())
         return Response(
             {"updated": updated, "missing": sorted(str(i) for i in ids - found)},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=False, methods=["post"], url_path="bulk-delete")
+    def bulk_delete(self, request):
+        """Delete many transactions in one request. As with bulk-category, ids that aren't the
+        caller's (or don't exist) come back as "missing" and are never touched."""
+        serializer = BulkDeleteSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ids = set(serializer.validated_data["transactions"])
+
+        mine = Transaction.objects.filter(user=request.user, id__in=ids)
+        found = set(mine.values_list("id", flat=True))
+        _, per_model = mine.delete()  # the count includes cascaded rows; report transactions only
+        return Response(
+            {
+                "deleted": per_model.get(Transaction._meta.label, 0),
+                "missing": sorted(str(i) for i in ids - found),
+            },
             status=status.HTTP_200_OK,
         )
 
