@@ -1,6 +1,6 @@
-"""Bank-statement (.xlsx) parser. Pure Python: no Django, no database.
+"""Bank-statement parser. Pure Python: no Django, no database.
 
-Flow:  read_rows -> detect_header -> (user may correct the mapping) -> parse_rows
+Flow:  readers.read_statement -> detect_header -> (user may correct the mapping) -> parse_rows
 
 Supported amount layouts, chosen from which columns are mapped:
   split   `debit` + `credit` columns. Some banks use "Withdrawal Amt." / "Deposit Amt."
@@ -8,15 +8,9 @@ Supported amount layouts, chosen from which columns are mapped:
   typed   one `amount` column + a `type` (Dr/Cr) column.
   signed  one `amount` column, negative = money out.
 """
-import io
 import re
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
-from zipfile import BadZipFile, is_zipfile
-
-import msoffcrypto
-import openpyxl
-from openpyxl.utils.exceptions import InvalidFileException
 
 MAX_ROWS = 5000
 HEADER_SCAN_ROWS = 30  # statements often have a logo / address block above the table
@@ -69,86 +63,21 @@ class ImportFileError(ValueError):
 
 
 class PasswordRequired(ImportFileError):
-    """Encrypted workbook and no password supplied: the UI should ask for one."""
+    """Encrypted file and no password supplied: the UI should ask for one."""
 
 
 class WrongPassword(ImportFileError):
-    """Encrypted workbook and the password didn't unlock it: the UI should ask again."""
+    """Encrypted file and the password didn't unlock it: the UI should ask again."""
 
 
 class _SkipRow(Exception):
     """Blank line, wrapped narration, 'Opening Balance' label, footer..."""
 
 
-# --- reading ------------------------------------------------------------------
+# --- rows ---------------------------------------------------------------------
 
-def _is_blank(row) -> bool:
+def is_blank(row) -> bool:
     return all(cell is None or str(cell).strip() == "" for cell in row)
-
-
-def _decrypt_if_needed(file, password: str | None):
-    """Password-protected .xlsx files are encrypted containers, not zip files, so
-    openpyxl can't open them directly. Decrypt into memory first (nothing touches disk).
-    Unencrypted files pass straight through."""
-    try:
-        office = msoffcrypto.OfficeFile(file)
-        encrypted = office.is_encrypted()
-    except msoffcrypto.exceptions.FileFormatError as exc:
-        raise ImportFileError("This isn't a valid .xlsx file.") from exc
-
-    if not encrypted:
-        file.seek(0)
-        return file
-    if not password:
-        raise PasswordRequired("This file is password-protected.")
-
-    decrypted = io.BytesIO()
-    try:
-        # No verify_password pre-check: it can reject the RIGHT password on files that
-        # bank software (not Excel) encrypted. We judge by the decrypted output instead.
-        office.load_key(password=password)
-        office.decrypt(decrypted)
-    except (msoffcrypto.exceptions.InvalidKeyError, msoffcrypto.exceptions.DecryptionError) as exc:
-        raise WrongPassword("That password is incorrect.") from exc
-
-    # A wrong key "decrypts" into noise; the right one yields a real .xlsx, i.e. a zip.
-    if not is_zipfile(decrypted):
-        raise WrongPassword("That password is incorrect.")
-    decrypted.seek(0)
-    return decrypted
-
-
-def read_rows(file, password: str | None = None) -> list[list]:
-    """First sheet as a list of rows (list of cell values). Row N of the sheet is
-    rows[N-1]; blank rows in the middle are kept so error row numbers match Excel.
-
-    `file` is a binary file-like object. `password` is only used if the workbook is
-    encrypted; it is never stored or logged."""
-    file = _decrypt_if_needed(file, password)
-    try:
-        workbook = openpyxl.load_workbook(file, read_only=True, data_only=True)
-    except (BadZipFile, InvalidFileException, KeyError, OSError, ValueError) as exc:
-        # ValueError also covers defusedxml's XML-bomb rejections.
-        raise ImportFileError("This isn't a valid .xlsx file.") from exc
-
-    rows: list[list] = []
-    blanks = 0
-    try:
-        for raw in workbook.worksheets[0].iter_rows(min_row=1, values_only=True):
-            if _is_blank(raw):
-                blanks += 1  # only materialised if a real row follows: trailing blanks are dropped
-                continue
-            rows.extend([] for _ in range(blanks))
-            blanks = 0
-            rows.append(list(raw))
-            if len(rows) > MAX_ROWS:
-                # Refuse rather than silently truncate: dropped rows = missing transactions.
-                raise ImportFileError(f"Too many rows (limit {MAX_ROWS}). Split the statement.")
-    except IndexError as exc:
-        raise ImportFileError("The workbook has no sheets.") from exc
-    finally:
-        workbook.close()
-    return rows
 
 
 # --- header detection ---------------------------------------------------------
@@ -357,7 +286,7 @@ def parse_rows(rows, header_index: int, mapping) -> tuple[list[dict], list[dict]
     parsed, errors = [], []
     for index in range(header_index + 1, len(rows)):
         row = rows[index]
-        if _is_blank(row):
+        if is_blank(row):
             continue
         number = index + 1
         try:

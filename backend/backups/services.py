@@ -7,7 +7,7 @@ index is left out: the user's own Ollama rebuilds it from the transactions.
 
 A restore merges: it adds only what the account doesn't have, so running it twice changes
 nothing. Transactions keep their original fingerprint (the key that made it is the same, since
-only this account can open the file), so a later Excel import still finds them as duplicates,
+only this account can open the file), so a later statement import still finds them as duplicates,
 even a row whose text was edited. Categories are matched by name and get new ids, so the
 transactions and the panel filters that point at them are mapped onto the new ids.
 """

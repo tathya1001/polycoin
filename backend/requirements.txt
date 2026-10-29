@@ -8,6 +8,8 @@ cryptography
 openpyxl
 defusedxml
 msoffcrypto-tool
+# Old .xls statements. xlrd 2.x reads only that format (openpyxl reads .xlsx).
+xlrd==2.0.2
 gunicorn>=23
 whitenoise>=6.7
 sentry-sdk>=2.20

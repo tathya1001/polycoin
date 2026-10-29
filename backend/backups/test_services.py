@@ -223,7 +223,7 @@ def test_a_restored_row_still_dedupes_against_the_original_statement(alice):
     delete_user_data(alice)
     restore_backup(alice, content)
 
-    with pytest.raises(IntegrityError), transaction.atomic():  # what an Excel re-import hits
+    with pytest.raises(IntegrityError), transaction.atomic():  # what a statement re-import hits
         create_transaction(cipher, alice, category=category(alice, "Others"), **original)
 
 

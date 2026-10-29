@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { CheckCircle2, Eye, EyeOff, FileSpreadsheet, KeyRound, Upload } from "lucide-react";
+import { CheckCircle2, Eye, EyeOff, FileSpreadsheet, FileText, Info, KeyRound, Upload } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { readError } from "@/lib/errors";
 import { money } from "@/lib/format";
-import type { ImportResult, Mapping, MappingField, Preview } from "@/lib/types";
+import { convertPdf, isPdf, PdfProblem } from "@/lib/pdfText";
+import type { ImportResult, ImportRowError, Mapping, MappingField, Preview } from "@/lib/types";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ErrorNote, Spinner } from "@/components/ui/Feedback";
@@ -29,6 +30,8 @@ const FIELDS: { key: MappingField; label: string }[] = [
   { key: "balance", label: "Balance" },
 ];
 
+const ACCEPTED = ".xlsx,.xls,.csv,.pdf";
+
 // The server stores nothing, so every call re-sends the file (and password, and mapping).
 function buildForm(file: File, password: string, mapping: Mapping | null) {
   const form = new FormData();
@@ -49,6 +52,10 @@ async function readCode(res: Response): Promise<string | undefined> {
 export default function ImportStatement() {
   const toast = useToast();
   const [file, setFile] = useState<File | null>(null);
+  // What the server receives: the chosen file, or for a PDF the CSV table read from it here.
+  const [upload, setUpload] = useState<File | null>(null);
+  // For a PDF, the page each uploaded row came from (row N is pdfPages[N - 1]).
+  const [pdfPages, setPdfPages] = useState<number[] | null>(null);
   const [password, setPassword] = useState("");
   const [needsPassword, setNeedsPassword] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -63,6 +70,10 @@ export default function ImportStatement() {
 
   // Only the newest preview request may update the screen (dropdowns can fire quickly).
   const latestRequest = useRef(0);
+
+  const fromPdf = file !== null && isPdf(file);
+  // A PDF is unlocked here in the browser; its CSV table needs no password on the server.
+  const serverPassword = fromPdf ? "" : password;
 
   async function runPreview(f: File, pw: string, m: Mapping | null) {
     const requestId = ++latestRequest.current;
@@ -101,9 +112,38 @@ export default function ImportStatement() {
     }
   }
 
+  // Reads the PDF's table in the browser once; every later call uploads the resulting CSV.
+  async function readPdf(f: File, pw: string) {
+    const requestId = ++latestRequest.current;
+    setLoading(true);
+    setError(null);
+    try {
+      const { csv, pages } = await convertPdf(f, pw);
+      if (requestId !== latestRequest.current) return;
+      setUpload(csv);
+      setPdfPages(pages);
+      setNeedsPassword(false);
+      await runPreview(csv, "", null);
+    } catch (err) {
+      if (requestId !== latestRequest.current) return;
+      if (!(err instanceof PdfProblem)) {
+        setError("This PDF couldn't be read.");
+      } else if (err.code === "password_required" || err.code === "wrong_password") {
+        setNeedsPassword(true);
+        if (err.code === "wrong_password") setError(err.message);
+      } else {
+        setError(err.message);
+      }
+    } finally {
+      if (requestId === latestRequest.current) setLoading(false);
+    }
+  }
+
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const chosen = e.target.files?.[0] ?? null;
     setFile(chosen);
+    setUpload(null);
+    setPdfPages(null);
     setPassword("");
     setNeedsPassword(false);
     setHeaders([]);
@@ -111,31 +151,39 @@ export default function ImportStatement() {
     setPreview(null);
     setResult(null);
     setError(null);
-    if (chosen) runPreview(chosen, "", null);
+    if (!chosen) return;
+    if (isPdf(chosen)) {
+      readPdf(chosen, "");
+    } else {
+      setUpload(chosen);
+      runPreview(chosen, "", null);
+    }
   }
 
   function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (file) runPreview(file, password, mapping);
+    if (!file) return;
+    if (fromPdf) readPdf(file, password);
+    else runPreview(file, password, mapping);
   }
 
   function handleMappingChange(field: MappingField, value: string) {
-    if (!file) return;
+    if (!upload) return;
     const next: Mapping = { ...mapping };
     if (value === "") delete next[field];
     else next[field] = Number(value);
     setMapping(next);
-    runPreview(file, password, next);
+    runPreview(upload, serverPassword, next);
   }
 
   async function handleConfirm() {
-    if (!file || !mapping) return;
+    if (!upload || !mapping) return;
     setLoading(true);
     setError(null);
     try {
       const res = await apiFetch(IMPORT_URL, {
         method: "POST",
-        body: buildForm(file, password, mapping),
+        body: buildForm(upload, serverPassword, mapping),
       });
       if (res.ok) {
         const done: ImportResult = await res.json();
@@ -169,16 +217,22 @@ export default function ImportStatement() {
           className="mb-5 flex cursor-pointer items-center gap-4 rounded-md border-[1.5px] border-dashed border-ink bg-surface p-5 transition-colors hover:bg-wash has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ink"
         >
           <span className="grid size-12 shrink-0 place-items-center rounded-full border-[1.5px] border-ink bg-canvas">
-            {file ? <FileSpreadsheet size={22} aria-hidden /> : <Upload size={22} aria-hidden />}
+            {!file ? (
+              <Upload size={22} aria-hidden />
+            ) : fromPdf ? (
+              <FileText size={22} aria-hidden />
+            ) : (
+              <FileSpreadsheet size={22} aria-hidden />
+            )}
           </span>
           <span className="flex-1">
             <span className="block font-semibold">{file ? file.name : "Choose a bank statement"}</span>
             <span className="block text-sm text-ink-2">
-              {file ? "Click to choose a different file." : ".xlsx, up to 5 MB"}
+              {file ? "Click to choose a different file." : "Excel, CSV or PDF, up to 5 MB"}
             </span>
           </span>
           {loading && <Spinner />}
-          <input id="statement" type="file" accept=".xlsx" onChange={handleFileChange} className="sr-only" />
+          <input id="statement" type="file" accept={ACCEPTED} onChange={handleFileChange} className="sr-only" />
         </label>
       )}
 
@@ -255,6 +309,12 @@ export default function ImportStatement() {
             Preview: {preview.row_count} transactions
             {preview.error_count > 0 && `, ${preview.error_count} rows with problems`}
           </h2>
+          {fromPdf && (
+            <p className="flex items-center gap-2 text-sm text-ink-2">
+              <Info size={16} aria-hidden /> This table was rebuilt from a PDF. Check the rows below
+              before you import.
+            </p>
+          )}
           <Table>
             <thead>
               <Tr className="hover:bg-transparent">
@@ -284,7 +344,9 @@ export default function ImportStatement() {
           {preview.row_count > preview.sample.length && (
             <p className="text-xs text-muted">Showing the first {preview.sample.length}.</p>
           )}
-          {preview.errors.length > 0 && <RowErrors errors={preview.errors} total={preview.error_count} />}
+          {preview.errors.length > 0 && (
+            <RowErrors errors={preview.errors} total={preview.error_count} pages={pdfPages} />
+          )}
 
           {/* 4. confirm */}
           <Button variant="primary" loading={loading} disabled={preview.row_count === 0} onClick={handleConfirm}>
@@ -301,7 +363,9 @@ export default function ImportStatement() {
           <p>
             {result.imported} imported, {result.duplicates} skipped as duplicates.
           </p>
-          {result.errors.length > 0 && <RowErrors errors={result.errors} total={result.errors.length} />}
+          {result.errors.length > 0 && (
+            <RowErrors errors={result.errors} total={result.errors.length} pages={pdfPages} />
+          )}
           <div className="flex flex-wrap gap-2">
             <Link href="/transactions" className={buttonClass("primary", "md")}>
               View transactions
@@ -319,7 +383,20 @@ export default function ImportStatement() {
   );
 }
 
-function RowErrors({ errors, total }: { errors: { row: number; reason: string }[]; total: number }) {
+// A row number inside a table rebuilt from a PDF means nothing to the user; its page does.
+function RowErrors({
+  errors,
+  total,
+  pages,
+}: {
+  errors: ImportRowError[];
+  total: number;
+  pages: number[] | null;
+}) {
+  const where = (row: number) => {
+    const page = pages?.[row - 1];
+    return page ? `Page ${page}` : `Row ${row}`;
+  };
   return (
     <div className="rounded-sm border-[1.5px] border-neg bg-[#fff1f1] p-3 text-sm text-neg">
       <p className="font-medium">
@@ -328,7 +405,7 @@ function RowErrors({ errors, total }: { errors: { row: number; reason: string }[
       <ul className="mt-1 list-disc pl-5">
         {errors.map((e) => (
           <li key={e.row}>
-            Row {e.row}: {e.reason}
+            {where(e.row)}: {e.reason}
           </li>
         ))}
       </ul>

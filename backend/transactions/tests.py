@@ -530,9 +530,17 @@ def test_bad_row_is_reported_but_not_fatal(alice):
     assert [e["row"] for e in body["errors"]] == [3]
 
 
-def test_non_xlsx_extension_is_400(alice):
-    file = SimpleUploadedFile("statement.csv", b"a,b,c")
+def test_unsupported_extension_is_400(alice):
+    file = SimpleUploadedFile("statement.docx", b"a,b,c")
     response = client_for(alice).post(IMPORT_URL, {"file": file}, format="multipart")
+    assert response.status_code == 400
+    assert response.json()["code"] == "invalid_file"
+
+
+def test_pdf_is_refused_by_the_server(alice):
+    # The import page turns a PDF into a CSV table in the browser; the server never parses one.
+    file = SimpleUploadedFile("statement.pdf", b"%PDF-1.7\n...")
+    response = client_for(alice).post(PREVIEW_URL, {"file": file}, format="multipart")
     assert response.status_code == 400
     assert response.json()["code"] == "invalid_file"
 
@@ -622,3 +630,81 @@ def test_encrypted_file_with_right_password_imports(alice):
     response = post_encrypted(alice, url=IMPORT_URL, password=FILE_PASSWORD)
     assert response.status_code == 200, response.content
     assert response.json()["imported"] == 3
+
+
+# --- CSV and old .xls files ---------------------------------------------------
+
+import csv  # noqa: E402
+
+from rest_framework.throttling import ScopedRateThrottle  # noqa: E402
+
+from transactions.testing import make_xls  # noqa: E402
+
+
+def make_csv(rows, name="statement.csv", delimiter=","):
+    buffer = io.StringIO()
+    csv.writer(buffer, delimiter=delimiter).writerows(rows)
+    return SimpleUploadedFile(name, buffer.getvalue().encode())
+
+
+def post_file(user, file, url=IMPORT_URL, **extra):
+    return client_for(user).post(url, {"file": file, **extra}, format="multipart")
+
+
+def test_csv_preview_detects_the_same_columns_as_xlsx(alice):
+    body = post_file(alice, make_csv(SAMPLE_ROWS), url=PREVIEW_URL).json()
+
+    assert body["detected_mapping"] == {
+        "date": 0, "description": 1, "debit": 4, "credit": 5, "balance": 6,
+    }
+    assert body["row_count"] == 3
+    assert body["sample"][1]["amount"] == "5000.00"
+    assert body["sample"][1]["description"] == "BY TRANSFER-NEFT*TSTC0001234*N1234*ACME LTD"
+
+
+def test_semicolon_csv_imports(alice):
+    response = post_file(alice, make_csv(SAMPLE_ROWS, delimiter=";"))
+    assert response.status_code == 200, response.content
+    assert response.json()["imported"] == 3
+
+
+def test_same_statement_as_xlsx_then_csv_gives_all_duplicates(alice):
+    # Same cells, same fingerprints: the format a statement came in doesn't matter.
+    post_import(alice)
+    second = post_file(alice, make_csv(SAMPLE_ROWS)).json()
+
+    assert (second["imported"], second["duplicates"]) == (0, 3)
+
+
+def test_xls_imports(alice):
+    rows = [
+        ["Date", "Narration", "Debit", "Credit", "Balance"],
+        [date(2026, 4, 1), "UPI/DR/412345678901/TASTYBITES/TSTB/x@tstb", 250, None, 9750],
+        ["02/04/2026", "BY TRANSFER-NEFT*TSTC0001234*N1234*ACME LTD", None, 5000, 14750],
+    ]
+    file = SimpleUploadedFile("statement.xls", make_xls(rows))
+
+    response = post_file(alice, file)
+
+    assert response.status_code == 200, response.content
+    assert response.json()["imported"] == 2
+    txns = Transaction.objects.filter(user=alice).order_by("date")
+    assert [t.date for t in txns] == [date(2026, 4, 1), date(2026, 4, 2)]
+
+
+def test_csv_bad_row_reports_its_file_row_number(alice):
+    rows = [["Date", "Narration", "Debit", "Credit"], ["31/02/2026", "Impossible", "10", None]]
+    assert post_file(alice, make_csv(rows)).json()["errors"] == [
+        {"row": 2, "reason": "Unrecognised date: '31/02/2026'."}
+    ]
+
+
+def test_preview_has_its_own_rate_limit(alice, monkeypatch):
+    # Every mapping change sends another preview, so preview is limited separately from import.
+    monkeypatch.setattr(
+        ScopedRateThrottle, "THROTTLE_RATES", {"import": "1/hour", "import_preview": "100/hour"}
+    )
+    for _ in range(3):
+        assert post_file(alice, make_csv(SAMPLE_ROWS), url=PREVIEW_URL).status_code == 200
+    assert post_file(alice, make_csv(SAMPLE_ROWS)).status_code == 200
+    assert post_file(alice, make_csv(SAMPLE_ROWS)).status_code == 429

@@ -22,9 +22,9 @@ from .importer import (
     WrongPassword,
     detect_header,
     parse_rows,
-    read_rows,
 )
 from .models import Transaction
+from .readers import read_statement
 from .serializers import BulkCategorySerializer, TransactionSerializer
 from .services import create_transaction
 
@@ -45,7 +45,7 @@ class TransactionViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    """No create: transactions only arrive through the Excel import."""
+    """No create: transactions only arrive through the statement import."""
 
     queryset = Transaction.objects.select_related("category")
     serializer_class = TransactionSerializer
@@ -104,7 +104,7 @@ class TransactionViewSet(
         )
 
 
-# --- Excel import -------------------------------------------------------------
+# --- statement import ---------------------------------------------------------
 
 class ImportProblem(APIException):
     """400 with a machine-readable `code`, so the UI can react (e.g. ask for a password)."""
@@ -128,13 +128,11 @@ class ImportBase(APIView):
         file = request.FILES.get("file")
         if file is None:
             raise ImportProblem("missing_file", "Upload a file in the 'file' field.")
-        if not file.name.lower().endswith(".xlsx"):
-            raise ImportProblem("invalid_file", "Only .xlsx files are supported.")
         if file.size > MAX_UPLOAD_BYTES:
             raise ImportProblem("file_too_large", "The file is larger than 5 MB.")
 
         try:
-            rows = read_rows(file, request.data.get("password") or None)
+            rows = read_statement(file, file.name, request.data.get("password") or None)
         except PasswordRequired:
             raise ImportProblem("password_required", "This file is password-protected.")
         except WrongPassword:
@@ -163,7 +161,10 @@ class ImportBase(APIView):
 
 
 class ImportPreviewView(ImportBase):
-    """Nothing is written. Shows how the columns were detected plus a sample."""
+    """Nothing is written. Shows how the columns were detected plus a sample.
+    Its own, looser rate limit: the page asks again after every column-mapping change."""
+
+    throttle_scope = "import_preview"
 
     def post(self, request):
         rows, header_index, detected, parsed, errors = self.load(request)

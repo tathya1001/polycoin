@@ -2,3 +2,5 @@
 pytest>=8
 pytest-django>=4.9
 ruff==0.17.1
+# Builds .xls fixtures in tests (xlrd reads them; nothing writes .xls in the app).
+xlwt==1.3.0

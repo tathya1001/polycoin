@@ -33,7 +33,7 @@ export type Page<T> = {
   results: T[];
 };
 
-// --- Excel import ---
+// --- statement import ---
 
 export type MappingField =
   | "date"
@@ -44,7 +44,7 @@ export type MappingField =
   | "type"
   | "balance";
 
-// field -> column index in the sheet
+// field -> column index in the statement table
 export type Mapping = Partial<Record<MappingField, number>>;
 
 export type PreviewRow = {
