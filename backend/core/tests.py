@@ -66,6 +66,19 @@ def test_ping_runs_no_database_queries(django_assert_num_queries, settings):
 
 
 @pytest.mark.django_db
+@pytest.mark.parametrize("path", ["/api/ping/", "/api/health/"])
+def test_monitors_can_check_with_head(path):
+    """Uptime monitors send HEAD by default; a 405 made the keep-alive report the site as down."""
+    assert Client().head(path).status_code == 200
+
+
+@pytest.mark.django_db
+def test_ping_with_head_still_runs_no_database_queries(django_assert_num_queries):
+    with django_assert_num_queries(0):
+        assert Client().head("/api/ping/").status_code == 200
+
+
+@pytest.mark.django_db
 def test_ping_ignores_credentials_so_it_cannot_query_the_user_table(
     django_assert_num_queries, settings
 ):

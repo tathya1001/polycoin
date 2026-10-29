@@ -5,7 +5,9 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 
-@api_view(["GET"])
+# HEAD as well as GET: uptime monitors (the external keep-alive among them) and load balancers
+# often send HEAD, and a 405 makes them report the service as down.
+@api_view(["GET", "HEAD"])
 @authentication_classes([])
 @permission_classes([AllowAny])
 def ping(request):
@@ -14,7 +16,7 @@ def ping(request):
     return Response({"status": "ok", "commit": settings.GIT_COMMIT})
 
 
-@api_view(["GET"])
+@api_view(["GET", "HEAD"])
 @permission_classes([AllowAny])
 def health(request):
     try:
