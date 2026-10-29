@@ -10,7 +10,7 @@ defusedxml
 msoffcrypto-tool
 # Old .xls statements. xlrd 2.x reads only that format (openpyxl reads .xlsx).
 xlrd==2.0.2
-gunicorn>=23
+gunicorn>=26.2.0
 whitenoise>=6.7
 sentry-sdk>=2.20
 # RAG search. Exact pins: memory and speed were measured on these versions, so a newer one is a
