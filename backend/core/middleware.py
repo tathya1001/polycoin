@@ -4,8 +4,8 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.utils.cache import add_never_cache_headers
 
-# Probes that must work without the Vercel proxy: Render's health check, the keep-alive cron
-# and the deploy pipeline call these straight on the Render URL.
+# Probes that must work without the Vercel proxy: Render's health check, the external uptime
+# monitor (the keep-alive) and the deploy pipeline call these straight on the Render URL.
 ORIGIN_EXEMPT = {"/api/ping/", "/api/health/"}
 
 
