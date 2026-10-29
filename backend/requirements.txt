@@ -11,7 +11,7 @@ msoffcrypto-tool
 # Old .xls statements. xlrd 2.x reads only that format (openpyxl reads .xlsx).
 xlrd==2.0.2
 gunicorn>=23
-whitenoise>=6.7
+whitenoise>=6.12.0
 sentry-sdk>=2.20
 # RAG search. Exact pins: memory and speed were measured on these versions, so a newer one is a
 # deliberate Dependabot bump. numpy 2.5+ needs Python 3.12.
