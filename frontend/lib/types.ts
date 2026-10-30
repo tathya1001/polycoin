@@ -339,6 +339,9 @@ export type PanelFilters = {
   merchant_contains: string;
 };
 
+// One measure of a panel. `formula` only with measure "formula"; `label` is what the chart calls it.
+export type MeasureSpec = { measure: Measure; agg: Agg; formula?: Formula; label?: string };
+
 // A validated panel config, exactly as the backend returns it (every default filled in).
 // Table calculations, computed on the aggregated chart values (backend/insights/engine.py).
 export type CalcType = "running_total" | "percent_of_total" | "moving_average" | "change";
@@ -389,7 +392,8 @@ export type PanelConfig = {
   chart: DataChartType;
   x?: { field: Dimension; granularity?: Granularity };
   rows?: { field: Dimension }; // a heatmap's second axis
-  y: { measure: Measure; agg: Agg; formula?: Formula }; // formula only with measure "formula"
+  y: MeasureSpec;
+  also?: MeasureSpec[]; // measures shown beside `y` on a bar, line or area chart
   color?: { field: Dimension };
   sort: "measure_desc" | "label";
   limit: number;
@@ -449,6 +453,7 @@ export type Catalogue = {
     max_secondary: number;
   };
   rows_fields: Dimension[]; // what a heatmap's rows can be
+  series: { charts: DataChartType[]; max_extra: number; max_label: number }; // several measures
   formula: {
     charts: DataChartType[]; // where a calculated field can be used
     agg: Agg; // the one aggregation a formula panel stores
@@ -518,7 +523,7 @@ export type Selection = {
 
 // What a click on a chart landed on, in the backend's raw values: the x value, the colour
 // series if the chart has one, and a heatmap's row.
-export type Picked = { x: Cell; color?: Cell; row?: Cell };
+export type Picked = { x: Cell; color?: Cell; row?: Cell; series?: number };
 
 // A page of the transactions behind a mark (POST /api/insights/rows/).
 export type RowsPage = {

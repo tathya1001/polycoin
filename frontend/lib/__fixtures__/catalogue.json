@@ -1,5 +1,5 @@
 {
- "version": 9,
+ "version": 10,
  "dimensions": [
   {
    "id": "date",
@@ -288,12 +288,25 @@
   "merchant",
   "data_source"
  ],
+ "series": {
+  "charts": [
+   "bar",
+   "line",
+   "area"
+  ],
+  "max_extra": 4,
+  "max_label": 40
+ },
  "formula": {
   "charts": [
    "bar",
    "line",
    "area",
-   "kpi"
+   "kpi",
+   "pie",
+   "donut",
+   "calendar",
+   "heatmap"
   ],
   "agg": "avg",
   "forms": [

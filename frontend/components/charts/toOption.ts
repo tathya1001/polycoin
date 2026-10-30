@@ -20,12 +20,17 @@ import { FALLBACK_SERIES_COLORS } from "@/lib/colors";
 import { CHART_LOOKS, type ChartLook } from "@/lib/theme";
 import {
   MEASURE_LABELS,
+  axisSides,
   defaultFormat,
   formatLabel,
   formatValue,
   isPercent,
   isPlainNumber,
+  seriesConfig,
+  seriesName,
+  seriesOf,
   sourceColorKey,
+  unitOf,
 } from "@/lib/insights";
 import type { Cell, Dimension, PanelConfig, QueryResult } from "@/lib/types";
 
@@ -42,8 +47,9 @@ export type ChartOption = ComposeOption<
 >;
 
 // What a click on (seriesIndex, dataIndex) refers to, in the backend's raw values. Marks that
-// sit on two axes (a calendar day, a heatmap cell) are listed in `cells`, by data index.
-export type ChartKeys = { x: Cell[]; colors: Cell[]; cells?: { x: Cell; row?: Cell }[] };
+// sit on two axes (a calendar day, a heatmap cell) are listed in `cells`, by data index. `measures`
+// says which measure each drawn series shows, on a chart with several.
+export type ChartKeys = { x: Cell[]; colors: Cell[]; measures?: number[]; cells?: { x: Cell; row?: Cell }[] };
 
 // The x value a chart dims everything else against, because it was picked to filter the
 // other panels. Charts that draw one mark per x value (bars, slices) honour it.
@@ -60,6 +66,11 @@ export type CategoryColors = ReadonlyMap<string, string>;
 // The key under which a chart with a single series stores its colour in series_colors.
 export const SINGLE_SERIES_KEY = "_";
 
+// With a colour split, colour means the field, so these tell the measures apart instead.
+const DASHES: ("solid" | "dashed" | "dotted" | number[])[] = ["solid", "dashed", "dotted", [8, 3, 2, 3], [2, 5]];
+const SHADES = [1, 0.72, 0.52, 0.38, 0.28];
+
+const measureKey = (index: number) => `m${index}`;
 
 const toNumber = (value: Cell) => (value === null ? null : Number(value));
 
@@ -170,15 +181,24 @@ export function seriesSwatches(
   }
 
   const split = result.columns.includes("color");
+  const multi = result.columns.includes("series");
   const bySlices = config.chart === "pie" || config.chart === "donut";
-  const perBar = config.chart === "bar" && !split && config.x?.field !== "date";
+  const perBar = config.chart === "bar" && !split && !multi && config.x?.field !== "date";
 
-  // What the colours belong to: slices, bars, or the colour-split series.
+  // What the colours belong to: slices, bars, measures, or the colour-split series.
   let keys: Cell[];
   let field: Dimension | undefined;
   if (split) {
-    keys = unique(result.rows.map((row) => row[1]));
+    const colorAt = result.columns.indexOf("color");
+    keys = unique(result.rows.map((row) => row[colorAt]));
     field = config.color?.field;
+  } else if (multi) {
+    const measures = seriesOf(config);
+    return measures.map((_, index) => ({
+      key: measureKey(index),
+      label: seriesName(measures, index),
+      color: resolveColor(measureKey(index), index, undefined, config, categoryColors, look),
+    }));
   } else if (bySlices || perBar) {
     keys = unique(result.rows.map((row) => row[0]));
     field = config.x?.field;
@@ -267,7 +287,7 @@ function pieChart(config: PanelConfig, result: QueryResult, categoryColors: Cate
   };
 }
 
-// bar / line / area, with or without a colour split.
+// bar / line / area, with or without a colour split, and with one measure or several.
 function cartesianChart(
   config: PanelConfig,
   result: QueryResult,
@@ -275,33 +295,62 @@ function cartesianChart(
   highlight: Highlight,
   look: ChartLook,
 ): BuiltChart {
+  const measures = seriesOf(config);
   const split = result.columns.includes("color");
+  const multi = result.columns.includes("series");
+  const colorAt = result.columns.indexOf("color");
+  const measureAt = result.columns.indexOf("series");
+  const valueAt = result.columns.indexOf("value");
+  const measureOf = (row: Cell[]) => (multi ? Number(row[measureAt]) : 0);
+  const colorOf = (row: Cell[]) => (split ? row[colorAt] : null);
   const xKeys = unique(result.rows.map((row) => row[0]));
-  const colorKeys = split ? unique(result.rows.map((row) => row[1])) : [null];
-  const valueIndex = split ? 2 : 1;
+  const colorKeys = split ? unique(result.rows.map(colorOf)) : [null];
 
-  // (x, colour) -> value, then one series per colour lined up with xKeys.
-  const lookup = new Map(result.rows.map((row) => [`${row[0]}|${split ? row[1] : ""}`, row[valueIndex]]));
+  // (x, measure, colour) -> value, then one drawn series per (measure, colour) lined up with xKeys.
+  const cellKey = (x: Cell, measure: number, color: Cell) => `${x}|${measure}|${color ?? ""}`;
+  const lookup = new Map(result.rows.map((row) => [cellKey(row[0], measureOf(row), colorOf(row)), row[valueAt]]));
+  const lines = new Map(
+    result.rows.map((row) => [`${measureOf(row)}|${colorOf(row)}`, { measure: measureOf(row), color: colorOf(row) }]),
+  );
+  const drawn = lines.size ? [...lines.values()] : [{ measure: 0, color: null as Cell }];
+
+  // Each measure's own units, and the axis it reads against.
+  const configFor = (measure: number) => (multi ? seriesConfig(config, measure) : config);
+  const sides = axisSides(measures.map((_, index) => unitOf(configFor(index))));
+  const hasRightAxis = multi && sides.includes(1);
+
   const horizontal = config.chart === "bar" && config.orientation === "horizontal";
   const seriesType = config.chart === "bar" ? "bar" : "line";
   const manyPoints = xKeys.length > 40;
   // A bar chart by category/merchant/... with no split: every bar is its own entity, so each
   // gets its own colour (a category's colour is the bar's default).
-  const perBar = seriesType === "bar" && !split && config.x?.field !== "date";
+  const perBar = seriesType === "bar" && !split && !multi && config.x?.field !== "date";
   // Rounded data-ends only on bars that aren't stacked (a stack's inner ends must stay flat).
   const stackedBars = split && config.stacked;
   const radius = stackedBars ? 0 : 4;
-  const legend = legendPosition(config, split, "top");
+  const legend = legendPosition(config, split || multi, "top");
 
-  const series = colorKeys.map((colorKey, position) => {
-    const data = xKeys.map((x) => toNumber(lookup.get(`${x}|${split ? colorKey : ""}`) ?? null));
-    const name = split ? formatLabel(colorKey, config.color?.field) : MEASURE_LABELS[config.y.measure];
-    const stack = split && (config.stacked || config.chart === "area") ? "total" : undefined;
-    const color = resolveColor(split ? colorKey : SINGLE_SERIES_KEY, position, split ? config.color?.field : undefined, config, categoryColors, look);
+  const series = drawn.map(({ measure, color: colorKey }) => {
+    const own = configFor(measure);
+    const data = xKeys.map((x) => toNumber(lookup.get(cellKey(x, measure, colorKey)) ?? null));
+    const names = [
+      ...(multi || !split ? [seriesName(measures, measure)] : []),
+      ...(split ? [formatLabel(colorKey, config.color?.field)] : []),
+    ];
+    const name = names.join(" · ") + (hasRightAxis && sides[measure] === 1 ? " (right axis)" : "");
+    const stackName = multi ? `total-${measure}` : "total"; // stacks stay within one measure
+    const stack = split && (config.stacked || config.chart === "area") ? stackName : undefined;
+    const position = split ? colorKeys.indexOf(colorKey) : measure;
+    const colorName = split ? colorKey : multi ? measureKey(measure) : SINGLE_SERIES_KEY;
+    const color = resolveColor(colorName, position, split ? config.color?.field : undefined, config, categoryColors, look);
+    const axis = hasRightAxis ? { [horizontal ? "xAxisIndex" : "yAxisIndex"]: sides[measure] } : {};
+    // A tooltip's value uses each measure's own units.
+    const tooltip = multi ? { tooltip: { valueFormatter: (value: unknown) => valueText(own, value as number | null) } } : {};
 
     if (seriesType === "bar") {
       const barStyle = {
         color,
+        opacity: multi && split ? SHADES[measure] : undefined,
         borderColor: look.barEdge.color,
         borderWidth: look.barEdge.width,
         borderRadius: horizontal ? [0, radius, radius, 0] : [radius, radius, 0, 0],
@@ -310,8 +359,10 @@ function cartesianChart(
         type: "bar" as const,
         name,
         stack,
+        ...axis,
+        ...tooltip,
         emphasis: { focus: "series" as const },
-        label: labelOption(config, stackedBars ? "inside" : horizontal ? "right" : "top"),
+        label: labelOption(own, stackedBars ? "inside" : horizontal ? "right" : "top"),
         itemStyle: barStyle,
         data:
           perBar || highlight !== undefined
@@ -320,7 +371,7 @@ function cartesianChart(
                 itemStyle: {
                   ...barStyle,
                   color: perBar ? resolveColor(xKeys[index], index, config.x?.field, config, categoryColors, look) : color,
-                  opacity: dimmed(xKeys[index], highlight),
+                  opacity: dimmed(xKeys[index], highlight) * (multi && split ? SHADES[measure] : 1),
                 },
               }))
             : data,
@@ -331,10 +382,12 @@ function cartesianChart(
       name,
       data,
       stack,
+      ...axis,
+      ...tooltip,
       showSymbol: !manyPoints,
       symbolSize: 8,
-      label: labelOption(config, "top"),
-      lineStyle: { width: 2.5, color },
+      label: labelOption(own, "top"),
+      lineStyle: { width: 2.5, color, type: multi && split ? DASHES[measure] : "solid" },
       itemStyle: { color, borderColor: look.surface, borderWidth: 2 },
       areaStyle: config.chart === "area" ? { opacity: 0.28, color } : undefined,
       emphasis: { focus: "series" as const },
@@ -350,18 +403,34 @@ function cartesianChart(
   const { min, max } = formatOf(config).axis;
   const valueAxis = {
     type: "value" as const,
-    axisLabel: { formatter: axisFormatter(config) },
+    axisLabel: { formatter: axisFormatter(configFor(sides.indexOf(0))) },
     ...(min !== null ? { min } : {}),
     ...(max !== null ? { max } : {}),
   };
+  // The right axis writes its unit only when everything on it shares one.
+  const rightMeasures = measures.map((_, index) => index).filter((index) => sides[index] === 1);
+  const rightUnits = new Set(rightMeasures.map((index) => unitOf(configFor(index))));
+  const rightAxis = hasRightAxis
+    ? {
+        type: "value" as const,
+        position: (horizontal ? "top" : "right") as "top" | "right",
+        splitLine: { show: false },
+        axisLabel: { formatter: rightUnits.size === 1 ? axisFormatter(configFor(rightMeasures[0])) : (value: number) => compact.format(value) },
+      }
+    : null;
+  const valueAxes = rightAxis ? [valueAxis, rightAxis] : valueAxis;
 
   return {
-    keys: { x: xKeys, colors: split ? colorKeys : [] },
+    keys: {
+      x: xKeys,
+      colors: split ? drawn.map((line) => line.color) : [],
+      ...(multi ? { measures: drawn.map((line) => line.measure) } : {}),
+    },
     option: {
       grid: {
         left: 8,
-        right: legend === "right" ? 120 : 16,
-        top: legend === "top" ? 36 : 16,
+        right: (legend === "right" ? 120 : 16) + (rightAxis && !horizontal ? 44 : 0),
+        top: (legend === "top" ? 36 : 16) + (rightAxis && horizontal ? 24 : 0),
         bottom: legend === "bottom" ? 36 : 8,
       },
       legend: legendOption(legend),
@@ -370,8 +439,8 @@ function cartesianChart(
         axisPointer: { type: seriesType === "bar" ? "shadow" : "line" },
         valueFormatter: (value) => valueText(config, value as number | null),
       },
-      xAxis: horizontal ? valueAxis : categoryAxis,
-      yAxis: horizontal ? categoryAxis : valueAxis,
+      xAxis: horizontal ? valueAxes : categoryAxis,
+      yAxis: horizontal ? categoryAxis : valueAxes,
       series,
     },
   };

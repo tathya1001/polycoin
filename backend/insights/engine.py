@@ -157,6 +157,11 @@ def load_start(spec: dict, period: tuple[date, date]) -> date:
 # --- measures and aggregation -------------------------------------------------
 
 
+def measures_of(spec: dict) -> list[dict]:
+    """Everything a panel measures: `y`, then any measures shown beside it."""
+    return [spec["y"], *spec.get("also", ())]
+
+
 def measure_value(row: dict, measure: str) -> Decimal | None:
     """The number this row contributes to `measure`, or None if it doesn't contribute."""
     amount = row["amount"]
@@ -344,9 +349,16 @@ def _y_cell(rows: list[dict], y: dict, days: Callable[[], int] | None = None) ->
     """
     if y["measure"] == FORMULA:  # worked out from the whole group, not row by row
         return evaluate_rows(y["formula"]["expression"], rows, days) if rows else None
+    view = current_view()
     if y["measure"] == "balance":
-        book, last = current_view().book, getattr(days, "last", None)
-        return closing_balance(rows) if book is None or last is None else book.at(last)
+        book, last = view.book, getattr(days, "last", None)
+        if book is None:
+            return closing_balance(rows)
+        if last is None:  # rows a formula beside this measure reads aren't this panel's balance
+            return closing_balance([row for row in rows if row["source"].key in book.keys])
+        return book.at(last)
+    if view.visible is not None:  # a formula beside this measure loaded rows it may not read
+        rows = list(filter(view.visible, rows))
     values = []
     for row in rows:
         value = measure_value(row, y["measure"])
@@ -492,11 +504,15 @@ def _balance_cells(book, x: dict, color: dict | None, span: tuple[date, date]) -
     return None
 
 
-def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
-    """bar / line / area / pie / donut: aggregate `y` for each value of `x` (and of `color`).
+def _grouped_table(
+    spec: dict,
+    rows: list[dict],
+    period: tuple[date, date],
+    x_order: list | None = None,
+) -> tuple[list, list, dict]:
+    """(x values, colour values, {(x, colour): value}) for one measure.
 
-    `rows` must already be sorted by date (so `last` works). The result is "long" format,
-    one output row per (x, color) pair; the frontend pivots it into chart series.
+    `x_order` gives a categorical axis its values, for a measure that follows another one.
     """
     x, y = spec["x"], spec["y"]
     color = spec.get("color")
@@ -526,6 +542,8 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
         x_keys = list(range(7))
     elif x["field"] == "month_of_year":
         x_keys = list(range(1, 13))
+    elif x_order is not None:
+        x_keys = list(x_order)
     else:  # category / merchant / txn_type / data_source: rank the x values, keep the top few
         x_only = {key[0]: value for key, value in values.items()} if balances else {
             key[0]: _y_cell(group, y, group_span([x_dim], key, *span))
@@ -534,7 +552,8 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
         ranked = top_n(
             [(label, value) for label, value in x_only.items() if value is not None],
             spec.get("limit", 10),
-            fold=foldable and not color,  # "Other" only makes sense for one series that adds up
+            # "Other" only makes sense for one series that adds up.
+            fold=foldable and not color and not spec.get("also"),
         )
         x_keys = [label for label, _ in ranked]
         if spec.get("sort") == "label":
@@ -553,6 +572,17 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
     if x["field"] == "date":
         first = bucket_date(period[0], x["granularity"])
         x_keys = [x_key for x_key in x_keys if x_key >= first]
+    return x_keys, colors, table
+
+
+def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
+    """bar / line / area / pie / donut: aggregate `y` for each value of `x` (and of `color`).
+
+    `rows` must already be sorted by date (so `last` works). The result is "long" format,
+    one output row per (x, color) pair; the frontend pivots it into chart series.
+    """
+    x, y, color, calc = spec["x"], spec["y"], spec.get("color"), spec.get("calc")
+    x_keys, colors, table = _grouped_table(spec, rows, period)
 
     out = []
     for x_key in x_keys:
@@ -568,6 +598,36 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
         meta["calc"] = calc
     return {
         "columns": ["x", "color", "value"] if color else ["x", "value"],
+        "rows": out,
+        "meta": meta,
+    }
+
+
+def run_measures(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
+    """bar / line / area with several measures: one output row per (x, measure, colour).
+
+    The `series` column is the measure's place in measures_of(spec). The first measure decides
+    which values a categorical axis shows, and the others follow it, so every measure answers
+    for the same bars.
+    """
+    color, calc = spec.get("color"), spec.get("calc")
+    out, order = [], None
+    for index, y in enumerate(measures_of(spec)):
+        x_keys, colors, table = _grouped_table({**spec, "y": y}, rows, period, order)
+        order = x_keys
+        out += [
+            [_label(x_key), index]
+            + ([_label(color_key)] if color else [])
+            + [_fmt_cell(table[(x_key, color_key)], y, calc)]
+            for x_key in x_keys
+            for color_key in colors
+        ]
+
+    meta = {"chart": spec["chart"], "x": spec["x"], "y": spec["y"], "also": spec["also"]}
+    if calc:
+        meta["calc"] = calc
+    return {
+        "columns": ["x", "series", "color", "value"] if color else ["x", "series", "value"],
         "rows": out,
         "meta": meta,
     }
@@ -589,7 +649,11 @@ def _axis_keys(
         return list(range(7))
     if field == "month_of_year":
         return list(range(1, 13))
-    totals = {key[0]: _y_cell(group, y) for key, group in group_rows(rows, [(field, None)]).items()}
+    dims = [(field, None)]
+    totals = {
+        key[0]: _y_cell(group, y, group_span(dims, key, *period))
+        for key, group in group_rows(rows, dims).items()
+    }
     ranked = top_n(
         [(label, value) for label, value in totals.items() if value is not None],
         spec.get("limit", 10),
@@ -611,11 +675,10 @@ def run_heatmap(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
     x_keys = _axis_keys(x["field"], x.get("granularity"), rows, y, spec, period)
     row_keys = _axis_keys(row_field, None, rows, y, spec, period)
 
+    dims = [(x["field"], x.get("granularity")), (row_field, None)]
     cells = {
-        key: _y_cell(group, y)
-        for key, group in group_rows(
-            rows, [(x["field"], x.get("granularity")), (row_field, None)]
-        ).items()
+        key: _y_cell(group, y, group_span(dims, key, *period))
+        for key, group in group_rows(rows, dims).items()
     }
     x_position = {key: n for n, key in enumerate(x_keys)}
     row_position = {key: n for n, key in enumerate(row_keys)}
@@ -642,8 +705,10 @@ def run_calendar(spec: dict, rows: list[dict], period: tuple[date, date]) -> dic
     if (end - start).days + 1 > CALENDAR_MAX_DAYS:
         raise PeriodTooLong(f"A calendar shows at most {CALENDAR_MAX_DAYS} days.")
     y = spec["y"]
+    dims = [("date", "day")]
     cells = {
-        key[0]: _y_cell(group, y) for key, group in group_rows(rows, [("date", "day")]).items()
+        key[0]: _y_cell(group, y, group_span(dims, key, *period))
+        for key, group in group_rows(rows, dims).items()
     }
     return {
         "columns": ["x", "value"],
@@ -826,7 +891,8 @@ def _run(spec: dict, rows: list[dict], period: tuple[date, date], all_types) -> 
 
     if chart in GROUPED_CHARTS:
         # Only the period's rows, plus any a table calculation looks back over.
-        return run_grouped(spec, _in_period(rows, load_start(spec, period), period[1]), period)
+        shown = _in_period(rows, load_start(spec, period), period[1])
+        return (run_measures if spec.get("also") else run_grouped)(spec, shown, period)
     current = _in_period(rows, *period)  # rows from outside the period never reach a chart
     if chart == "heatmap":
         return run_heatmap(spec, current, period)

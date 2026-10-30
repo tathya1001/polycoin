@@ -25,6 +25,7 @@ from insights.spec import (
     LIMIT_RANGE,
     MAX_CATEGORIES,
     MAX_DATA_SOURCES,
+    MAX_EXTRA_MEASURES,
     MAX_MERCHANT_LENGTH,
     SORTS,
     TXN_TYPES,
@@ -60,6 +61,9 @@ class PanelIntent(BaseModel):
 
     chart: Literal[AGENT_CHARTS] | None = None
     measure: Literal[MEASURES] | None = None
+    also_measures: list[Literal[MEASURES]] = Field(
+        default_factory=list, max_length=MAX_EXTRA_MEASURES
+    )  # shown beside `measure` on one chart
     agg: Literal[AGENT_AGGS] | None = None
     x: Literal[DIMENSIONS] | None = None
     granularity: Literal[GRANULARITIES] | None = None
@@ -94,7 +98,7 @@ class PanelIntent(BaseModel):
             return None
         return flatten(value) or None
 
-    @field_validator("data_sources", mode="before")
+    @field_validator("data_sources", "also_measures", mode="before")
     @classmethod
     def _null_is_none_named(cls, value):
         return [] if value is None else value

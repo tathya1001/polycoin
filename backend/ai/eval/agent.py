@@ -26,7 +26,7 @@ from ..agent.schema import parse_intent
 
 CASES_FILE = Path(__file__).with_name("agent_cases.json")
 FIELDS = (
-    "kind", "chart", "measure", "agg", "x", "granularity", "color", "rows", "period",
+    "kind", "chart", "measure", "also_measures", "agg", "x", "granularity", "color", "rows", "period",
     "categories", "merchant", "txn_type", "limit", "sort", "compare", "calc",
 )  # fmt: skip
 
@@ -79,6 +79,7 @@ def observed(outcome: dict | None, names: dict) -> dict:
         "kind": "panel",
         "chart": spec["chart"],
         "measure": spec["y"]["measure"],
+        "also_measures": [item["measure"] for item in spec.get("also", ())],
         "agg": spec["y"]["agg"],
         "x": spec.get("x", {}).get("field"),
         "granularity": spec.get("x", {}).get("granularity"),
@@ -104,6 +105,8 @@ def score(expect: dict, seen: dict) -> dict[str, bool]:
     for name, value in wanted.items():
         if name == "categories":
             result[name] = sorted(value) == seen[name]
+        elif name == "also_measures":
+            result[name] = value == seen[name]
         else:
             result[name] = seen[name] in (value if isinstance(value, list) else [value])
     return result

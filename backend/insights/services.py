@@ -205,13 +205,14 @@ def _fields_needed(spec: dict, filters: dict) -> set:
     need = set()
     if "merchant" in fields or filters["merchant_contains"]:
         need.add("name")
-    if spec["y"]["measure"] == "balance":
-        need |= {"balance", "stored_order"}
-    if spec["y"]["measure"] == FORMULA:  # [Merchant] needs the name, [Balance] the balance
-        compiled = compile_expression(spec["y"]["formula"]["expression"])
-        need |= compiled.fields
-        if compiled.uses_balance:
-            need.add("stored_order")
+    for y in engine.measures_of(spec):
+        if y["measure"] == "balance":
+            need |= {"balance", "stored_order"}
+        if y["measure"] == FORMULA:  # [Merchant] needs the name, [Balance] the balance
+            compiled = compile_expression(y["formula"]["expression"])
+            need |= compiled.fields
+            if compiled.uses_balance:
+                need.add("stored_order")
     return need
 
 
@@ -236,16 +237,19 @@ def _scope_of(spec: dict, filters: dict, labels: dict) -> SourceScope:
             "unknown_data_source",
             "This panel uses a data source that no longer exists. Choose another one.",
         )
-    named, reads_balance = frozenset(), spec["y"]["measure"] == "balance"
-    if spec["y"]["measure"] == FORMULA:
-        compiled = compile_expression(spec["y"]["formula"]["expression"])
-        reads_balance = compiled.uses_balance
-        ids = {label.key: label.id for label in labels.values()}
+    named, reads_balance = set(), False
+    ids = {label.key: label.id for label in labels.values()}
+    for y in engine.measures_of(spec):
+        reads_balance = reads_balance or y["measure"] == "balance"
+        if y["measure"] != FORMULA:
+            continue
+        compiled = compile_expression(y["formula"]["expression"])
+        reads_balance = reads_balance or compiled.uses_balance
         for key in compiled.sources:
             if key not in ids:
                 raise SpecError("unknown_data_source", f'There is no data source named "{key}".')
-        named = frozenset(ids[key] for key in compiled.sources)
-    return SourceScope(shown, named, reads_balance)
+            named.add(ids[key])
+    return SourceScope(shown, frozenset(named), reads_balance)
 
 
 def _visible(shown: frozenset | None) -> callable:
@@ -633,25 +637,27 @@ def _stored_configs(user, cipher) -> list[tuple[Panel, dict]]:
     ]
 
 
-def _formula_text(config: dict) -> str | None:
-    y = config.get("y")
-    formula = y.get("formula") if isinstance(y, dict) else None
-    return formula.get("expression") if isinstance(formula, dict) else None
+def _stored_formulas(config: dict) -> list[dict]:
+    """The formula of every measure in a saved config, to read or change in place."""
+    also = config.get("also")
+    measures = [config.get("y"), *(also if isinstance(also, list) else ())]
+    found = (y.get("formula") for y in measures if isinstance(y, dict))
+    return [f for f in found if isinstance(f, dict) and f.get("expression")]
 
 
 def rename_source_in_panels(user, cipher, old: str, new: str) -> int:
     """Keeps formulas working after a data source is renamed. Returns how many panels changed."""
     changed = []
     for panel, config in _stored_configs(user, cipher):
-        text = _formula_text(config)
-        if not text:
-            continue
-        try:
-            renamed = rename_source(text, old, new)
-        except FormulaError:
-            continue  # it was already broken: the panel says so when it runs
-        if renamed != text:
-            config["y"]["formula"]["expression"] = renamed
+        touched = False
+        for formula in _stored_formulas(config):
+            try:
+                renamed = rename_source(formula["expression"], old, new)
+            except FormulaError:
+                continue  # it was already broken: the panel says so when it runs
+            touched = touched or renamed != formula["expression"]
+            formula["expression"] = renamed
+        if touched:
             clean = json.dumps(config, separators=(",", ":")).encode()
             panel.config_enc = cipher.encrypt(clean, PANEL_CONFIG)
             changed.append(panel)
@@ -665,10 +671,9 @@ def panels_using_source(user, cipher, source_id: str, name: str) -> int:
     for _, config in _stored_configs(user, cipher):
         filters = config.get("filters")
         used = isinstance(filters, dict) and source_id in (filters.get("data_sources") or ())
-        text = _formula_text(config)
-        if not used and text:
+        for formula in _stored_formulas(config):
             try:
-                used = key in compile_expression(text).sources
+                used = used or key in compile_expression(formula["expression"]).sources
             except FormulaError:
                 pass
         count += bool(used)

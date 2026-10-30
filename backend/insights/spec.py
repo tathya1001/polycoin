@@ -11,7 +11,7 @@ from datetime import date, timedelta
 
 from categories.colors import is_hex_color
 
-from .engine import DIMENSIONS, GRANULARITIES, GROUPED_CHARTS, MEASURES, add_months
+from .engine import DIMENSIONS, GRANULARITIES, GROUPED_CHARTS, MEASURES, add_months, measures_of
 from .formula import (
     FORMULA,
     RESULT_FORMS,
@@ -26,7 +26,7 @@ from .formula import (
 
 # Bumped whenever the shape of a spec changes; `upgrade` brings older saved specs forward one
 # version at a time, so a panel saved by any earlier version keeps working unchanged.
-SPEC_VERSION = 9
+SPEC_VERSION = 10
 
 CATEGORICAL = tuple(dimension for dimension in DIMENSIONS if dimension != "date")
 CHARTS = (
@@ -36,8 +36,8 @@ SORTS = ("measure_desc", "label")
 ORIENTATIONS = ("vertical", "horizontal")
 TXN_TYPES = ("credit", "debit")
 SPEC_KEYS = (
-    "v", "chart", "x", "y", "color", "sort", "limit", "bins", "rows", "kpi", "calc", "format", "bind",
-    "stacked", "orientation", "series_colors", "filters",
+    "v", "chart", "x", "y", "also", "color", "sort", "limit", "bins", "rows", "kpi", "calc", "format",
+    "bind", "stacked", "orientation", "series_colors", "filters",
 )  # fmt: skip
 
 DATE_PRESETS = (
@@ -72,8 +72,14 @@ SECONDARY = ("count", "average", "largest", "share_of_income")
 MAX_SECONDARY = 3
 AMOUNT_MEASURES = ("spend", "income", "net", "amount")  # measures that are sums of money
 
-# A calculated field is a measure the user writes as a formula (see formula.py).
-FORMULA_CHARTS = ("bar", "line", "area", "kpi")
+# A calculated field is a measure the user writes as a formula (see formula.py). It gives one value
+# per group, so a histogram, which plots single transactions, has no use for one.
+FORMULA_CHARTS = ("bar", "line", "area", "kpi", "pie", "donut", "calendar", "heatmap")
+
+# Several measures on one chart: `y` is the first, and `also` holds the others.
+SERIES_CHARTS = ("bar", "line", "area")
+MAX_EXTRA_MEASURES = 4
+MAX_SERIES_LABEL = 40
 
 # Presentation only: the engine never reads these, so they can't change a chart's numbers.
 NUMBER_FORMATS = ("auto", "full", "compact")  # auto: compact on axes, full in tooltips
@@ -222,6 +228,46 @@ def validate_formula(raw) -> dict:
     }
 
 
+def _validate_measure(raw, chart: str, where: str) -> dict:
+    """One measure: what it adds up, how, and optionally what the chart calls it."""
+    _only_keys(raw, ("measure", "agg", "formula", "label"), where)
+    measure = _choice(raw.get("measure"), (*MEASURES, FORMULA), f"{where}.measure")
+    if measure == FORMULA and chart not in FORMULA_CHARTS:
+        raise _bad(f"A calculated field works on {', '.join(FORMULA_CHARTS)} panels, not {chart}.")
+    if chart in ("pie", "donut") and measure in ("net", "balance"):
+        raise _bad("A pie or donut needs a measure that is never negative (not net or balance).")
+    if chart == "histogram":
+        if measure == "count":
+            raise _bad("A histogram needs amounts, not counts.")
+        agg = default_agg(measure)  # a histogram plots single rows, so the aggregation is unused
+    else:
+        agg = _choice(
+            _default(raw.get("agg"), default_agg(measure)), allowed_aggs(measure), f"{where}.agg"
+        )
+    clean = {"measure": measure, "agg": agg}
+    if measure == FORMULA:
+        clean["formula"] = validate_formula(raw.get("formula"))
+    elif raw.get("formula") is not None:
+        raise _bad("Only a calculated field has a formula.")
+
+    label = _default(raw.get("label"), "")
+    if not isinstance(label, str) or len(label.strip()) > MAX_SERIES_LABEL:
+        raise _bad(f"{where}.label must be text of at most {MAX_SERIES_LABEL} characters.")
+    if label.strip():
+        clean["label"] = label.strip()
+    return clean
+
+
+def validate_also(raw, chart: str) -> list:
+    """The measures a chart shows beside `y`, or an empty list."""
+    raw = _default(raw, [])
+    if not isinstance(raw, list) or len(raw) > MAX_EXTRA_MEASURES:
+        raise _bad(f"also must be a list of at most {MAX_EXTRA_MEASURES} measures.")
+    if raw and chart not in SERIES_CHARTS:
+        raise _bad(f"Several measures work on {', '.join(SERIES_CHARTS)} panels, not {chart}.")
+    return [_validate_measure(item, chart, "also") for item in raw]
+
+
 def validate_encoding(raw: dict) -> dict:
     """Check the parts of a spec that decide what the chart shows, and fill in defaults.
 
@@ -250,26 +296,10 @@ def validate_encoding(raw: dict) -> dict:
             spec["x"] = {"field": field}
 
     # --- y: measure + aggregation ---
-    y_raw = raw.get("y")
-    _only_keys(y_raw, ("measure", "agg", "formula"), "y")
-    measure = _choice(y_raw.get("measure"), (*MEASURES, FORMULA), "y.measure")
-    if measure == FORMULA and chart not in FORMULA_CHARTS:
-        raise _bad(f"A calculated field works on {', '.join(FORMULA_CHARTS)} panels, not {chart}.")
-    if chart in ("pie", "donut") and measure in ("net", "balance"):
-        raise _bad("A pie or donut needs a measure that is never negative (not net or balance).")
-    if chart == "histogram":
-        if measure == "count":
-            raise _bad("A histogram needs amounts, not counts.")
-        agg = default_agg(measure)  # a histogram plots single rows, so the aggregation is unused
-    else:
-        agg = _choice(
-            _default(y_raw.get("agg"), default_agg(measure)), allowed_aggs(measure), "y.agg"
-        )
-    spec["y"] = {"measure": measure, "agg": agg}
-    if measure == FORMULA:
-        spec["y"]["formula"] = validate_formula(y_raw.get("formula"))
-    elif y_raw.get("formula") is not None:
-        raise _bad("Only a calculated field has a formula.")
+    spec["y"] = _validate_measure(raw.get("y"), chart, "y")
+    also = validate_also(raw.get("also"), chart)
+    if also:
+        spec["also"] = also
 
     # --- rows: the second axis of a matrix heatmap ---
     rows_raw = raw.get("rows")
@@ -312,10 +342,11 @@ def validate_calc(raw, spec: dict) -> dict | None:
         raise _bad(f"A {chart} panel has no calculations.")
     if kind in TIME_CALCS and spec.get("x", {}).get("field") != "date":
         raise _bad("A running total, moving average or change needs dates on the x axis.")
-    if kind in ADDITIVE_CALCS and spec["y"]["agg"] not in ("sum", "count"):
-        raise _bad("A running total or % of total needs values that add up (a sum or a count).")
-    if kind == "percent_of_total" and spec["y"]["measure"] in ("net", "balance"):
-        raise _bad("% of total needs a measure that is never negative (not net or balance).")
+    for y in measures_of(spec):  # a calculation runs on every measure the chart shows
+        if kind in ADDITIVE_CALCS and y["agg"] not in ("sum", "count"):
+            raise _bad("A running total or % of total needs values that add up (a sum or a count).")
+        if kind == "percent_of_total" and y["measure"] in ("net", "balance"):
+            raise _bad("% of total needs a measure that is never negative (not net or balance).")
 
     calc = {"type": kind}
     if kind == "moving_average":
@@ -628,6 +659,11 @@ def catalogue() -> dict:
             "axis_charts": list(AXIS_CHARTS),
         },
         "rows_fields": list(CATEGORICAL),  # what a heatmap's rows can be
+        "series": {
+            "charts": list(SERIES_CHARTS),
+            "max_extra": MAX_EXTRA_MEASURES,
+            "max_label": MAX_SERIES_LABEL,
+        },
         "formula": {
             "charts": list(FORMULA_CHARTS),
             "agg": default_agg(FORMULA),  # the one aggregation a formula panel stores
@@ -807,6 +843,11 @@ def _v8_to_v9(raw: dict) -> dict:
     return {**raw, "v": 9}
 
 
+def _v9_to_v10(raw: dict) -> dict:
+    """Version 10 added extra measures and more formula charts, so a version 9 spec stays valid."""
+    return {**raw, "v": 10}
+
+
 # version -> the function that turns a spec of that version into the next one
 UPGRADES = {
     1: _v1_to_v2,
@@ -817,6 +858,7 @@ UPGRADES = {
     6: _v6_to_v7,
     7: _v7_to_v8,
     8: _v8_to_v9,
+    9: _v9_to_v10,
 }
 
 

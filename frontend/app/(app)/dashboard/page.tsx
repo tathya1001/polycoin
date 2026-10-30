@@ -64,6 +64,7 @@ import {
   layoutUrl,
   panelUrl,
   panelsUrl,
+  seriesConfig,
 } from "@/lib/insights";
 import { knownSources, loadSources } from "@/lib/dataSources";
 import { recall, remember } from "@/lib/storage";
@@ -540,7 +541,8 @@ export default function DashboardPage() {
         id: "rows",
         label: "View transactions",
         icon: <List size={15} />,
-        run: () => openRows(panel.id, `${panel.title}: ${label}`, config, mark),
+        // The rows of the measure clicked, so the dialog's total agrees with the mark.
+        run: () => openRows(panel.id, `${panel.title}: ${label}`, seriesConfig(config, picked.series ?? 0), mark),
       });
     }
     const url = drillDownUrl(config, outcome, effectiveFilters(config.filters, filters), picked, categories, sources);

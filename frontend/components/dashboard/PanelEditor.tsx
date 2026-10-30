@@ -18,6 +18,7 @@ import {
   Grid3x3,
   Hash,
   BarChart3,
+  Plus,
   Type,
   X,
   type LucideIcon,
@@ -64,6 +65,8 @@ import {
   isError,
   measuresFor,
   normalizeConfig,
+  seriesName,
+  seriesOf,
   todayLocal,
 } from "@/lib/insights";
 import { sourceRef } from "@/lib/dataSources";
@@ -91,6 +94,7 @@ import type {
   KpiFigure,
   KpiOptions,
   Measure,
+  MeasureSpec,
   PanelConfig,
   PanelFilters,
   QueryOutcome,
@@ -177,7 +181,7 @@ export default function PanelEditor(props: Props) {
     if (chart === "text") return;
     // Keep the measure across chart types where it still fits; reset the rest to defaults.
     setConfig((current) =>
-      normalizeConfig({ ...defaultConfig(chart), y: current.y, filters: current.filters }, catalogue),
+      normalizeConfig({ ...defaultConfig(chart), y: current.y, also: current.also, filters: current.filters }, catalogue),
     );
   }
 
@@ -376,7 +380,7 @@ export default function PanelEditor(props: Props) {
                         dense
                         className="w-full"
                         value={config.y.measure}
-                        onChange={(e) => update({ y: { measure: e.target.value as Measure, agg: config.y.agg } })}
+                        onChange={(e) => update({ y: { ...config.y, measure: e.target.value as Measure, formula: undefined } })}
                       >
                         {measuresFor(config.chart, catalogue).map((m) => (
                           <option key={m.id} value={m.id}>
@@ -390,7 +394,7 @@ export default function PanelEditor(props: Props) {
                     </Field>
                     {config.y.measure === "formula" && (
                       <FormulaFields
-                        config={config}
+                        formula={config.y.formula ?? DEFAULT_FORMULA}
                         catalogue={catalogue}
                         sources={sources}
                         onChange={(formula) => update({ y: { ...config.y, formula } })}
@@ -430,6 +434,14 @@ export default function PanelEditor(props: Props) {
                             ))}
                         </Select>
                       </Field>
+                    )}
+                    {catalogue.series.charts.includes(config.chart) && (
+                      <ExtraMeasures
+                        config={config}
+                        catalogue={catalogue}
+                        sources={sources}
+                        onChange={(change) => update(change)}
+                      />
                     )}
                   </div>
                 </Section>
@@ -687,7 +699,9 @@ function clamp(value: number, [low, high]: [number, number]): number {
 // A calculated field: the formula and how its result reads. The server checks the formula and
 // the live preview shows its message, so the rules live in one place (spec.validate_formula).
 // The reference list comes from the catalogue; picking an entry types it at the cursor.
-function FormulaFields({
+// The measures shown beside the first one. Each has the same choices as the first, and a name
+// for the legend.
+function ExtraMeasures({
   config,
   catalogue,
   sources,
@@ -696,9 +710,125 @@ function FormulaFields({
   config: PanelConfig;
   catalogue: Catalogue;
   sources: DataSource[];
+  onChange: (change: Partial<PanelConfig>) => void;
+}) {
+  const also = config.also ?? [];
+  const measures = seriesOf(config);
+  const options = measuresFor(config.chart, catalogue);
+  const { max_extra: maxExtra, max_label: maxLabel } = catalogue.series;
+
+  const change = (index: number, next: Partial<MeasureSpec>) =>
+    onChange({ also: also.map((item, position) => (position === index ? { ...item, ...next } : item)) });
+
+  function add() {
+    const used = new Set(measures.map((item) => item.measure));
+    const next = options.find((option) => !used.has(option.id)) ?? options[0];
+    onChange({ also: [...also, { measure: next.id, agg: next.default_agg }] });
+  }
+
+  return (
+    <div className="col-span-2 space-y-3">
+      {also.length > 0 && (
+        <Field label="Name of the first measure" hint="Shown in the legend. Leave it empty to use the measure's own name.">
+          <Input
+            dense
+            maxLength={maxLabel}
+            value={config.y.label ?? ""}
+            placeholder={seriesName(measures, 0)}
+            onChange={(e) => onChange({ y: { ...config.y, label: e.target.value } })}
+          />
+        </Field>
+      )}
+      {also.map((item, index) => {
+        const rule = catalogue.measures.find((option) => option.id === item.measure);
+        return (
+          <div key={index} className="space-y-3 rounded-md border-[1.5px] border-hairline p-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Field label={`Measure ${index + 2}`}>
+                <Select
+                  dense
+                  className="w-full"
+                  value={item.measure}
+                  onChange={(e) => change(index, { measure: e.target.value as Measure, formula: undefined })}
+                >
+                  {options.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {MEASURE_LABELS[option.id]}
+                    </option>
+                  ))}
+                  {formulaAllowed(config.chart, catalogue) && <option value="formula">{MEASURE_LABELS.formula}…</option>}
+                </Select>
+              </Field>
+              <Field label="Name">
+                <Input
+                  dense
+                  maxLength={maxLabel}
+                  value={item.label ?? ""}
+                  placeholder={seriesName(measures, index + 1)}
+                  onChange={(e) => change(index, { label: e.target.value })}
+                />
+              </Field>
+              {rule && rule.aggs.length > 1 && (
+                <Field label="Aggregation">
+                  <Select
+                    dense
+                    className="w-full"
+                    value={item.agg}
+                    onChange={(e) => change(index, { agg: e.target.value as Agg })}
+                  >
+                    {rule.aggs.map((agg) => (
+                      <option key={agg} value={agg}>
+                        {AGG_LABELS[agg]}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              )}
+            </div>
+            {item.measure === "formula" && (
+              <FormulaFields
+                formula={item.formula ?? DEFAULT_FORMULA}
+                catalogue={catalogue}
+                sources={sources}
+                onChange={(formula) => change(index, { formula })}
+              />
+            )}
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<X size={14} />}
+              onClick={() => onChange({ also: also.filter((_, position) => position !== index) })}
+            >
+              Remove this measure
+            </Button>
+          </div>
+        );
+      })}
+      <div className="flex flex-wrap items-center gap-3">
+        <Button size="sm" icon={<Plus size={14} />} disabled={also.length >= maxExtra} onClick={add}>
+          Add a measure
+        </Button>
+        <span className="text-xs text-muted">
+          {also.length >= maxExtra
+            ? `A chart can show ${maxExtra + 1} measures.`
+            : "Compare measures on one chart. Different units get a second axis."}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function FormulaFields({
+  formula,
+  catalogue,
+  sources,
+  onChange,
+}: {
+  formula: Formula;
+  catalogue: Catalogue;
+  sources: DataSource[];
   onChange: (formula: Formula) => void;
 }) {
-  const formula = config.y.formula ?? DEFAULT_FORMULA;
   const rules = catalogue.formula;
   const box = useRef<HTMLTextAreaElement>(null);
   const cursor = useRef<number | null>(null);

@@ -7,6 +7,7 @@ import type {
   DataSource,
   Agg,
   AnyPanelConfig,
+  MeasureSpec,
   BindField,
   Bindings,
   CalcType,
@@ -304,6 +305,45 @@ export function isFormula(config: { y?: PanelConfig["y"] }): boolean {
   return config.y?.measure === "formula";
 }
 
+// --- several measures on one chart -------------------------------------------------
+
+export function seriesOf(config: Pick<PanelConfig, "y" | "also">): MeasureSpec[] {
+  return [config.y, ...(config.also ?? [])];
+}
+
+// What a chart calls a measure: the name the user gave it, or its usual label. A second formula
+// needs a number, or two lines would read the same.
+export function seriesName(measures: MeasureSpec[], index: number): string {
+  const y = measures[index];
+  const label = y.label?.trim();
+  if (label) return label;
+  if (y.measure !== "formula") return MEASURE_LABELS[y.measure];
+  const formulas = measures.filter((item) => item.measure === "formula");
+  return formulas.length > 1 ? `${MEASURE_LABELS.formula} ${formulas.indexOf(y) + 1}` : MEASURE_LABELS.formula;
+}
+
+// The panel as if it showed only this measure. Formatting and the rows behind a mark read this.
+export function seriesConfig(config: PanelConfig, index: number): PanelConfig {
+  const single = { ...config, y: seriesOf(config)[index] };
+  delete single.also;
+  return single;
+}
+
+export type Unit = "money" | "percent" | "number";
+
+export function unitOf(config: Pick<PanelConfig, "y" | "calc">): Unit {
+  if (isPercent(config)) return "percent";
+  return isPlainNumber(config) ? "number" : "money";
+}
+
+// Which value axis each measure uses: 0 for the left, 1 for the right. Money stays on the left, as
+// people expect. With no money, the first unit does. One unit needs one axis.
+export function axisSides(units: Unit[]): number[] {
+  if (new Set(units).size < 2) return units.map(() => 0);
+  const left = units.includes("money") ? "money" : units[0];
+  return units.map((unit) => (unit === left ? 0 : 1));
+}
+
 // Values written without a ₹ sign: counts, and calculated fields shown as plain numbers. A change
 // "as amount" keeps the panel's own unit, so a plain-number formula stays plain.
 export function isPlainNumber(config: Pick<PanelConfig, "y" | "calc">): boolean {
@@ -504,9 +544,10 @@ export function calcAllowed(config: PanelConfig, catalogue: Catalogue, type: Cal
   const rule = catalogue.calcs.find((c) => c.id === type);
   if (!rule || !GROUPED_CHARTS.includes(config.chart)) return false;
   if (rule.needs_date && config.x?.field !== "date") return false;
-  if (rule.additive_only && config.y.agg !== "sum" && config.y.agg !== "count") return false;
-  if (rule.never_negative && (config.y.measure === "net" || config.y.measure === "balance")) return false;
-  return true;
+  return seriesOf(config).every((y) => {
+    if (rule.additive_only && y.agg !== "sum" && y.agg !== "count") return false;
+    return !(rule.never_negative && (y.measure === "net" || y.measure === "balance"));
+  });
 }
 
 // The calculation with its options filled in and the ones it doesn't use removed, as the backend
@@ -558,6 +599,27 @@ export function measuresFor(chart: ChartType, catalogue: Catalogue): Catalogue["
   });
 }
 
+// One measure as the backend will store it, for this chart.
+function normalizeMeasure(y: MeasureSpec, chart: ChartType, catalogue: Catalogue): MeasureSpec {
+  const label = y.label?.slice(0, catalogue.series.max_label);
+  const named = label ? { label } : {};
+  if (y.measure === "formula" && formulaAllowed(chart, catalogue)) {
+    const formula = y.formula ?? DEFAULT_FORMULA;
+    return {
+      measure: "formula",
+      agg: catalogue.formula.agg,
+      formula: {
+        expression: formula.expression.slice(0, catalogue.formula.max_length), // checked on the server
+        as: catalogue.formula.forms.includes(formula.as) ? formula.as : catalogue.formula.forms[0],
+      },
+      ...named,
+    };
+  }
+  const measures = measuresFor(chart, catalogue);
+  const measure = measures.find((m) => m.id === y.measure) ?? measures[0];
+  return { measure: measure.id, agg: measure.aggs.includes(y.agg) ? y.agg : measure.default_agg, ...named };
+}
+
 // Make a draft obey the chart rules after any change (a new chart type, a new x field...),
 // so the editor never sends a combination the backend is certain to reject.
 export function normalizeConfig(config: PanelConfig, catalogue: Catalogue): PanelConfig {
@@ -580,23 +642,12 @@ export function normalizeConfig(config: PanelConfig, catalogue: Catalogue): Pane
     delete next.rows;
   }
 
-  if (config.y.measure === "formula" && formulaAllowed(config.chart, catalogue)) {
-    const formula = config.y.formula ?? DEFAULT_FORMULA;
-    next.y = {
-      measure: "formula",
-      agg: catalogue.formula.agg,
-      formula: {
-        expression: formula.expression.slice(0, catalogue.formula.max_length), // checked on the server
-        as: catalogue.formula.forms.includes(formula.as) ? formula.as : catalogue.formula.forms[0],
-      },
-    };
+  next.y = normalizeMeasure(config.y, config.chart, catalogue);
+  const also = catalogue.series.charts.includes(config.chart) ? (config.also ?? []) : [];
+  if (also.length) {
+    next.also = also.slice(0, catalogue.series.max_extra).map((y) => normalizeMeasure(y, config.chart, catalogue));
   } else {
-    const measures = measuresFor(config.chart, catalogue);
-    const measure = measures.find((m) => m.id === config.y.measure) ?? measures[0];
-    next.y = {
-      measure: measure.id,
-      agg: measure.aggs.includes(config.y.agg) ? config.y.agg : measure.default_agg,
-    };
+    delete next.also;
   }
 
   if (!rules.color || !config.color || config.color.field === next.x?.field || config.color.field === "date") {

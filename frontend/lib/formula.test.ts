@@ -33,11 +33,9 @@ describe("a calculated field in the editor draft", () => {
   });
 
   it("falls back to an ordinary measure on a chart that can't take one", () => {
-    for (const chart of ["pie", "donut", "histogram", "calendar", "heatmap"] as const) {
-      const config = formula(chart);
-      expect(config.y.measure).not.toBe("formula");
-      expect(config.y.formula).toBeUndefined();
-    }
+    const config = formula("histogram");
+    expect(config.y.measure).not.toBe("formula");
+    expect(config.y.formula).toBeUndefined();
   });
 
   it("starts from the default formula when there is none yet", () => {
@@ -63,7 +61,8 @@ describe("a calculated field in the editor draft", () => {
 
   it("is only offered where the backend allows it", () => {
     expect(formulaAllowed("bar", catalogue)).toBe(true);
-    expect(formulaAllowed("pie", catalogue)).toBe(false);
+    expect(formulaAllowed("pie", catalogue)).toBe(true);
+    expect(formulaAllowed("histogram", catalogue)).toBe(false);
   });
 });
 

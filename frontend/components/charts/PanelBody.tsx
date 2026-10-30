@@ -84,7 +84,14 @@ export default function PanelBody({ config, outcome, loading, categoryColors, on
             ? (seriesIndex, dataIndex, at) => {
                 const cell = keys.cells?.[dataIndex];
                 if (cell) return onPick({ x: cell.x, row: cell.row }, at);
-                onPick({ x: keys.x[dataIndex], color: keys.colors.length ? keys.colors[seriesIndex] : undefined }, at);
+                onPick(
+                  {
+                    x: keys.x[dataIndex],
+                    color: keys.colors.length ? keys.colors[seriesIndex] : undefined,
+                    series: keys.measures?.[seriesIndex],
+                  },
+                  at,
+                );
               }
             : undefined
         }

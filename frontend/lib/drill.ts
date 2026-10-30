@@ -1,7 +1,7 @@
 // What a click on a chart means: the filter it stands for, and the next level of detail below it.
 // Pure: no React, no DOM.
 
-import { bucketEnd, calcAllowed, formatLabel } from "@/lib/insights";
+import { bucketEnd, calcAllowed, formatLabel, seriesName, seriesOf } from "@/lib/insights";
 import type { Catalogue, Category, Cell, Dimension, Granularity, PanelConfig, Picked, QueryResult, Selection } from "@/lib/types";
 
 // What the backend calls the sum of everything past a chart's limit. It stands for many
@@ -58,6 +58,7 @@ export function pickedLabel(config: PanelConfig, picked: Picked): string {
   else add(config.x?.field, picked.x, config.x?.granularity);
   add(config.color?.field, picked.color);
   add(config.rows?.field, picked.row);
+  if (config.also?.length && picked.series !== undefined) parts.push(seriesName(seriesOf(config), picked.series));
   return parts.join(" · ");
 }
 

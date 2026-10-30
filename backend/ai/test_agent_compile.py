@@ -494,6 +494,44 @@ def test_the_preview_does_not_change_the_callers_spec(alice):
     assert spec["x"]["granularity"] == "day"
 
 
+# --- several measures ---------------------------------------------------------------------------
+
+
+def test_a_comparison_becomes_several_measures():
+    compiled = build(chart="line", measure="spend", also_measures=["income"], x="date")
+    assert compiled.spec["also"] == [{"measure": "income", "agg": "sum"}]
+    assert describe(compiled.spec).startswith("Spend and income by date")
+
+
+def test_a_comparison_with_no_chart_named_is_a_bar_chart_over_dates():
+    compiled = build(measure="spend", also_measures=["income"])
+    assert compiled.spec["chart"] == "bar"
+    assert compiled.spec["x"]["field"] == "date"
+
+
+def test_a_measure_named_twice_appears_once():
+    compiled = build(chart="line", measure="spend", also_measures=["spend", "income", "income"])
+    assert [item["measure"] for item in compiled.spec["also"]] == ["income"]
+
+
+def test_a_chart_of_one_measure_leaves_the_rest_out_and_says_so():
+    compiled = build(chart="pie", measure="spend", also_measures=["income"], x="category")
+    assert "also" not in compiled.spec
+    assert any("left out" in note for note in compiled.notes)
+
+
+def test_a_type_filter_is_dropped_from_a_comparison():
+    compiled = build(
+        chart="line", measure="spend", also_measures=["income"], x="date", txn_type="debit"
+    )
+    assert compiled.spec["filters"]["type"] is None
+    assert any("type filter" in note for note in compiled.notes)
+
+
+def test_a_null_also_measures_key_means_none():
+    assert PanelIntent(kind="panel", also_measures=None).also_measures == []
+
+
 # --- data sources -------------------------------------------------------------------------------
 
 

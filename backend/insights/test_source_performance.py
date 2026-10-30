@@ -109,6 +109,21 @@ def test_data_sources_over_twenty_thousand_rows(settings):
     print(f"{len(balances)} balance panels: {balances_elapsed:.2f} s")
     assert all("error" not in result for result in held.values())
 
+    five = {
+        "chart": "line",
+        "x": WEEKLY,
+        "y": {"measure": "spend"},
+        "also": [
+            {"measure": "income"},
+            {"measure": "balance"},
+            named({}, "Main.spend")["y"],
+            named({}, 'SUM(IF [Category] = "Food" THEN [Spend] END) / spend * 100')["y"],
+        ],
+    }
+    measured, measured_elapsed = timed(lambda: batch([five]))
+    print(f"one chart of five measures: {measured_elapsed:.2f} s")
+    assert all("error" not in result for result in measured.values())
+
     start = today.replace(year=today.year - 1)
     found, found_elapsed = timed(
         lambda: suggest_transfers(user, UserCipher(user), start, today)
@@ -120,6 +135,8 @@ def test_data_sources_over_twenty_thousand_rows(settings):
     limit = _cpu_limit()
     throttled = limit is not None and limit <= 0.1
     assert names_elapsed < plain_elapsed * MAX_NAMED_SLOWDOWN
-    assert balances_elapsed < (THROTTLED_BUDGET_SECONDS if throttled else BUDGET_SECONDS)
+    budget = THROTTLED_BUDGET_SECONDS if throttled else BUDGET_SECONDS
+    assert balances_elapsed < budget
+    assert measured_elapsed < budget
     if not throttled:
         assert found_elapsed < SUGGESTIONS_SECONDS

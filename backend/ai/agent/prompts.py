@@ -32,6 +32,8 @@ from insights.spec import (
     DATE_PRESETS,
     KPI_COMPARES,
     LIMIT_RANGE,
+    MAX_EXTRA_MEASURES,
+    SERIES_CHARTS,
     TIME_CALCS,
     WINDOW_RANGE,
 )
@@ -42,7 +44,7 @@ from .compile import spec_to_intent
 from .schema import AGENT_CHARTS, MAX_TITLE_LENGTH, PanelIntent, ollama_schema
 
 # Sent with every model request and logged, so each evaluation result is tied to the prompt.
-PROMPT_VERSION = "agent-v2"
+PROMPT_VERSION = "agent-v3"
 MAX_PROMPT_CATEGORIES = 60  # names listed in the prompt; more would crowd out the rules
 KINDS = ("understand", "refine", "repair")
 
@@ -95,6 +97,8 @@ Keys:
 - title: a short title for the panel, at most {MAX_TITLE_LENGTH} characters.
 - chart: {"; ".join(f"{chart} ({note})" for chart, note in CHART_NOTES.items())}.
 - measure: {"; ".join(f"{name} ({note})" for name, note in MEASURE_NOTES.items())}.
+- also_measures: more measures from the same list, for a request that compares them on one chart, \
+such as spend vs income. Up to {MAX_EXTRA_MEASURES}, on {_one_of(SERIES_CHARTS)} only. Empty otherwise.
 - agg: sum is the default. avg, min, max or median only when the request asks. balance uses last.
 - x: the field along the axis. Allowed per chart: {_x_rules()}.
 - granularity: {_one_of(GRANULARITIES)}. Only when x is date.
@@ -183,6 +187,16 @@ EXAMPLES = [
             "filters": {"data_sources": [_EXAMPLE_SOURCE]},
         },
         "OakBank spend",
+    ),
+    (
+        "Spend vs income each month as lines",
+        {
+            "chart": "line",
+            "x": {"field": "date", "granularity": "month"},
+            "y": {"measure": "spend"},
+            "also": [{"measure": "income"}],
+        },
+        "Spend vs income",
     ),
     (
         "Why did I spend so much in March?",

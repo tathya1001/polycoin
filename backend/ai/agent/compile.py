@@ -22,6 +22,7 @@ from insights.spec import (
     CHART_RULES,
     DEFAULT_WINDOW,
     MIN_DATE,
+    SERIES_CHARTS,
     SpecError,
     allowed_aggs,
     default_agg,
@@ -215,7 +216,7 @@ def _default_x(chart: str) -> str:
 
 def _encoding(intent: PanelIntent, notes: list) -> dict:
     """chart, x, colour and rows, with the safe fixes."""
-    chart = intent.chart or ("bar" if intent.x else "kpi")
+    chart = intent.chart or ("bar" if intent.x or intent.also_measures else "kpi")
     if intent.chart is None:
         notes.append(f"No chart type was given, so it is a {CHART_LABELS[chart].lower()} chart.")
     rules = CHART_RULES[chart]
@@ -289,9 +290,28 @@ def _measure(intent: PanelIntent, chart: str, notes: list) -> dict:
     return y
 
 
-def _txn_type(intent: PanelIntent, measure: str, notes: list) -> str | None:
-    """A type filter that would leave the measure empty is dropped."""
+def _also(intent: PanelIntent, encoding: dict, notes: list) -> list[dict]:
+    """The measures shown beside the first one. Only some charts can show several."""
+    first = encoding["y"]["measure"]
+    wanted = [name for name in dict.fromkeys(intent.also_measures) if name != first]
+    if not wanted:
+        return []
+    chart = encoding["chart"]
+    if chart not in SERIES_CHARTS:
+        names = " and ".join(MEASURE_LABELS[name].lower() for name in wanted)
+        notes.append(f"A {CHART_LABELS[chart].lower()} shows one measure, so {names} was left out.")
+        return []
+    return [{"measure": name, "agg": default_agg(name)} for name in wanted]
+
+
+def _txn_type(intent: PanelIntent, measures: list[str], notes: list) -> str | None:
+    """A type filter that would leave a measure empty is dropped."""
     kind = intent.txn_type
+    if len(measures) > 1:
+        if kind:
+            notes.append("This chart compares measures, so the type filter was dropped.")
+        return None
+    measure = measures[0]
     if (measure == MONEY_OUT_ONLY and kind == "credit") or (
         measure == MONEY_IN_ONLY and kind == "debit"
     ):
@@ -360,6 +380,7 @@ def compile_intent(
     encoding = _encoding(intent, notes)
     chart = encoding["chart"]
     encoding["y"] = _measure(intent, chart, notes)
+    also = _also(intent, encoding, notes)
 
     if encoding.get("x", {}).get("field") == "date":
         granularity = intent.granularity
@@ -375,9 +396,12 @@ def compile_intent(
     raw = {
         **encoding,
         **_options(intent, encoding, notes),
+        "also": also,
         "filters": {
             "date": date_filter,
-            "type": _txn_type(intent, encoding["y"]["measure"], notes),
+            "type": _txn_type(
+                intent, [encoding["y"]["measure"], *(item["measure"] for item in also)], notes
+            ),
             "categories": grounding.categories,
             "data_sources": grounding.data_sources,
             "merchant_contains": grounding.merchant,
@@ -408,7 +432,9 @@ def describe(spec: dict) -> str:
     what = MEASURE_LABELS[y["measure"]]
     if spec["chart"] != "histogram" and y["agg"] in AGG_LABELS:
         what = f"{AGG_LABELS[y['agg']]} {what.lower()}"
-    split = [spec[key]["field"] for key in ("x", "color", "rows") if key in spec]
+    for item in spec.get("also", ()):
+        what += f" and {MEASURE_LABELS[item['measure']].lower()}"
+    split =[spec[key]["field"] for key in ("x", "color", "rows") if key in spec]
     if split:
         what += " by " + " and ".join(FIELD_LABELS[name] for name in split)
     parts = [what, _period_label(spec["filters"]["date"]), CHART_LABELS[spec["chart"]]]
@@ -499,6 +525,7 @@ def spec_to_intent(
         "title": title,
         "chart": spec["chart"],
         "measure": y["measure"],
+        "also_measures": [item["measure"] for item in spec.get("also", ())],
         "agg": y["agg"]
         if spec["chart"] != "histogram" and y["agg"] != default_agg(y["measure"])
         else None,

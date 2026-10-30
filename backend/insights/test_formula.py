@@ -254,22 +254,13 @@ def test_the_formula_is_tidied_and_the_form_defaults_to_number():
     assert validate_spec(spec)["y"]["formula"] == {"expression": "income - spend", "as": "number"}
 
 
-@pytest.mark.parametrize("chart", ["bar", "line", "area", "kpi"])
+@pytest.mark.parametrize("chart", ["bar", "line", "area", "kpi", "calendar"])
 def test_a_formula_works_on_grouped_charts_and_kpis(chart):
     assert validate_spec(formula_spec(chart=chart))["y"]["measure"] == "formula"
 
 
-@pytest.mark.parametrize("chart", ["pie", "donut", "histogram", "calendar"])
-def test_a_formula_is_refused_on_other_charts(chart):
-    spec = {"chart": chart, "y": formula_spec()["y"]}
-    if chart in ("pie", "donut"):
-        spec["x"] = {"field": "category"}
-    with pytest.raises(SpecError, match="calculated field works on"):
-        validate_spec(spec)
-
-
-def test_the_heatmap_is_refused_too():
-    spec = {**formula_spec(chart="bar"), "chart": "heatmap", "rows": {"field": "txn_type"}}
+def test_a_formula_is_refused_on_a_histogram():
+    spec = {"chart": "histogram", "y": formula_spec()["y"]}
     with pytest.raises(SpecError, match="calculated field works on"):
         validate_spec(spec)
 
@@ -344,7 +335,7 @@ def test_the_catalogue_describes_the_language_for_the_editor():
     assert [function["name"] for function in formula["functions"]] == list(FUNCTIONS)
     assert {"name": "Category", "type": "text", "help": "The category's name."} in formula["fields"]
     assert {"IF", "THEN", "END", "CASE", "IN"} <= set(formula["keywords"])
-    assert formula["charts"] == ["bar", "line", "area", "kpi"]
+    assert formula["charts"] == ["bar", "line", "area", "kpi", "pie", "donut", "calendar", "heatmap"]
     assert formula["agg"] == "avg"
     assert formula["forms"] == ["number", "percent", "money"]
     assert formula["max_length"] == MAX_LENGTH
@@ -352,14 +343,14 @@ def test_the_catalogue_describes_the_language_for_the_editor():
 
 def test_a_version_six_spec_still_loads():
     old = {"v": 6, "chart": "bar", "x": {"field": "category"}, "y": {"measure": "spend"}}
-    assert upgrade(old)["v"] == SPEC_VERSION == 9
+    assert upgrade(old)["v"] == SPEC_VERSION == 10
     assert validate_spec(old)["y"] == {"measure": "spend", "agg": "sum"}
 
 
 def test_a_version_seven_formula_panel_still_loads_unchanged():
     old = {"v": 7, **formula_spec("(income - spend) / max(income, 1) * 100")}
     clean = validate_spec(old)
-    assert clean["v"] == 9
+    assert clean["v"] == 10
     assert clean["y"]["formula"]["expression"] == "(income - spend) / max(income, 1) * 100"
 
 

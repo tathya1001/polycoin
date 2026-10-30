@@ -145,7 +145,7 @@ def test_the_chat_request_constrains_the_reply_and_bounds_the_model(settings):
 
 
 def test_the_prompt_version_is_set():
-    assert PROMPT_VERSION == "agent-v2"
+    assert PROMPT_VERSION == "agent-v3"
 
 
 # --- the token budget (about 4 characters per token for English) -------------------------------

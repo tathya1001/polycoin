@@ -20,6 +20,121 @@ function result(columns: string[], rows: (string | null)[][]): QueryResult {
 
 const BARS = result(["x", "value"], [["Food", "12000.50"], ["Rent", "22000.00"]]);
 
+describe("several measures on one chart", () => {
+  const SPEND = { measure: "spend" as const, agg: "sum" as const };
+  const INCOME = { measure: "income" as const, agg: "sum" as const };
+  const RATE = {
+    measure: "formula" as const,
+    agg: "avg" as const,
+    formula: { expression: "net / income * 100", as: "percent" as const },
+    label: "Savings",
+  };
+  const months = ["2026-01-01", "2026-02-01"];
+  const measured = (count: number) =>
+    result(
+      ["x", "series", "value"],
+      Array.from({ length: count }, (_, series) => months.map((x) => [x, String(series), "10.00"])).flat(),
+    );
+  const split = result(
+    ["x", "series", "color", "value"],
+    [
+      ["2026-01-01", "0", "Food", "10.00"],
+      ["2026-01-01", "0", "Rent", "20.00"],
+      ["2026-01-01", "1", "Food", "30.00"],
+      ["2026-01-01", "1", "Rent", "40.00"],
+    ],
+  );
+  const lineOf = (change: Partial<PanelConfig>) => chart("line", {}, { y: SPEND, also: [INCOME], ...change });
+  const seriesIn = (built: ReturnType<typeof toOption>) =>
+    built.option.series as { name: string; lineStyle?: { type: unknown }; stack?: string; yAxisIndex?: number; xAxisIndex?: number; itemStyle?: { opacity?: number } }[];
+
+  it("draws one series per measure, in the measure's name", () => {
+    const built = toOption(lineOf({}), measured(2));
+    expect(seriesIn(built).map((item) => item.name)).toEqual(["Spend", "Income"]);
+    expect(built.keys?.measures).toEqual([0, 1]);
+  });
+
+  it("shows a legend without being asked", () => {
+    expect(toOption(lineOf({}), measured(2)).option.legend).toBeTruthy();
+  });
+
+  it("keeps one axis when the units match", () => {
+    const built = toOption(lineOf({}), measured(2));
+    expect(Array.isArray(built.option.yAxis)).toBe(false);
+    expect(seriesIn(built)[1].yAxisIndex).toBeUndefined();
+  });
+
+  it("adds a right axis when the units differ, and says so in the legend", () => {
+    const built = toOption(lineOf({ also: [RATE] }), measured(2));
+    expect(Array.isArray(built.option.yAxis)).toBe(true);
+    expect(seriesIn(built)[1]).toMatchObject({ name: "Savings (right axis)", yAxisIndex: 1 });
+    expect(seriesIn(built)[0].yAxisIndex).toBe(0);
+  });
+
+  it("moves the second axis to the top of horizontal bars", () => {
+    const config = chart("bar", {}, { y: SPEND, also: [RATE], orientation: "horizontal" });
+    const built = toOption(config, measured(2));
+    expect(Array.isArray(built.option.xAxis)).toBe(true);
+    expect(seriesIn(built)[1].xAxisIndex).toBe(1);
+  });
+
+  it("gives each line its own unit in the tooltip", () => {
+    const built = toOption(lineOf({ also: [RATE] }), measured(2));
+    const [money, percent] = built.option.series as { tooltip: { valueFormatter: (value: number) => string } }[];
+    expect(money.tooltip.valueFormatter(10)).toContain("₹");
+    expect(percent.tooltip.valueFormatter(10)).toContain("%");
+  });
+
+  it("can set a colour for one measure", () => {
+    const config = { ...lineOf({}), series_colors: { m1: "#123456" } };
+    const swatches = seriesSwatches(config, measured(2), new Map());
+    expect(swatches.map((swatch) => swatch.key)).toEqual(["m0", "m1"]);
+    expect(swatches[1].label).toBe("Income");
+    expect(swatches[1].color).toBe(CHART_LOOKS.classic.series("#123456"));
+  });
+
+  it("draws every measure and colour together", () => {
+    const built = toOption(lineOf({ color: { field: "category" } }), split);
+    expect(seriesIn(built).map((item) => item.name)).toEqual(["Spend · Food", "Spend · Rent", "Income · Food", "Income · Rent"]);
+    expect(built.keys?.colors).toEqual(["Food", "Rent", "Food", "Rent"]);
+    expect(built.keys?.measures).toEqual([0, 0, 1, 1]);
+  });
+
+  it("tells measures apart by dash when colour means the field", () => {
+    const lines = seriesIn(toOption(lineOf({ color: { field: "category" } }), split));
+    expect(lines[0].lineStyle?.type).toBe("solid");
+    expect(lines[2].lineStyle?.type).toBe("dashed");
+  });
+
+  it("gives bars a lighter shade for later measures", () => {
+    const config = chart("bar", {}, {
+      y: SPEND,
+      also: [INCOME],
+      x: { field: "date", granularity: "month" },
+      color: { field: "category" },
+    });
+    const bars = seriesIn(toOption(config, split));
+    expect(bars[0].itemStyle?.opacity).toBe(1);
+    expect(bars[2].itemStyle?.opacity).toBeLessThan(1);
+  });
+
+  it("keeps stacks within one measure", () => {
+    const config = chart("bar", {}, {
+      y: SPEND,
+      also: [INCOME],
+      x: { field: "date", granularity: "month" },
+      color: { field: "category" },
+      stacked: true,
+    });
+    expect(seriesIn(toOption(config, split)).map((item) => item.stack)).toEqual(["total-0", "total-0", "total-1", "total-1"]);
+  });
+
+  it("lists colours by the field when split", () => {
+    const swatches = seriesSwatches(lineOf({ color: { field: "category" } }), split, new Map());
+    expect(swatches.map((swatch) => swatch.key)).toEqual(["Food", "Rent"]);
+  });
+});
+
 describe("a data source's colour", () => {
   const colors = new Map([
     ["oakbank", "#111111"],
