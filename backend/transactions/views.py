@@ -39,6 +39,7 @@ from .links import (
 )
 from .models import Transaction, TransferLink
 from .readers import read_statement
+from .search import matching_ids, parse_search
 from .serializers import (
     BulkCategorySerializer,
     BulkDeleteSerializer,
@@ -78,7 +79,7 @@ class TransactionViewSet(
     pagination_class = TransactionPagination
     # No PUT. POST only reaches the bulk actions: there is no create.
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
-    throttle_scope = None  # only `candidates` has one
+    throttle_scope = None  # only `candidates` and a search of encrypted columns have one
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -101,20 +102,37 @@ class TransactionViewSet(
                 raise ValidationError({"type": "Must be 'credit' or 'debit'."})
             qs = qs.filter(txn_type=params["type"])
 
-        if "category" in params:
-            try:
-                qs = qs.filter(category_id=uuid.UUID(params["category"]))
-            except ValueError:
-                raise ValidationError({"category": "Not a valid id."})
+        for param, lookup in (("category", "category_id__in"), ("data_source", "data_source_id__in")):
+            if param in params:  # one id, or several separated by commas
+                try:
+                    ids = [uuid.UUID(part) for part in params[param].split(",")]
+                except ValueError:
+                    raise ValidationError({param: "Not a valid id."})
+                qs = qs.filter(**{lookup: ids})
 
-        if "data_source" in params:  # one id, or several separated by commas
-            try:
-                ids = [uuid.UUID(part) for part in params["data_source"].split(",")]
-            except ValueError:
-                raise ValidationError({"data_source": "Not a valid id."})
-            qs = qs.filter(data_source_id__in=ids)
+        # Newest first. Date alone leaves same-day rows in no fixed order, so a row could repeat
+        # or go missing between one page and the next.
+        return qs.order_by("-date", "-created_at", "id")
 
-        return qs  # Meta.ordering already gives -date
+    def get_throttles(self):
+        if self.action == "list" and parse_search(self.request.query_params):
+            self.throttle_scope = "transaction_search"
+        return super().get_throttles()
+
+    def list(self, request, *args, **kwargs):
+        search = parse_search(request.query_params)
+        if search is None:
+            return super().list(request, *args, **kwargs)
+        queryset = self.filter_queryset(self.get_queryset())
+        cipher = self.get_serializer_context()["cipher"]
+        try:
+            ids = matching_ids(queryset, cipher, search)
+        except TooManyRows:
+            return _too_many_rows()
+        page = self.paginate_queryset(ids)
+        rows = {row.pk: row for row in queryset.filter(pk__in=page)}
+        serializer = self.get_serializer([rows[pk] for pk in page], many=True)
+        return self.get_paginated_response(serializer.data)
 
     @action(detail=False, methods=["post"], url_path="bulk-source")
     def bulk_source(self, request):

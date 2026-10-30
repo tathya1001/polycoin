@@ -7,7 +7,7 @@ import pytest
 
 from datasources.services import create_source, first_source, sources_for
 from insights import engine, services
-from insights.balances import BalanceBook, closing_row
+from insights.balances import BalanceBook, SourceLabel, closing_row
 from insights.formula import (
     FormulaError,
     compile_expression,
@@ -33,8 +33,7 @@ def row(kind="debit", amount="10.00", source="oakbank", name="OakBank", **extra)
         "amount": D(amount),
         "balance": None,
         "category_name": "Food",
-        "source_key": source,
-        "source_name": name,
+        "source": SourceLabel(source, name, source),
         **extra,
     }
 

@@ -9,6 +9,7 @@ reading balances fits the normal budget, and finding transfers over a year takes
 """
 
 import os
+import resource
 import time
 
 import pytest
@@ -74,6 +75,7 @@ def test_data_sources_over_twenty_thousand_rows(settings):
     settings.DEBUG = True
     user = make_user("perf@example.com")
     call_command("seed_demo_transactions", user=user.email, months=12, scale=55, seed=1)
+    settings.DEBUG = False  # DEBUG keeps every query in memory, which production never does
     split_into_sources(user)
     today = timezone.localdate()
     filters = {"date": {"preset": "last_12_months"}}
@@ -112,6 +114,8 @@ def test_data_sources_over_twenty_thousand_rows(settings):
         lambda: suggest_transfers(user, UserCipher(user), start, today)
     )
     print(f"finding transfers ({found['total']} pairs): {found_elapsed:.2f} s")
+    peak = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss // 1024
+    print(f"peak memory of this test process: {peak} MB")
 
     limit = _cpu_limit()
     throttled = limit is not None and limit <= 0.1

@@ -106,7 +106,7 @@ FIELDS = {
     "Type": (TEXT, None, lambda row: row["txn_type"], '"debit" or "credit".'),
     "Category": (TEXT, None, lambda row: row["category_name"], "The category's name."),
     "Merchant": (TEXT, "name", _merchant, "The merchant, written as the charts group it."),
-    "Data Source": (TEXT, None, lambda row: row["source_name"], "The data source's name."),
+    "Data Source": (TEXT, None, lambda row: row["source"].name, "The data source's name."),
     "Date": (DATE, None, lambda row: row["date"], "The day of the transaction."),
     "Balance": (
         NUMBER,
@@ -1141,7 +1141,7 @@ class _Group:
     def within(self, key: str) -> "_Group":
         """The same group, cut down to one data source's rows."""
         if key not in self._sources:
-            rows = [row for row in self._all if row["source_key"] == key]
+            rows = [row for row in self._all if row["source"].key == key]
             self._sources[key] = _Group(rows, self._days, frozenset({key}))
         return self._sources[key]
 

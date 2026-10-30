@@ -40,9 +40,21 @@ export function Td({ align = "left", className, ...rest }: ComponentProps<"td"> 
 }
 
 // +₹1,200.00 in green for money in, -₹450.00 in red for money out.
-export function MoneyCell({ value, type }: { value: string; type: "credit" | "debit" }) {
+export function MoneyCell({
+  value,
+  type,
+  className,
+}: {
+  value: string;
+  type: "credit" | "debit";
+  className?: string;
+}) {
   return (
-    <Td align="right" className={cn("font-medium whitespace-nowrap", type === "credit" ? "text-pos" : "text-neg")}>
+    <Td
+      align="right"
+      title={signedMoney(value, type)}
+      className={cn("font-medium whitespace-nowrap", type === "credit" ? "text-pos" : "text-neg", className)}
+    >
       {signedMoney(value, type)}
     </Td>
   );

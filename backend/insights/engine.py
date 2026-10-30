@@ -1,8 +1,8 @@
 """The chart engine: a validated spec and plain rows in, a small result out.
 
 Pure Python: no Django, no database, no HTTP. Money is Decimal throughout and leaves the
-engine as strings. Rows are dicts with the keys date, txn_type, category_name, source_name,
-source_key, amount, name and balance, and the specs it reads are produced by
+engine as strings. Rows are dicts with the keys date, txn_type, category_name, source (a
+balances.SourceLabel), amount, name and balance, and the specs it reads are produced by
 `insights.spec.validate_spec`.
 """
 
@@ -265,7 +265,7 @@ def dimension_key(row: dict, dimension: str, granularity: str | None = None):
         # "TASTYBITES", "tastybites " and "Tastybites" are one merchant.
         return " ".join(row["name"].split()).title()
     if dimension == "data_source":
-        return row["source_name"]
+        return row["source"].name
     raise ValueError(f"Unknown dimension: {dimension!r}")
 
 

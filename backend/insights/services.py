@@ -16,7 +16,8 @@ from functools import partial
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Max, Min
+from django.db.models import CharField, Max, Min
+from django.db.models.functions import Cast
 from django.utils import timezone
 
 from datasources.services import sources_for
@@ -24,7 +25,7 @@ from transactions.models import Transaction, TransferLink
 from vault.services import UserCipher
 
 from . import engine
-from .balances import BalanceBook, closing_row
+from .balances import BalanceBook, SourceLabel, closing_row
 from .formula import (
     FORMULA,
     FormulaError,
@@ -55,19 +56,10 @@ class TooManyRows(Exception):
     """The period holds more transactions than one request may decrypt."""
 
 
-@dataclass(frozen=True, slots=True)
-class Label:
-    """One data source as rows and panels refer to it."""
-
-    id: str
-    name: str
-    key: str  # how a formula's reference to it is matched
-
-
 def source_labels(user, cipher) -> dict:
-    """The user's data sources: {primary key: Label}."""
+    """The user's data sources: {primary key: SourceLabel}."""
     return {
-        source.pk: Label(str(source.pk), source.name, source_key(source.name))
+        source.pk: SourceLabel(str(source.pk), source.name, source_key(source.name))
         for source in sources_for(user, cipher)
     }
 
@@ -127,7 +119,10 @@ def load_rows(
     # Plain tuples, not model objects: building a Transaction per row was most of the time at
     # 20k rows on a slow CPU. No ORDER BY either, unless asked: the engine sorts by date itself.
     # The database does that sort, because turning 20k timestamps into Python ones is slower.
-    columns = ["date", "txn_type", "category_id", "category__name", "data_source_id", "amount_enc"]
+    # The source comes back as text for the same reason: a UUID object per row is not free.
+    by_text = {label.id: label for label in labels.values()}
+    queryset = queryset.annotate(source_text=Cast("data_source_id", CharField()))
+    columns = ["date", "txn_type", "category_id", "category__name", "source_text", "amount_enc"]
     columns += ["name_enc"] if want_name else []
     columns += ["balance_enc"] if want_balance else []
     columns += ["id"] if want_id else []
@@ -138,15 +133,12 @@ def load_rows(
         day, txn_type, category_id, category_name, source_id, amount_enc, *optional = values
         name_enc = optional.pop(0) if want_name else None
         balance_enc = optional.pop(0) if want_balance else None
-        label = labels[source_id]
         row = {
             "date": day,
             "txn_type": txn_type,
             "category_id": str(category_id),  # for each panel's own category filter
             "category_name": category_name,
-            "source_id": label.id,
-            "source_name": label.name,
-            "source_key": label.key,
+            "source": by_text[source_id],
             "link_source": None,  # the data source of the other side of a transfer
             "amount": Decimal(dec(amount_enc, "txn.amount")),
             "name": dec(name_enc, "txn.name") if want_name else "",
@@ -265,7 +257,7 @@ def _visible(shown: frozenset | None) -> callable:
     """
 
     def visible(row: dict) -> bool:
-        if shown is not None and row["source_id"] not in shown:
+        if shown is not None and row["source"].id not in shown:
             return False
         partner = row["link_source"]
         return partner is None or (shown is not None and partner not in shown)
@@ -288,7 +280,7 @@ def _panel_rows(
     to what each source holds.
     """
     wanted = scope.wanted
-    rows = matched if wanted is None else [r for r in matched if r["source_id"] in wanted]
+    rows = matched if wanted is None else [r for r in matched if r["source"].id in wanted]
 
     book = None
     if scope.balance:
@@ -341,7 +333,7 @@ def _selected(rows: list[dict], selection: dict) -> list[dict]:
         if (not kind or row["txn_type"] == kind)
         and (not categories or row["category_name"].lower() in categories)
         and (not merchants or _normal_merchant(row["name"]) in merchants)
-        and (not sources or row["source_key"] in sources)
+        and (not sources or row["source"].key in sources)
         and (not weekdays or row["date"].weekday() in weekdays)
         and (not months or row["date"].month in months)
     ]
@@ -582,7 +574,7 @@ def list_rows(
                 "date": row["date"].isoformat(),
                 "name": row["name"],
                 "category": row["category_name"],
-                "data_source": row["source_name"],
+                "data_source": row["source"].name,
                 "txn_type": row["txn_type"],
                 "amount": _money(row["amount"]),
             }

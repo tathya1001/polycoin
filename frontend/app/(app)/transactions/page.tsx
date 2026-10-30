@@ -2,22 +2,25 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState, type DragEvent } from "react";
+import { Suspense, useEffect, useRef, useState, type DragEvent, type ReactNode } from "react";
 import { ArrowLeft, ArrowRight, FileUp, GripVertical, Link2, Receipt, Sparkles, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { totalWidth, type ColumnSpec } from "@/lib/columnWidths";
 import { loadSources, sourceName } from "@/lib/dataSources";
 import { readError } from "@/lib/errors";
 import { money } from "@/lib/format";
+import { activeFilters, filterParams, filtersFromUrl, NO_FILTERS, type FilterColumn, type TxnFilters } from "@/lib/transactionFilters";
 import type { Category, DataSource, Page, Transaction } from "@/lib/types";
-import SourcePicker from "@/components/dashboard/SourcePicker";
 import { BucketBar, TXN_DRAG_TYPE } from "@/components/transactions/BucketBar";
+import { AmountFilter, Checklist, DateFilter, RangeFilter, TextFilter } from "@/components/transactions/ColumnFilters";
 import LinkDialog from "@/components/transactions/LinkDialog";
 import { Button, buttonClass, IconButton } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Chip } from "@/components/ui/Card";
+import { ColumnHeader, useColumnWidths } from "@/components/ui/ColumnHeader";
 import { useConfirm } from "@/components/ui/Confirm";
 import { EmptyState, ErrorNote, Loading } from "@/components/ui/Feedback";
-import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
+import { Checkbox, Input, Select } from "@/components/ui/Field";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { MoneyCell, Table, Td, Th, Tr } from "@/components/ui/Table";
 import { useToast } from "@/components/ui/Toast";
@@ -27,6 +30,23 @@ const BULK_URL = "/api/transactions/bulk-category/";
 const BULK_DELETE_URL = "/api/transactions/bulk-delete/";
 const BULK_SOURCE_URL = "/api/transactions/bulk-source/";
 const PAGE_SIZE = 50; // matches TransactionPagination on the backend
+const WIDTHS_KEY = "polycoin.transactions.columns";
+
+// The checkbox and action columns have no `min`: their contents never change size. The other
+// defaults add up to about what a laptop shows beside the sidebar.
+const COLUMNS: ColumnSpec[] = [
+  { key: "pick", width: 48 },
+  { key: "date", width: 104, min: 96 },
+  { key: "name", width: 200, min: 110 },
+  { key: "source", width: 116, min: 90 },
+  { key: "amount", width: 112, min: 96 },
+  { key: "balance", width: 108, min: 96 },
+  { key: "category", width: 170, min: 120 },
+  { key: "notes", width: 130, min: 90 },
+  { key: "actions", width: 96 },
+];
+const ONE_SOURCE_COLUMNS = COLUMNS.filter((column) => column.key !== "source");
+const specOf = (key: string) => COLUMNS.find((column) => column.key === key) as ColumnSpec;
 
 // useSearchParams needs a Suspense boundary, or the production build refuses to prerender.
 export default function TransactionsPage() {
@@ -65,13 +85,8 @@ function Transactions() {
   const [reloadKey, setReloadKey] = useState(0);
 
   const [page, setPage] = useState(1);
-  const [from, setFrom] = useState(() => searchParams.get("from") ?? "");
-  const [to, setTo] = useState(() => searchParams.get("to") ?? "");
-  const [type, setType] = useState(() => searchParams.get("type") ?? "");
-  const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get("category") ?? "");
-  const [sourceFilter, setSourceFilter] = useState<string[]>(
-    () => searchParams.get("data_source")?.split(",").filter(Boolean) ?? [],
-  );
+  const [filters, setFilters] = useState(() => filtersFromUrl(searchParams));
+  const columns = useColumnWidths(WIDTHS_KEY, COLUMNS);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -99,14 +114,8 @@ function Transactions() {
     async function load() {
       setLoading(true);
       setError(null);
-      const params = new URLSearchParams({ page: String(page) });
-      if (from) params.set("from", from);
-      if (to) params.set("to", to);
-      if (type) params.set("type", type);
-      if (categoryFilter) params.set("category", categoryFilter);
-      if (sourceFilter.length) params.set("data_source", sourceFilter.join(","));
       try {
-        const res = await apiFetch(`${URL}?${params}`);
+        const res = await apiFetch(`${URL}?${filterParams(filters, page)}`);
         if (cancelled) return;
         if (res.ok) {
           setData(await res.json());
@@ -124,11 +133,11 @@ function Transactions() {
     return () => {
       cancelled = true;
     };
-  }, [page, from, to, type, categoryFilter, sourceFilter, reloadKey]);
+  }, [page, filters, reloadKey]);
 
   // Changing any filter goes back to page 1.
-  function changeFilter(setter: (value: string) => void, value: string) {
-    setter(value);
+  function changeFilters(change: Partial<TxnFilters>) {
+    setFilters((current) => ({ ...current, ...change }));
     setPage(1);
   }
 
@@ -199,7 +208,7 @@ function Transactions() {
       return;
     }
     // With a bucket filter on, the moved rows no longer belong on this page.
-    if (categoryFilter && categoryFilter !== categoryId) setReloadKey((k) => k + 1);
+    if (filters.categories.length && !filters.categories.includes(categoryId)) setReloadKey((k) => k + 1);
 
     toast.success(
       `Moved ${rows.length === 1 ? "1 transaction" : `${rows.length} transactions`} to ${target.name}.`,
@@ -313,11 +322,27 @@ function Transactions() {
 
   const colorOf = (id: string) => categories.find((c) => c.id === id)?.color;
   const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
-  const filtered = !!(from || to || type || categoryFilter || sourceFilter.length);
+  const chips = activeFilters(filters, categories, sources);
+  const filtered = chips.length > 0;
+  const isFiltered = (column: FilterColumn) => chips.some((chip) => chip.column === column);
   const manySources = sources.length > 1;
+  const shownColumns = manySources ? COLUMNS : ONE_SOURCE_COLUMNS;
   const rows = data?.results ?? [];
   const allSelected = rows.length > 0 && rows.every((t) => selected.has(t.id));
   const someSelected = selected.size > 0;
+
+  const header = (key: string, label: string, column: FilterColumn, filter: ReactNode, align?: "right") => (
+    <ColumnHeader
+      spec={specOf(key)}
+      label={label}
+      width={columns.widths[key]}
+      onResize={columns.resize}
+      onSave={columns.save}
+      filtered={isFiltered(column)}
+      filter={filter}
+      align={align}
+    />
+  );
 
   return (
     <>
@@ -336,54 +361,35 @@ function Transactions() {
         }
       />
 
-      <Card className="mb-4 flex flex-wrap items-end gap-3 p-4!">
-        <Field label="From" className="w-40">
-          <Input dense type="date" value={from} onChange={(e) => changeFilter(setFrom, e.target.value)} />
-        </Field>
-        <Field label="To" className="w-40">
-          <Input dense type="date" value={to} onChange={(e) => changeFilter(setTo, e.target.value)} />
-        </Field>
-        <Field label="Type" className="w-36">
-          <Select dense className="w-full" value={type} onChange={(e) => changeFilter(setType, e.target.value)}>
-            <option value="">All</option>
-            <option value="credit">Money in</option>
-            <option value="debit">Money out</option>
-          </Select>
-        </Field>
-        <SourcePicker
-          sources={sources}
-          selected={sourceFilter}
-          onChange={(ids) => {
-            setSourceFilter(ids);
-            setPage(1);
-          }}
-        />
-        {filtered && (
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={<X size={14} />}
-            onClick={() => {
-              setFrom("");
-              setTo("");
-              setType("");
-              setCategoryFilter("");
-              setSourceFilter([]);
-              setPage(1);
-            }}
-          >
-            Clear filters
-          </Button>
-        )}
-      </Card>
-
+      {/* A bucket stands for one category. With several chosen, neither one nor All is on. */}
       <BucketBar
         categories={categories}
-        activeId={categoryFilter}
+        activeId={filters.categories.length === 1 ? filters.categories[0] : filters.categories.length ? "several" : ""}
         dragCount={dragCount}
-        onFilter={(id) => changeFilter(setCategoryFilter, id)}
+        onFilter={(id) => changeFilters({ categories: id ? [id] : [] })}
         onDropInto={moveInto}
       />
+
+      {/* A header's filter is out of sight once set, so what is on stays in view here. */}
+      {(filtered || columns.changed) && (
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {chips.map((chip) => (
+            <Chip key={chip.label} onRemove={() => changeFilters(chip.clear)}>
+              {chip.label}
+            </Chip>
+          ))}
+          {filtered && (
+            <Button size="sm" variant="ghost" icon={<X size={14} />} onClick={() => changeFilters(NO_FILTERS)}>
+              Clear filters
+            </Button>
+          )}
+          {columns.changed && (
+            <Button size="sm" variant="ghost" className="ml-auto" onClick={columns.reset}>
+              Reset columns
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* What to do with the selection, for keyboards and touch screens (no dragging needed). */}
       {someSelected && (
@@ -439,41 +445,113 @@ function Transactions() {
 
       {loading && !data && <Loading />}
 
-      {data && data.results.length === 0 && !loading ? (
+      {data && data.results.length === 0 && !loading && !filtered ? (
         <EmptyState
           icon={<Receipt size={22} aria-hidden />}
-          title={filtered ? "Nothing matches these filters" : "No transactions yet"}
+          title="No transactions yet"
           action={
-            !filtered && (
-              <Link href="/transactions/import" className={buttonClass("primary", "md")}>
-                Import a statement
-              </Link>
-            )
+            <Link href="/transactions/import" className={buttonClass("primary", "md")}>
+              Import a statement
+            </Link>
           }
         >
-          {filtered ? "Try another bucket, widen the dates or clear a filter." : "Import a bank statement to get started."}
+          Import a bank statement to get started.
         </EmptyState>
       ) : (
         data && (
-          <Table>
+          <Table
+            className="table-fixed"
+            style={{ width: totalWidth(shownColumns, columns.widths), minWidth: "100%" }}
+          >
+            <colgroup>
+              {shownColumns.map((column) => (
+                <col key={column.key} style={{ width: columns.widths[column.key] }} />
+              ))}
+            </colgroup>
             <thead>
               <Tr className="hover:bg-transparent">
-                <Th className="w-10">
+                <Th>
                   <Checkbox aria-label="Select all on this page" checked={allSelected} onChange={toggleAll} />
                 </Th>
-                <Th>Date</Th>
-                <Th>Name</Th>
-                {manySources && <Th>Data source</Th>}
-                <Th align="right">Amount</Th>
-                <Th align="right">Balance</Th>
-                <Th>Category</Th>
-                <Th>Notes</Th>
-                <Th className="w-20">
+                {header(
+                  "date",
+                  "Date",
+                  "date",
+                  <DateFilter from={filters.from} to={filters.to} onChange={(from, to) => changeFilters({ from, to })} />,
+                )}
+                {header(
+                  "name",
+                  "Name",
+                  "name",
+                  <TextFilter label="Name contains" value={filters.name} onChange={(name) => changeFilters({ name })} />,
+                )}
+                {manySources &&
+                  header(
+                    "source",
+                    "Source",
+                    "source",
+                    <Checklist
+                      items={sources}
+                      selected={filters.sources}
+                      allLabel="All data sources"
+                      onChange={(ids) => changeFilters({ sources: ids })}
+                    />,
+                  )}
+                {header(
+                  "amount",
+                  "Amount",
+                  "amount",
+                  <AmountFilter
+                    type={filters.type}
+                    low={filters.amountMin}
+                    high={filters.amountMax}
+                    onType={(type) => changeFilters({ type })}
+                    onRange={(amountMin, amountMax) => changeFilters({ amountMin, amountMax })}
+                  />,
+                  "right",
+                )}
+                {header(
+                  "balance",
+                  "Balance",
+                  "balance",
+                  <RangeFilter
+                    low={filters.balanceMin}
+                    high={filters.balanceMax}
+                    onChange={(balanceMin, balanceMax) => changeFilters({ balanceMin, balanceMax })}
+                  />,
+                  "right",
+                )}
+                {header(
+                  "category",
+                  "Category",
+                  "category",
+                  <Checklist
+                    items={categories}
+                    selected={filters.categories}
+                    allLabel="All categories"
+                    onChange={(ids) => changeFilters({ categories: ids })}
+                  />,
+                )}
+                {header(
+                  "notes",
+                  "Notes",
+                  "notes",
+                  <TextFilter label="Notes contain" value={filters.notes} onChange={(notes) => changeFilters({ notes })} />,
+                )}
+                <Th>
                   <span className="sr-only">Link and delete</span>
                 </Th>
               </Tr>
             </thead>
             <tbody className={loading ? "opacity-50 transition-opacity" : "transition-opacity"}>
+              {/* The filters live in the header, so the header stays when nothing matches them. */}
+              {data.results.length === 0 && (
+                <tr>
+                  <td colSpan={shownColumns.length} className="px-3 py-10 text-center text-ink-2">
+                    Nothing matches these filters.
+                  </td>
+                </tr>
+              )}
               {data.results.map((txn, index) => {
                 const isSelected = selected.has(txn.id);
                 const editing = editingId === txn.id || editingNotesId === txn.id;
@@ -489,7 +567,7 @@ function Transactions() {
                       isSelected && "bg-select hover:bg-select-hover",
                     )}
                   >
-                    <Td className="w-10">
+                    <Td>
                       {/* Shift is read on mouse-down here: the checkbox's own click arrives forwarded
                           from its label, and a forwarded click does not carry the Shift key. */}
                       <span
@@ -509,8 +587,8 @@ function Transactions() {
                         />
                       </span>
                     </Td>
-                    <Td className="whitespace-nowrap text-ink-2">{txn.date}</Td>
-                    <Td title={txn.description} className="max-w-72">
+                    <Td className="truncate text-ink-2">{txn.date}</Td>
+                    <Td title={txn.description}>
                       {editingId === txn.id ? (
                         <Input
                           dense
@@ -536,9 +614,17 @@ function Transactions() {
                         </button>
                       )}
                     </Td>
-                    {manySources && <Td className="whitespace-nowrap text-ink-2">{sourceName(txn.data_source, sources)}</Td>}
-                    <MoneyCell value={txn.amount} type={txn.txn_type} />
-                    <Td align="right" className="whitespace-nowrap text-ink-2">
+                    {manySources && (
+                      <Td className="truncate text-ink-2" title={sourceName(txn.data_source, sources)}>
+                        {sourceName(txn.data_source, sources)}
+                      </Td>
+                    )}
+                    <MoneyCell value={txn.amount} type={txn.txn_type} className="truncate" />
+                    <Td
+                      align="right"
+                      className="truncate text-ink-2"
+                      title={txn.balance === null ? undefined : money(txn.balance)}
+                    >
                       {txn.balance === null ? "" : money(txn.balance)}
                     </Td>
                     <Td>
@@ -550,6 +636,7 @@ function Transactions() {
                         />
                         <Select
                           dense
+                          className="min-w-0 flex-1"
                           value={txn.category}
                           aria-label={`Category for ${txn.name}`}
                           onChange={(e) => patch(txn, { category: e.target.value })}
@@ -578,7 +665,7 @@ function Transactions() {
                         />
                       ) : (
                         <button
-                          className={`block max-w-56 truncate rounded-sm text-left hover:underline ${txn.notes ? "" : "text-muted"}`}
+                          className={`block max-w-full truncate rounded-sm text-left hover:underline ${txn.notes ? "" : "text-muted"}`}
                           title={txn.notes || "Add a note. It is encrypted, and the AI can read it."}
                           onClick={() => {
                             setEditingNotesId(txn.id);
@@ -589,7 +676,7 @@ function Transactions() {
                         </button>
                       )}
                     </Td>
-                    <Td className="w-20 whitespace-nowrap">
+                    <Td className="whitespace-nowrap">
                       {manySources && (
                         <IconButton
                           size="sm"

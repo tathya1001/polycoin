@@ -155,6 +155,8 @@ REST_FRAMEWORK = {
         "insights": "600/hour",
         "insights_rows": "300/hour",  # lists decrypted transaction names, so tighter
         "links": "300/hour",  # finding a transfer decrypts amounts and names, as above
+        # Filtering the transactions list on an encrypted column decrypts it for many rows.
+        "transaction_search": "600/hour",
         "destructive": "5/hour",  # erasing all data; also caps password guessing through it
         # Ask your transactions. Indexing is two calls per 100 rows (pending, then
         # vectors). Asking decrypts the whole index, so scripted bulk decryption is capped.

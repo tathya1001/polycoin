@@ -31,8 +31,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     collapsedStore.set(!collapsed);
   }
 
-  // Dashboards get the whole width; every other page reads best in a narrower column.
-  const wide = pathname === "/dashboard";
+  // Dashboards and the transactions table get the whole width; every other page reads best in a
+  // narrower column.
+  const wide = pathname === "/dashboard" || pathname === "/transactions";
 
   return (
     <div className="min-h-screen md:flex md:gap-3 md:p-3">

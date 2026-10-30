@@ -8,8 +8,19 @@ transactions this month still holds its money.
 
 from bisect import bisect_right
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class SourceLabel:
+    """One data source as rows and panels refer to it. Rows share one of these per source, which
+    keeps a row small: at 20,000 rows, every key on a row costs real memory."""
+
+    id: str
+    name: str
+    key: str  # how a formula's reference to it is matched
 
 
 def _starting_balance(row: dict) -> Decimal:
@@ -44,8 +55,8 @@ class BalanceBook:
 
     `openings` holds each source's balance before the first row here. `keys` limits the sources
     a total covers, for a panel showing only some of them. `names` gives each source's label.
-    Rows are dicts with the keys date, amount, txn_type and balance, plus source_key when there
-    can be more than one source.
+    Rows are dicts with the keys date, amount, txn_type and balance, plus source (a SourceLabel)
+    when there can be more than one source.
     """
 
     def __init__(
@@ -58,8 +69,9 @@ class BalanceBook:
         by_day: dict[str, dict[date, list[dict]]] = {}
         for row in rows:
             if row["balance"] is not None:
-                source = by_day.setdefault(row.get("source_key"), {})
-                source.setdefault(row["date"], []).append(row)
+                label = row.get("source")
+                days = by_day.setdefault(label.key if label else None, {})
+                days.setdefault(row["date"], []).append(row)
 
         self.openings = openings or {}
         self.keys = frozenset(keys) if keys is not None else frozenset(by_day) | set(self.openings)
