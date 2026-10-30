@@ -50,7 +50,9 @@ from .serializers import (
 )
 from .services import create_transaction, fingerprint_of, move_transactions, where_held
 
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+# Requests reach Django through the Vercel proxy, which refuses bodies over 4.5 MB. Keep equal to
+# MAX_UPLOAD_BYTES on the import page.
+MAX_UPLOAD_BYTES = 4 * 1024 * 1024
 PREVIEW_SAMPLE_ROWS = 10
 PREVIEW_MAX_ERRORS = 50
 
@@ -260,7 +262,7 @@ class ImportBase(APIView):
         if file is None:
             raise ImportProblem("missing_file", "Upload a file in the 'file' field.")
         if file.size > MAX_UPLOAD_BYTES:
-            raise ImportProblem("file_too_large", "The file is larger than 5 MB.")
+            raise ImportProblem("file_too_large", "The file is larger than 4 MB.")
 
         try:
             rows = read_statement(file, file.name, request.data.get("password") or None)

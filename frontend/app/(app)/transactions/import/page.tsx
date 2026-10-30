@@ -51,6 +51,9 @@ const FIELDS: { key: MappingField; label: string }[] = [
 ];
 
 const ACCEPTED = ".xlsx,.xls,.csv,.pdf";
+// transactions.views.MAX_UPLOAD_BYTES. Checked here too, because the host refuses a larger upload
+// before the server can explain why. A PDF stays on this device: only its CSV table counts.
+const MAX_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 // The server stores nothing, so every call re-sends the file (and password, and mapping).
 function buildForm(file: File, password: string, mapping: Mapping | null, source: string, elsewhere?: ElsewhereChoice) {
@@ -182,6 +185,10 @@ export default function ImportStatement() {
     try {
       const { csv, pages } = await convertPdf(f, pw);
       if (requestId !== latestRequest.current) return;
+      if (csv.size > MAX_UPLOAD_BYTES) {
+        setError("This statement holds more than 4 MB of transactions. Split it into shorter periods.");
+        return;
+      }
       setUpload(csv);
       setPdfPages(pages);
       setNeedsPassword(false);
@@ -216,6 +223,8 @@ export default function ImportStatement() {
     if (!chosen) return;
     if (isPdf(chosen)) {
       readPdf(chosen, "");
+    } else if (chosen.size > MAX_UPLOAD_BYTES) {
+      setError("The file is larger than 4 MB. Split it into shorter periods.");
     } else {
       setUpload(chosen);
       runPreview(chosen, "", null);
@@ -326,7 +335,7 @@ export default function ImportStatement() {
           <span className="flex-1">
             <span className="block font-semibold">{file ? file.name : "Choose a bank statement"}</span>
             <span className="block text-sm text-ink-2">
-              {file ? "Click to choose a different file." : "Excel, CSV or PDF, up to 5 MB"}
+              {file ? "Click to choose a different file." : "Excel or CSV up to 4 MB, or a PDF up to 100 pages"}
             </span>
           </span>
           {loading && <Spinner />}

@@ -554,10 +554,16 @@ def test_renamed_non_xlsx_content_is_400(alice):
 
 
 def test_oversized_file_is_400(alice):
-    file = SimpleUploadedFile("statement.xlsx", b"x" * (5 * 1024 * 1024 + 1))
+    file = SimpleUploadedFile("statement.xlsx", b"x" * (4 * 1024 * 1024 + 1))
     response = client_for(alice).post(IMPORT_URL, {"file": file}, format="multipart")
     assert response.status_code == 400
     assert response.json()["code"] == "file_too_large"
+
+
+def test_a_file_of_exactly_the_limit_gets_past_the_size_check(alice):
+    file = SimpleUploadedFile("statement.xlsx", b"x" * (4 * 1024 * 1024))
+    response = client_for(alice).post(IMPORT_URL, {"file": file}, format="multipart")
+    assert response.json()["code"] != "file_too_large"
 
 
 def test_missing_file_is_400(alice):
