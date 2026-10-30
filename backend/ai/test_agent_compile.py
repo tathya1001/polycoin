@@ -14,9 +14,16 @@ from ai.agent.compile import (
     run_preview,
     spec_to_intent,
 )
-from ai.agent.context import AgentContext, CategoryIndex, CategoryRef, MerchantMatch
+from ai.agent.context import (
+    AgentContext,
+    CategoryIndex,
+    CategoryRef,
+    MerchantMatch,
+    SourceIndex,
+    SourceRef,
+)
 from ai.agent.errors import AgentError
-from ai.agent.prompts import _EXAMPLE_CATEGORY, EXAMPLES
+from ai.agent.prompts import _EXAMPLE_CATEGORY, _EXAMPLE_SOURCE, EXAMPLES
 from ai.agent.schema import PanelIntent
 from insights.spec import SpecError, validate_spec
 from insights.templates import TEMPLATES
@@ -25,6 +32,7 @@ from transactions.tests import make_txn, make_user
 TODAY = date(2026, 10, 25)
 FOOD = CategoryRef("11111111-1111-4111-8111-111111111111", "Food")
 GROCERIES = CategoryRef(_EXAMPLE_CATEGORY, "Groceries")
+OAK = SourceRef(_EXAMPLE_SOURCE, "OakBank")
 NAMES = ["Tastybites Cafe", "Tastybites Kitchen", "Fitzone Gym"]
 
 
@@ -36,6 +44,7 @@ def context(embed=None, merchants=NAMES):
         first_date=date(2015, 1, 1),
         embed=embed,
         _merchants=list(merchants),
+        sources=SourceIndex([OAK]),
     )
 
 
@@ -249,7 +258,8 @@ CASES = [
 def test_golden_cases(name, fields, message, expected, notes):
     compiled = build(message=message, **fields)
     for key, value in expected.items():
-        assert compiled.spec[key] == value, key
+        wanted = {"data_sources": [], **value} if key == "filters" else value
+        assert compiled.spec[key] == wanted, key
     assert compiled.notes == notes
     assert validate_spec(compiled.spec) == compiled.spec  # what the panels endpoint will accept
 
@@ -376,7 +386,7 @@ def _without_presentation(spec: dict) -> dict:
 @pytest.mark.parametrize("spec", ROUND_TRIP)
 def test_spec_to_intent_compiles_back_to_the_same_spec(spec):
     ctx = context()
-    panel = spec_to_intent(spec, {GROCERIES.id: GROCERIES.name})
+    panel = spec_to_intent(spec, {GROCERIES.id: GROCERIES.name}, source_names={OAK.id: OAK.name})
     compiled = compile_intent(panel, ground(panel, ctx), ctx)
     assert compiled.notes == []
     assert _without_presentation(compiled.spec) == _without_presentation(validate_spec(spec))
@@ -482,3 +492,37 @@ def test_the_preview_does_not_change_the_callers_spec(alice):
     )  # fmt: skip
     run_preview(alice, spec, {}, TODAY, [])
     assert spec["x"]["granularity"] == "day"
+
+
+# --- data sources -------------------------------------------------------------------------------
+
+
+def test_a_named_data_source_becomes_the_panels_filter():
+    compiled = build(chart="kpi", measure="spend", data_sources=["oakbank"])
+    assert compiled.spec["filters"]["data_sources"] == [OAK.id]
+    assert compiled.notes == []
+
+
+def test_spaces_and_a_near_spelling_still_find_the_source():
+    assert build(chart="kpi", measure="spend", data_sources=["oak bank"]).spec["filters"][
+        "data_sources"
+    ] == [OAK.id]
+    assert build(chart="kpi", measure="spend", data_sources=["Oakbnk"]).spec["filters"][
+        "data_sources"
+    ] == [OAK.id]
+
+
+def test_an_unknown_source_is_left_out_and_said_so():
+    compiled = build(chart="kpi", measure="spend", data_sources=["River"])
+    assert compiled.spec["filters"]["data_sources"] == []
+    assert "River" in compiled.notes[0]
+
+
+def test_a_chart_can_compare_sources():
+    compiled = build(chart="bar", measure="spend", x="data_source")
+    assert compiled.spec["x"] == {"field": "data_source"}
+    assert "by data source" in describe(compiled.spec)
+
+
+def test_a_null_data_sources_key_means_none_named():
+    assert PanelIntent(kind="panel", data_sources=None).data_sources == []

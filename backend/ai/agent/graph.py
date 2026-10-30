@@ -36,7 +36,7 @@ from .schema import PanelIntent, parse_intent
 
 # Part of every token's encryption context: raise it whenever the state's shape or the graph
 # changes, and older tokens expire instead of resuming into a graph they don't fit.
-GRAPH_VERSION = "agent-1"
+GRAPH_VERSION = "agent-2"
 RECURSION_LIMIT = 25  # LangGraph's own cap on steps in one run; the counters below stop first
 
 

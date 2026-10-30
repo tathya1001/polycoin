@@ -129,6 +129,7 @@ def test_the_catalogue_offers_both_charts():
         "category",
         "txn_type",
         "merchant",
+        "data_source",
     ]
     assert offered["limits"]["calendar_days"] == 366
 

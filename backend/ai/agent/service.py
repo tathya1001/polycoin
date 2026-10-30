@@ -72,6 +72,7 @@ def _model_request(state: dict, waiting: dict, ctx) -> tuple[dict, dict]:
         kind,
         message=state["message"],
         category_names=ctx.categories.names,
+        source_names=ctx.sources.names,
         today=ctx.today,
         intent=PanelIntent(**shown) if shown else None,
         error=state.get("last_error"),

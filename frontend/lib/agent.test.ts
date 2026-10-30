@@ -3,7 +3,7 @@ import { AgentProblem, httpAgentApi, MAX_ROUNDS, runTurn, type AgentApi, type Ag
 import type { AgentDashboard, AgentOutcome, AgentResponse } from "./types";
 
 const DASHBOARD: AgentDashboard = {
-  filters: { date: { preset: "inherit" }, type: null, categories: [], merchant_contains: "" },
+  filters: { date: { preset: "inherit" }, type: null, categories: [], data_sources: [], merchant_contains: "" },
   parameters: null,
 };
 const SCHEMA = { type: "object" };

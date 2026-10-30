@@ -26,7 +26,7 @@ from .formula import (
 
 # Bumped whenever the shape of a spec changes; `upgrade` brings older saved specs forward one
 # version at a time, so a panel saved by any earlier version keeps working unchanged.
-SPEC_VERSION = 8
+SPEC_VERSION = 9
 
 CATEGORICAL = tuple(dimension for dimension in DIMENSIONS if dimension != "date")
 CHARTS = (
@@ -47,6 +47,7 @@ DEFAULT_PRESET = "last_3_months"  # used when neither the panel nor the dashboar
 MIN_DATE = date(2000, 1, 1)
 MAX_DATE = date(2100, 12, 31)
 MAX_CATEGORIES = 20
+MAX_DATA_SOURCES = 20  # keep equal to datasources.models.MAX_SOURCES_PER_USER
 MAX_MERCHANT_LENGTH = 60
 LIMIT_RANGE = (1, 50)  # how many x values a bar or pie keeps before folding the rest
 BINS_RANGE = (5, 50)
@@ -545,16 +546,22 @@ def validate_selection(raw) -> dict:
 
     Used to filter the other panels ("filter the dashboard to Food") and to list the
     transactions behind a mark. Every key is optional and only the ones given are returned:
-    categories and merchants by name (as a chart labels them), type, weekdays (0 = Monday),
-    months of the year (1-12), and a date range.
+    categories, merchants and data sources by name (as a chart labels them), type, weekdays
+    (0 = Monday), months of the year (1-12), and a date range.
     """
     raw = _default(raw, {})
-    _only_keys(raw, ("categories", "type", "merchants", "weekdays", "months", "date"), "selection")
+    _only_keys(
+        raw,
+        ("categories", "type", "merchants", "data_sources", "weekdays", "months", "date"),
+        "selection",
+    )
     selection = {}
     if categories := _names(raw.get("categories"), "selection.categories"):
         selection["categories"] = categories
     if merchants := _names(raw.get("merchants"), "selection.merchants"):
         selection["merchants"] = merchants
+    if data_sources := _names(raw.get("data_sources"), "selection.data_sources"):
+        selection["data_sources"] = data_sources
     if raw.get("type") is not None:
         selection["type"] = _choice(raw["type"], TXN_TYPES, "selection.type")
     if weekdays := _whole_numbers(raw.get("weekdays"), "selection.weekdays", 0, 6):
@@ -645,6 +652,7 @@ def catalogue() -> dict:
             "limit": list(LIMIT_RANGE),
             "bins": list(BINS_RANGE),
             "categories": MAX_CATEGORIES,
+            "data_sources": MAX_DATA_SOURCES,
             "merchant_contains": MAX_MERCHANT_LENGTH,
             "series_colors": MAX_SERIES_COLORS,
             "window": list(WINDOW_RANGE),
@@ -675,26 +683,33 @@ def validate_date_filter(raw) -> dict:
     return {"preset": "custom", "from": start.isoformat(), "to": end.isoformat()}
 
 
+def _ids(raw, field: str, what: str, most: int) -> list[str]:
+    """A list of ids with no duplicates, in the order given."""
+    raw = _default(raw, [])
+    if not isinstance(raw, list) or len(raw) > most:
+        raise _bad(f"filters.{field} must be a list of at most {most} {what} ids.")
+    clean = []
+    for item in raw:
+        try:
+            clean.append(str(uuid.UUID(item)))
+        except (ValueError, TypeError, AttributeError):
+            raise _bad(f"filters.{field} must contain {what} ids.") from None
+    return list(dict.fromkeys(clean))
+
+
 def validate_filters(raw) -> dict:
     """The filters that decide which rows a panel sees. Used for panels and the dashboard bar."""
     raw = _default(raw, {})
-    _only_keys(raw, ("date", "type", "categories", "merchant_contains"), "filters")
+    _only_keys(raw, ("date", "type", "categories", "data_sources", "merchant_contains"), "filters")
 
     txn_type = raw.get("type")
     if txn_type is not None:
         _choice(txn_type, TXN_TYPES, "filters.type")
 
-    categories = _default(raw.get("categories"), [])
-    if not isinstance(categories, list) or len(categories) > MAX_CATEGORIES:
-        raise _bad(f"filters.categories must be a list of at most {MAX_CATEGORIES} category ids.")
-    clean_ids = []
-    for item in categories:
-        try:
-            clean_ids.append(str(uuid.UUID(item)))
-        except (ValueError, TypeError, AttributeError):
-            raise _bad("filters.categories must contain category ids.") from None
+    categories = _ids(raw.get("categories"), "categories", "category", MAX_CATEGORIES)
+    data_sources = _ids(raw.get("data_sources"), "data_sources", "data source", MAX_DATA_SOURCES)
 
-    text = _default(raw.get("merchant_contains"), "")
+    text =_default(raw.get("merchant_contains"), "")
     if not isinstance(text, str) or len(text.strip()) > MAX_MERCHANT_LENGTH:
         raise _bad(
             f"filters.merchant_contains must be text of at most {MAX_MERCHANT_LENGTH} characters."
@@ -703,7 +718,8 @@ def validate_filters(raw) -> dict:
     return {
         "date": validate_date_filter(raw.get("date")),
         "type": txn_type,
-        "categories": list(dict.fromkeys(clean_ids)),  # no duplicates, order kept
+        "categories": categories,
+        "data_sources": data_sources,
         "merchant_contains": text.strip(),
     }
 
@@ -786,6 +802,11 @@ def _v7_to_v8(raw: dict) -> dict:
     return {**raw, "v": 8}
 
 
+def _v8_to_v9(raw: dict) -> dict:
+    """Version 9 added data sources. Filters default to every source, so nothing else changes."""
+    return {**raw, "v": 9}
+
+
 # version -> the function that turns a spec of that version into the next one
 UPGRADES = {
     1: _v1_to_v2,
@@ -795,6 +816,7 @@ UPGRADES = {
     5: _v5_to_v6,
     6: _v6_to_v7,
     7: _v7_to_v8,
+    8: _v8_to_v9,
 }
 
 

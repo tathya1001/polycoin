@@ -1,5 +1,7 @@
 import json
 import uuid
+from collections import Counter
+from datetime import timedelta
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
@@ -14,6 +16,7 @@ from rest_framework.views import APIView
 
 from categories.services import get_default_category
 from core.mixins import OwnedQuerysetMixin
+from datasources.services import first_source, get_source, sources_for
 from vault.services import UserCipher
 
 from .importer import (
@@ -23,10 +26,28 @@ from .importer import (
     detect_header,
     parse_rows,
 )
-from .models import Transaction
+from .links import (
+    DEFAULT_CANDIDATE_DAYS,
+    MAX_CANDIDATE_DAYS,
+    SUGGESTION_RANGE_DAYS,
+    LinkError,
+    TooManyRows,
+    link_candidates,
+    link_many,
+    link_transactions,
+    suggest_transfers,
+)
+from .models import Transaction, TransferLink
 from .readers import read_statement
-from .serializers import BulkCategorySerializer, BulkDeleteSerializer, TransactionSerializer
-from .services import create_transaction
+from .serializers import (
+    BulkCategorySerializer,
+    BulkDeleteSerializer,
+    BulkLinkSerializer,
+    BulkSourceSerializer,
+    LinkSerializer,
+    TransactionSerializer,
+)
+from .services import create_transaction, fingerprint_of, move_transactions, where_held
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 PREVIEW_SAMPLE_ROWS = 10
@@ -50,11 +71,14 @@ class TransactionViewSet(
     A delete is a real delete (the row, its fingerprint and its Ask document go). So importing
     the same statement again brings a deleted transaction back, as a new row in "Others"."""
 
-    queryset = Transaction.objects.select_related("category")
+    queryset = Transaction.objects.select_related(
+        "category", "debit_link__credit", "credit_link__debit"
+    )
     serializer_class = TransactionSerializer
     pagination_class = TransactionPagination
-    # No PUT. POST only reaches the bulk-category action: there is no create.
+    # No PUT. POST only reaches the bulk actions: there is no create.
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
+    throttle_scope = None  # only `candidates` has one
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -83,7 +107,45 @@ class TransactionViewSet(
             except ValueError:
                 raise ValidationError({"category": "Not a valid id."})
 
+        if "data_source" in params:  # one id, or several separated by commas
+            try:
+                ids = [uuid.UUID(part) for part in params["data_source"].split(",")]
+            except ValueError:
+                raise ValidationError({"data_source": "Not a valid id."})
+            qs = qs.filter(data_source_id__in=ids)
+
         return qs  # Meta.ordering already gives -date
+
+    @action(detail=False, methods=["post"], url_path="bulk-source")
+    def bulk_source(self, request):
+        """Move many transactions to another data source. As with bulk-category, ids that aren't
+        the caller's come back as "missing". "skipped" counts rows the target already holds."""
+        serializer = BulkSourceSerializer(data=request.data, context={"request": request})
+        serializer.is_valid(raise_exception=True)
+        ids = set(serializer.validated_data["transactions"])
+
+        mine = Transaction.objects.filter(user=request.user, id__in=ids)
+        found = set(mine.values_list("id", flat=True))
+        moved, skipped = move_transactions(
+            request.user, mine, serializer.validated_data["data_source"]
+        )
+        return Response(
+            {"moved": moved, "skipped": skipped, "missing": sorted(str(i) for i in ids - found)},
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=["get"], url_path="link-candidates", throttle_scope="links")
+    def candidates(self, request, pk=None):
+        """The transactions this one could be linked to as a transfer."""
+        raw_days = request.query_params.get("days", str(DEFAULT_CANDIDATE_DAYS))
+        if not raw_days.isdigit() or not 1 <= int(raw_days) <= MAX_CANDIDATE_DAYS:
+            raise ValidationError({"days": f"Use 1 to {MAX_CANDIDATE_DAYS}."})
+        cipher = self.get_serializer_context()["cipher"]
+        try:
+            found = link_candidates(request.user, cipher, self.get_object(), int(raw_days))
+        except TooManyRows:
+            return _too_many_rows()
+        return Response(found)
 
     @action(detail=False, methods=["post"], url_path="bulk-category")
     def bulk_category(self, request):
@@ -128,6 +190,22 @@ class TransactionViewSet(
 
 # --- statement import ---------------------------------------------------------
 
+def _too_many_rows() -> Response:
+    detail = "Too many transactions in the period. Pick a shorter date range."
+    return Response({"code": "too_many_rows", "detail": detail}, status=status.HTTP_400_BAD_REQUEST)
+
+
+def _fingerprint(cipher, item: dict) -> bytes:
+    return fingerprint_of(
+        cipher,
+        date=item["date"],
+        txn_type=item["txn_type"],
+        amount=item["amount"],
+        balance=item["balance"],
+        description=item["description"],
+    )
+
+
 class ImportProblem(APIException):
     """400 with a machine-readable `code`, so the UI can react (e.g. ask for a password)."""
 
@@ -137,12 +215,25 @@ class ImportProblem(APIException):
         super().__init__({"code": code, "detail": detail})
 
 
+ELSEWHERE_CHOICES = ("skip", "move", "add")  # for rows another data source already holds
+
+
 class ImportBase(APIView):
     """Both import endpoints are stateless: the file (and password) arrive with every
     call and are never stored. Only the commit step writes to the database."""
 
     parser_classes = [MultiPartParser]
     throttle_scope = "import"
+
+    def target_source(self, request):
+        """The data source the file goes into. With none named: the user's first one."""
+        raw = request.data.get("data_source")
+        if not raw:
+            return first_source(request.user)
+        source = get_source(request.user, raw)
+        if source is None:
+            raise ImportProblem("invalid_source", "That data source doesn't exist.")
+        return source
 
     def load(self, request):
         """Validate the upload and parse it.
@@ -190,6 +281,18 @@ class ImportPreviewView(ImportBase):
 
     def post(self, request):
         rows, header_index, detected, parsed, errors = self.load(request)
+        source = self.target_source(request)
+        cipher = UserCipher(request.user)
+        fingerprints = {_fingerprint(cipher, item) for item in parsed}
+        held = where_held(request.user, fingerprints)
+        here = sum(source.pk in sources for sources in held.values())
+        elsewhere = Counter(
+            other
+            for sources in held.values()
+            if source.pk not in sources
+            for other in sources
+        )
+        names = {s.pk: s.name for s in sources_for(request.user, cipher)}
         return Response(
             {
                 "headers": ["" if c is None else str(c) for c in rows[header_index]],
@@ -209,6 +312,11 @@ class ImportPreviewView(ImportBase):
                 "row_count": len(parsed),
                 "error_count": len(errors),
                 "errors": errors[:PREVIEW_MAX_ERRORS],
+                "duplicates": here,
+                "elsewhere": [
+                    {"data_source": str(pk), "name": names[pk], "count": count}
+                    for pk, count in elsewhere.most_common()
+                ],
             }
         )
 
@@ -216,13 +324,30 @@ class ImportPreviewView(ImportBase):
 class ImportView(ImportBase):
     def post(self, request):
         *_, parsed, errors = self.load(request)
+        source = self.target_source(request)
+        elsewhere = request.data.get("elsewhere") or "skip"
+        if elsewhere not in ELSEWHERE_CHOICES:
+            raise ImportProblem("invalid_choice", "elsewhere must be skip, move or add.")
 
         cipher = UserCipher(request.user)  # one DEK load for the whole import
         category = get_default_category(request.user)  # "Others"
-        imported = duplicates = 0
+        imported = duplicates = skipped = moved = 0
+        fingerprints = [_fingerprint(cipher, item) for item in parsed]
+        held = where_held(request.user, set(fingerprints))
+        to_move = set()
 
         with transaction.atomic():
-            for item in parsed:
+            for item, fingerprint in zip(parsed, fingerprints, strict=True):
+                holders = held.get(fingerprint, ())
+                if source.pk in holders:
+                    duplicates += 1
+                    continue
+                if holders and elsewhere != "add":
+                    if elsewhere == "move":
+                        to_move.add(fingerprint)
+                    else:
+                        skipped += 1
+                    continue
                 try:
                     # Savepoint per row: on Postgres an IntegrityError would otherwise
                     # poison the outer transaction and abort every later insert.
@@ -237,9 +362,91 @@ class ImportView(ImportBase):
                             amount=item["amount"],
                             balance=item["balance"],
                             category=category,
+                            data_source=source,
                         )
                     imported += 1
-                except IntegrityError:  # fingerprint already stored: re-imported row
+                except IntegrityError:  # the same row twice in one file
                     duplicates += 1
+            if to_move:
+                rows = Transaction.objects.filter(user=request.user, fingerprint__in=to_move)
+                moved, _ = move_transactions(request.user, rows, source)
 
-        return Response({"imported": imported, "duplicates": duplicates, "errors": errors})
+        return Response(
+            {
+                "imported": imported,
+                "duplicates": duplicates,
+                "moved": moved,
+                "skipped": skipped,
+                "errors": errors,
+            }
+        )
+
+
+class LinkView(APIView):
+    """POST /api/transactions/links/: the user says these two rows are one transfer."""
+
+    throttle_scope = "links"
+
+    def post(self, request):
+        serializer = LinkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        values = serializer.validated_data
+        try:
+            link = link_transactions(
+                request.user, UserCipher(request.user), values["first"], values["second"]
+            )
+        except LinkError as error:
+            return Response(
+                {"code": error.code, "detail": error.detail}, status=status.HTTP_400_BAD_REQUEST
+            )
+        return Response(
+            {"id": str(link.pk), "debit": str(link.debit_id), "credit": str(link.credit_id)},
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class BulkLinkView(APIView):
+    """POST /api/transactions/links/bulk/: approve many suggested transfers at once."""
+
+    throttle_scope = "links"
+
+    def post(self, request):
+        serializer = BulkLinkSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(
+            link_many(
+                request.user, UserCipher(request.user), serializer.validated_data["pairs"]
+            )
+        )
+
+
+class LinkDetailView(APIView):
+    """DELETE /api/transactions/links/{id}/: the two rows count on their own again."""
+
+    throttle_scope = "links"
+
+    def delete(self, request, pk):
+        deleted, _ = TransferLink.objects.filter(user=request.user, pk=pk).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT if deleted else status.HTTP_404_NOT_FOUND)
+
+
+class TransferSuggestionsView(APIView):
+    """GET /api/transactions/transfer-suggestions/: likely transfers for the user to approve."""
+
+    throttle_scope = "links"
+
+    def get(self, request):
+        today = timezone.localdate()
+        start, end = today - timedelta(days=SUGGESTION_RANGE_DAYS), today
+        for param, name in (("from", "start"), ("to", "end")):
+            if param in request.query_params:
+                parsed = parse_date(request.query_params[param])
+                if parsed is None:
+                    raise ValidationError({param: "Use YYYY-MM-DD."})
+                start, end = (parsed, end) if name == "start" else (start, parsed)
+        if start > end or (end - start).days > SUGGESTION_RANGE_DAYS:
+            raise ValidationError({"from": f"Use a range of {SUGGESTION_RANGE_DAYS} days or less."})
+        try:
+            return Response(suggest_transfers(request.user, UserCipher(request.user), start, end))
+        except TooManyRows:
+            return _too_many_rows()

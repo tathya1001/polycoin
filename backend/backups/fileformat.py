@@ -24,7 +24,8 @@ from vault.services import UserCipher
 from .errors import BackupError
 
 MAGIC = b"polycoin-backup/"
-FORMAT = 1
+FORMAT = 2  # 2 added data sources and transfer links
+OLDEST_FORMAT = 1  # the oldest file a restore still reads
 CONTEXT = "backup.file"
 MAX_HEADER = 32  # bytes before the first newline
 
@@ -76,7 +77,7 @@ def open_file(user, content: bytes) -> dict:
         raise BackupError(
             "newer_format", "This backup was made by a newer version of Polycoin. Reload the page."
         )
-    if int(version) != FORMAT:
+    if int(version) < OLDEST_FORMAT:
         raise BackupError("not_a_backup", "This is not a Polycoin backup file.")
     try:
         packed = UserCipher(user).decrypt(blob, CONTEXT)
@@ -88,6 +89,6 @@ def open_file(user, content: bytes) -> dict:
         data = json.loads(_gunzip(packed, settings.BACKUP_MAX_JSON_BYTES))
     except (ValueError, UnicodeDecodeError):
         raise BackupError("damaged", "The backup file is damaged.") from None
-    if not isinstance(data, dict) or data.get("format") != FORMAT:
+    if not isinstance(data, dict) or data.get("format") != int(version):
         raise BackupError("damaged", "The backup file is damaged.")
     return data

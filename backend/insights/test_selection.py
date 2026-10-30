@@ -256,6 +256,7 @@ def test_the_rows_behind_a_bar_are_its_transactions_newest_first(alice):
         "date": "2026-03-09",
         "name": "TASTYBITES ",
         "category": "Food",
+        "data_source": "Main",
         "txn_type": "debit",
         "amount": "10.00",
     }
@@ -489,7 +490,8 @@ def test_pages_never_repeat_or_skip_rows_that_tie_on_date_and_amount():
 def test_the_list_does_not_send_internal_ids(alice):
     body = services.list_rows(alice, MARCH, BAR, None, today=TODAY)
     assert all(
-        set(row) == {"date", "name", "category", "txn_type", "amount"} for row in body["rows"]
+        set(row) == {"date", "name", "category", "data_source", "txn_type", "amount"}
+        for row in body["rows"]
     )
 
 

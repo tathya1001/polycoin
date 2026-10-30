@@ -47,6 +47,7 @@ export const config = {
     "/ask/:path*",
     "/transactions/:path*",
     "/categories/:path*",
+    "/data-sources/:path*",
     "/settings/:path*",
   ],
 };

@@ -6,12 +6,18 @@ spending that went on groceries:
     (income - spend) / income * 100
     SUM(IF [Category] = "Groceries" THEN [Spend] END) / spend * 100
 
-There are two kinds of name. Totals (`spend`, `income`, `net`, `count`, `days`) hold one value
-for the whole group (a month, a category...). Fields in brackets (`[Amount]`, `[Category]`,
-`[Date]`...) hold one value per transaction, so they can only be used inside an
+There are two kinds of name. Totals (`spend`, `income`, `net`, `count`, `balance`, `days`) hold
+one value for the whole group (a month, a category...). Fields in brackets (`[Amount]`,
+`[Category]`, `[Date]`...) hold one value per transaction, so they can only be used inside an
 aggregation such as SUM() or COUNTD(). The language also has comparisons, AND / OR / NOT,
 IF ... THEN ... ELSE ... END, CASE WHEN, IN (...), text in quotes, and the functions listed in
 FUNCTIONS below. Keywords and names do not depend on letter case.
+
+A total or an aggregation can name a data source, to read that source's transactions whatever
+the panel shows. A name with a space goes in brackets:
+
+    OakBank.spend - [Oak Salary].income
+    OakBank.SUM(IF [Category] = "Food" THEN [Spend] END)
 
 A value can be missing (NULL): a debit has no [Income], and dividing by zero has no answer.
 Missing values spread through arithmetic, aggregations skip them, and an IF treats a missing
@@ -34,7 +40,9 @@ from dataclasses import dataclass
 from datetime import date, timedelta
 from decimal import ROUND_CEILING, ROUND_FLOOR, ROUND_HALF_UP, Decimal
 
-FORMULA = "formula"  # the y.measure value of a panel that shows a calculated field
+from .balances import BalanceBook, closing_balance
+
+FORMULA ="formula"  # the y.measure value of a panel that shows a calculated field
 RESULT_FORMS = ("number", "percent", "money")
 
 MAX_LENGTH = 500  # characters
@@ -98,6 +106,7 @@ FIELDS = {
     "Type": (TEXT, None, lambda row: row["txn_type"], '"debit" or "credit".'),
     "Category": (TEXT, None, lambda row: row["category_name"], "The category's name."),
     "Merchant": (TEXT, "name", _merchant, "The merchant, written as the charts group it."),
+    "Data Source": (TEXT, None, lambda row: row["source_name"], "The data source's name."),
     "Date": (DATE, None, lambda row: row["date"], "The day of the transaction."),
     "Balance": (
         NUMBER,
@@ -114,8 +123,11 @@ VARIABLES = {
     "income": "The group's total income: SUM([Income]).",
     "net": "Income minus spend: SUM([Net]).",
     "count": "The number of transactions: COUNT([Amount]).",
+    "balance": "The latest balance of each data source at the group's end, added up.",
     "days": "The number of calendar days the group covers.",
 }
+# The totals that can name a data source. Days pass the same way for every source.
+SOURCE_TOTALS = ("spend", "income", "net", "count", "balance")
 
 # name -> (fewest values, most values, group, signature, help).
 FUNCTIONS = {
@@ -215,10 +227,11 @@ _TOKEN = re.compile(
     r"|(?P<string>\"[^\"]*\"|'[^']*')"
     r"|(?P<field>\[[^\[\]]*\])"
     r"|(?P<name>[A-Za-z_][A-Za-z_0-9]*)"
-    r"|(?P<symbol><=|>=|<>|!=|==|[-+*/%(),=<>])"
+    r"|(?P<symbol><=|>=|<>|!=|==|[-+*/%(),=<>.])"
     r")"
 )
 _QUOTED = re.compile(r"(\"[^\"]*\"|'[^']*')")
+_BARE_NAME = re.compile(r"[A-Za-z_][A-Za-z_0-9]*")
 
 
 def tidy(text: str) -> str:
@@ -292,8 +305,9 @@ class _Parser:
     product := unary (("*" | "/" | "%") unary)*
     unary   := "-" unary | primary
     primary := NUMBER | TEXT | FIELD | NAME | NAME "(" expr ("," expr)* ")" | "(" expr ")"
-             | TRUE | FALSE | NULL | if | case
-    if      := "IF" expr "THEN" expr ("ELSEIF" expr "THEN" expr)* ["ELSE" expr] "END"
+             | TRUE | FALSE | NULL | if | case | source "." (NAME | NAME "(" expr ")")
+    source  := NAME | FIELD
+    if      :="IF" expr "THEN" expr ("ELSEIF" expr "THEN" expr)* ["ELSE" expr] "END"
     case    := "CASE" [expr] ("WHEN" expr "THEN" expr)+ ["ELSE" expr] "END"
 
     CASE x WHEN v ... becomes CASE WHEN x = v ..., and IIF(c, a, b) becomes an IF.
@@ -431,6 +445,8 @@ class _Parser:
         if kind == "string":
             return _Node("text", position, value)
         if kind == "field":
+            if self.symbol("."):
+                return self.scoped(value, position)
             return _Node("field", position, _field_name(value, position))
         if kind == "name":
             return self.word(value, position)
@@ -452,6 +468,8 @@ class _Parser:
             return self.nested(lambda: self.case(position))
         if upper in KEYWORDS:
             raise FormulaError(f"Unexpected {value!r} at position {position}.")
+        if self.symbol("."):
+            return self.scoped(value, position)
         if self.symbol("("):
             if upper not in FUNCTIONS:
                 raise FormulaError(
@@ -472,6 +490,29 @@ class _Parser:
             f"Unknown name {value!r} at position {position}. "
             f"Use {', '.join(VARIABLES)}, or a field in brackets such as [Amount]."
         )
+
+    def scoped(self, name: str, position: int):
+        """What comes after a data source's name: a total, or an aggregation of one value."""
+        name = source_key(name)
+        if not name:
+            raise FormulaError(f"The data source at position {position} has no name.")
+        self.take()  # the dot
+        token = self.take()
+        if token is None or token[0] != "name":
+            where = f"at position {token[2]}" if token else "at the end"
+            raise FormulaError(f"{_AFTER_SOURCE} Found nothing usable {where}.")
+        _, word, where = token
+        if self.symbol("("):
+            if word.upper() not in AGGREGATES:
+                raise FormulaError(f"{_AFTER_SOURCE} Found {word!r} at position {where}.")
+            self.take()
+            args = self.nested(self.arguments)
+            if len(args) != 1:
+                raise FormulaError(f"{word.upper()}() takes 1 value after a data source.")
+            return _Node("scoped", position, name, (_Node("call", where, word.upper(), (*args,)),))
+        if word.lower() not in SOURCE_TOTALS:
+            raise FormulaError(f"{_AFTER_SOURCE} Found {word!r} at position {where}.")
+        return _Node("scoped", position, name, (_Node("total", where, word.lower()),))
 
     def arguments(self):
         args = [self.expression()]
@@ -516,6 +557,11 @@ class _Parser:
             node = self.expression()
         self.expect_keyword("END", opener, position)
         return node
+
+
+_AFTER_SOURCE = (
+    f"After a data source, use {', '.join(SOURCE_TOTALS)}, or an aggregation such as SUM()."
+)
 
 
 def _field_name(value: str, position: int) -> str:
@@ -688,7 +734,9 @@ class _Builder:
 
     def __init__(self):
         self.fields: set[str] = set()  # the optional row fields the formula reads
+        self.sources: set[str] = set()  # the data sources it names, as source_key() gives them
         self.uses_days = False
+        self.uses_balance = False
 
     def build(self, node: _Node) -> _Part:
         return getattr(self, f"build_{node.kind}")(node)
@@ -759,7 +807,17 @@ class _Builder:
         if name == "days":
             self.uses_days = True
             return _Part(NUMBER, TOTAL, lambda group: group.days(), node)
+        if name == "balance":
+            self.uses_balance = True
+            self.fields.add("balance")
+            return _Part(NUMBER, TOTAL, lambda group: group.balance(), node)
         return _Part(NUMBER, TOTAL, lambda group: group.totals[name], node)
+
+    def build_scoped(self, node):
+        """The same total or aggregation, worked out over one source's rows."""
+        name, read = node.value, self.build(node.args[0]).run
+        self.sources.add(name)
+        return _Part(NUMBER, TOTAL, lambda group: read(group.within(name)), node)
 
     # --- operators
 
@@ -1009,23 +1067,89 @@ class Compiled:
     run: Callable  # _Group -> Decimal | None
     uses_days: bool
     fields: frozenset  # optional row fields it reads: "name" (for [Merchant]), "balance"
+    sources: frozenset  # the data sources it names, as source_key() gives them
+    uses_balance: bool  # reads the `balance` total, not only the [Balance] of each row
+
+
+@dataclass(frozen=True, slots=True)
+class Span:
+    """The calendar days a group covers: `count` gives how many, `last` is the final one."""
+
+    count: Callable[[], int]
+    last: date
+
+    def __call__(self) -> int:
+        return self.count()
+
+
+@dataclass(frozen=True, slots=True)
+class PanelView:
+    """What a panel's formula needs besides its rows.
+
+    `book` answers `balance`. `visible` is set when the rows hold more than the panel shows, such
+    as a source that only a named reference may read: bare names then skip those rows.
+    """
+
+    book: BalanceBook | None = None
+    visible: Callable[[dict], bool] | None = None
+
+
+_NO_VIEW = PanelView()
+_view: ContextVar[PanelView] = ContextVar("panel_view", default=_NO_VIEW)
+
+
+@contextmanager
+def panel_view(view: PanelView | None):
+    """Every formula worked out inside this block sees `view`."""
+    token = _view.set(view or _NO_VIEW)
+    try:
+        yield
+    finally:
+        _view.reset(token)
+
+
+def current_view() -> PanelView:
+    return _view.get()
 
 
 class _Group:
-    """One group of rows as a formula sees it. Totals and days are worked out only if asked."""
+    """One group of rows as a formula sees it. Everything is worked out only if asked."""
 
-    __slots__ = ("rows", "_days", "_totals")
+    __slots__ = ("_all", "_rows", "_days", "_totals", "_keys", "_sources")
 
-    def __init__(self, rows: list[dict], days: Callable[[], int] | None):
-        self.rows = rows
+    def __init__(self, rows: list[dict], days: Callable[[], int] | None, keys=None):
+        self._all = rows
+        self._rows = None
         self._days = days
         self._totals = None
+        self._keys = keys  # set on a group cut down to one data source
+        self._sources = {}
+
+    @property
+    def rows(self) -> list[dict]:
+        if self._rows is None:
+            visible = None if self._keys else _view.get().visible
+            self._rows = self._all if visible is None else list(filter(visible, self._all))
+        return self._rows
 
     @property
     def totals(self) -> dict:
         if self._totals is None:
             self._totals = totals(self.rows)
         return self._totals
+
+    def within(self, key: str) -> "_Group":
+        """The same group, cut down to one data source's rows."""
+        if key not in self._sources:
+            rows = [row for row in self._all if row["source_key"] == key]
+            self._sources[key] = _Group(rows, self._days, frozenset({key}))
+        return self._sources[key]
+
+    def balance(self) -> Decimal | None:
+        view, last = _view.get(), getattr(self._days, "last", None)
+        if view.book is None or last is None:
+            return closing_balance(self.rows)
+        return view.book.at(last, self._keys)
 
     def days(self) -> Decimal:
         if self._days is not None:
@@ -1045,7 +1169,13 @@ def _compile(text: str) -> Compiled:
             f"The formula must give a number, not {_TYPE_WORDS[part.type]}. To count matches, "
             "use SUM(IIF(…, 1, 0)) or COUNT(IF … THEN 1 END)."
         )
-    return Compiled(part.run, builder.uses_days, frozenset(builder.fields))
+    return Compiled(
+        part.run,
+        builder.uses_days,
+        frozenset(builder.fields),
+        frozenset(builder.sources),
+        builder.uses_balance,
+    )
 
 
 # Compiled formulas for the run in progress (see parse_once), or None outside one.
@@ -1084,6 +1214,34 @@ def compile_expression(text: str) -> Compiled:
 def fields_used(text: str) -> frozenset:
     """The optional row fields a valid formula reads, so the caller can decrypt them."""
     return compile_expression(text).fields
+
+
+def source_key(name: str) -> str:
+    """How a data source's name is compared: letter case and extra spaces don't count."""
+    return " ".join(name.split()).casefold()
+
+
+def source_ref(name: str) -> str:
+    """A data source's name as a formula writes it: in brackets unless it is one plain word."""
+    plain = _BARE_NAME.fullmatch(name) and name.upper() not in KEYWORDS
+    return name if plain else f"[{name}]"
+
+
+def rename_source(text: str, old: str, new: str) -> str:
+    """The formula with every reference to the source `old` now naming `new`."""
+    target = source_key(old)
+    tokens = _tokenize(text)
+    for token, following in reversed(list(zip(tokens, tokens[1:], strict=False))):
+        kind, value, position = token
+        if (
+            kind in ("name", "field")
+            and following[:2] == ("symbol", ".")
+            and source_key(value) == target
+        ):
+            start = position - 1
+            length = len(value) + (2 if kind == "field" else 0)
+            text = text[:start] + source_ref(new) + text[start + length :]
+    return text
 
 
 def totals(rows: list[dict]) -> dict:

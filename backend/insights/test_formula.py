@@ -122,7 +122,7 @@ def test_the_names_cover_both_kinds_of_transaction():
         ("   ", "empty"),
         ("spnd", "Unknown name 'spnd' at position 1"),
         ("income - bogus", "Unknown name 'bogus' at position 10"),
-        ("os.system('x')", "Unexpected character '.'"),
+        ("os.system('x')", "After a data source"),
         ("__import__('os')", "Unknown function '__import__'"),
         ("spend; income", "Unexpected character ';'"),
         ("spend ** 2", "Unexpected '*'"),
@@ -140,7 +140,7 @@ def test_the_names_cover_both_kinds_of_transaction():
         ("'text'", "must give a number, not text"),
         ("1e5", "Unexpected 'e5'"),
         ("0x10", "Unexpected 'x10'"),
-        ("1.", "Unexpected character '.'"),
+        ("1.", "Unexpected '.'"),
         ("1234567890123", "longer than 12 digits"),
         ("spend @ 2", "Unexpected character '@'"),
     ],
@@ -218,7 +218,7 @@ def test_text_that_is_not_a_string_is_refused_before_any_lookup():
 
 
 def test_the_names_and_functions_are_listed():
-    assert list(VARIABLES) == ["spend", "income", "net", "count", "days"]
+    assert list(VARIABLES) == ["spend", "income", "net", "count", "balance", "days"]
     for name in ("ABS", "MIN", "MAX", "SUM", "IIF", "ROUND", "CONTAINS", "DATEPART"):
         assert name in FUNCTIONS
 
@@ -352,14 +352,14 @@ def test_the_catalogue_describes_the_language_for_the_editor():
 
 def test_a_version_six_spec_still_loads():
     old = {"v": 6, "chart": "bar", "x": {"field": "category"}, "y": {"measure": "spend"}}
-    assert upgrade(old)["v"] == SPEC_VERSION == 8
+    assert upgrade(old)["v"] == SPEC_VERSION == 9
     assert validate_spec(old)["y"] == {"measure": "spend", "agg": "sum"}
 
 
 def test_a_version_seven_formula_panel_still_loads_unchanged():
     old = {"v": 7, **formula_spec("(income - spend) / max(income, 1) * 100")}
     clean = validate_spec(old)
-    assert clean["v"] == 8
+    assert clean["v"] == 9
     assert clean["y"]["formula"]["expression"] == "(income - spend) / max(income, 1) * 100"
 
 

@@ -1,5 +1,5 @@
 {
- "version": 8,
+ "version": 9,
  "dimensions": [
   {
    "id": "date",
@@ -29,6 +29,10 @@
   },
   {
    "id": "merchant",
+   "granularities": []
+  },
+  {
+   "id": "data_source",
    "granularities": []
   }
  ],
@@ -104,7 +108,8 @@
     "month_of_year",
     "category",
     "txn_type",
-    "merchant"
+    "merchant",
+    "data_source"
    ],
    "color": true
   },
@@ -126,7 +131,8 @@
     "month_of_year",
     "category",
     "txn_type",
-    "merchant"
+    "merchant",
+    "data_source"
    ],
    "color": false
   },
@@ -136,7 +142,8 @@
     "month_of_year",
     "category",
     "txn_type",
-    "merchant"
+    "merchant",
+    "data_source"
    ],
    "color": false
   },
@@ -155,7 +162,8 @@
     "month_of_year",
     "category",
     "txn_type",
-    "merchant"
+    "merchant",
+    "data_source"
    ],
    "color": false
   },
@@ -277,7 +285,8 @@
   "month_of_year",
   "category",
   "txn_type",
-  "merchant"
+  "merchant",
+  "data_source"
  ],
  "formula": {
   "charts": [
@@ -309,6 +318,10 @@
    {
     "name": "count",
     "help": "The number of transactions: COUNT([Amount])."
+   },
+   {
+    "name": "balance",
+    "help": "The latest balance of each data source at the group's end, added up."
    },
    {
     "name": "days",
@@ -350,6 +363,11 @@
     "name": "Merchant",
     "type": "text",
     "help": "The merchant, written as the charts group it."
+   },
+   {
+    "name": "Data Source",
+    "type": "text",
+    "help": "The data source's name."
    },
    {
     "name": "Date",
@@ -634,6 +652,7 @@
    50
   ],
   "categories": 20,
+  "data_sources": 20,
   "merchant_contains": 60,
   "series_colors": 50,
   "window": [

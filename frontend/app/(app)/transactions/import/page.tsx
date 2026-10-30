@@ -1,13 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, Eye, EyeOff, FileSpreadsheet, FileText, Info, KeyRound, Upload } from "lucide-react";
 import { apiFetch } from "@/lib/api";
+import { loadSources, MAX_SOURCE_NAME, SOURCES_URL } from "@/lib/dataSources";
 import { readError } from "@/lib/errors";
 import { money } from "@/lib/format";
 import { convertPdf, isPdf, PdfProblem } from "@/lib/pdfText";
-import type { ImportResult, ImportRowError, Mapping, MappingField, Preview } from "@/lib/types";
+import { recall, remember } from "@/lib/storage";
+import type {
+  DataSource,
+  ElsewhereChoice,
+  ImportResult,
+  ImportRowError,
+  Mapping,
+  MappingField,
+  Preview,
+  TransferSuggestions,
+} from "@/lib/types";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ErrorNote, Spinner } from "@/components/ui/Feedback";
@@ -19,6 +30,15 @@ import { useToast } from "@/components/ui/Toast";
 
 const PREVIEW_URL = "/api/transactions/import/preview/";
 const IMPORT_URL = "/api/transactions/import/";
+const SUGGESTIONS_URL = "/api/transactions/transfer-suggestions/";
+const SOURCE_KEY = "polycoin.import.source"; // the last source chosen, in this browser
+const NEW_SOURCE = "new"; // the dropdown's "New data source…" option
+
+const ELSEWHERE_LABELS: Record<ElsewhereChoice, string> = {
+  skip: "Skip them",
+  move: "Move them here, keeping their category and notes",
+  add: "Add them here as well, as new transactions",
+};
 
 const FIELDS: { key: MappingField; label: string }[] = [
   { key: "date", label: "Date" },
@@ -33,11 +53,13 @@ const FIELDS: { key: MappingField; label: string }[] = [
 const ACCEPTED = ".xlsx,.xls,.csv,.pdf";
 
 // The server stores nothing, so every call re-sends the file (and password, and mapping).
-function buildForm(file: File, password: string, mapping: Mapping | null) {
+function buildForm(file: File, password: string, mapping: Mapping | null, source: string, elsewhere?: ElsewhereChoice) {
   const form = new FormData();
   form.append("file", file);
   if (password) form.append("password", password);
   if (mapping) form.append("mapping", JSON.stringify(mapping));
+  if (source) form.append("data_source", source);
+  if (elsewhere) form.append("elsewhere", elsewhere);
   return form;
 }
 
@@ -65,24 +87,64 @@ export default function ImportStatement() {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [result, setResult] = useState<ImportResult | null>(null);
 
+  const [sources, setSources] = useState<DataSource[]>([]);
+  const [source, setSource] = useState("");
+  const [addingSource, setAddingSource] = useState(false);
+  const [newSource, setNewSource] = useState("");
+  const [elsewhere, setElsewhere] = useState<ElsewhereChoice>("skip");
+  const [likelyTransfers, setLikelyTransfers] = useState(0);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Only the newest preview request may update the screen (dropdowns can fire quickly).
   const latestRequest = useRef(0);
 
+  useEffect(() => {
+    loadSources().then((list) => {
+      setSources(list);
+      const last = recall(SOURCE_KEY);
+      setSource(list.find((s) => s.id === last)?.id ?? list[0]?.id ?? "");
+    });
+  }, []);
+
   const fromPdf = file !== null && isPdf(file);
   // A PDF is unlocked here in the browser; its CSV table needs no password on the server.
   const serverPassword = fromPdf ? "" : password;
 
-  async function runPreview(f: File, pw: string, m: Mapping | null) {
+  function chooseSource(value: string) {
+    if (value === NEW_SOURCE) {
+      setAddingSource(true);
+      return;
+    }
+    setAddingSource(false);
+    setSource(value);
+    remember(SOURCE_KEY, value);
+    if (upload) runPreview(upload, serverPassword, mapping, value);
+  }
+
+  async function addSource(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const res = await apiFetch(SOURCES_URL, { method: "POST", body: JSON.stringify({ name: newSource }) });
+    if (!res.ok) {
+      setError(await readError(res, "Could not add the data source."));
+      return;
+    }
+    const created: DataSource = await res.json();
+    setSources((all) => [...all, created]);
+    setNewSource("");
+    chooseSource(created.id);
+  }
+
+  async function runPreview(f: File, pw: string, m: Mapping | null, target = source) {
     const requestId = ++latestRequest.current;
     setLoading(true);
     setError(null);
     try {
       const res = await apiFetch(PREVIEW_URL, {
         method: "POST",
-        body: buildForm(f, pw, m),
+        body: buildForm(f, pw, m, target),
       });
       if (requestId !== latestRequest.current) return;
 
@@ -183,13 +245,17 @@ export default function ImportStatement() {
     try {
       const res = await apiFetch(IMPORT_URL, {
         method: "POST",
-        body: buildForm(upload, serverPassword, mapping),
+        body: buildForm(upload, serverPassword, mapping, source, elsewhere),
       });
       if (res.ok) {
         const done: ImportResult = await res.json();
         setResult(done);
         setPreview(null);
         toast.success(`${done.imported} transactions imported.`);
+        if (sources.length > 1) {
+          const found = await apiFetch(SUGGESTIONS_URL);
+          if (found.ok) setLikelyTransfers(((await found.json()) as TransferSuggestions).total);
+        }
       } else {
         setError(await readError(res, "Import failed."));
       }
@@ -209,6 +275,38 @@ export default function ImportStatement() {
         subtitle="The file is read and discarded. Only the transactions are saved, encrypted."
       />
       <Stepper steps={["Upload", "Check & preview", "Done"]} current={step} />
+
+      {/* Which data source this statement belongs to. */}
+      {!result && (
+        <div className="mb-4 flex flex-wrap items-end gap-3">
+          <Field label="Data source" className="w-64">
+            <Select className="w-full" value={addingSource ? NEW_SOURCE : source} onChange={(e) => chooseSource(e.target.value)}>
+              {sources.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+              <option value={NEW_SOURCE}>New data source…</option>
+            </Select>
+          </Field>
+          {addingSource && (
+            <form onSubmit={addSource} className="flex items-end gap-2">
+              <Field label="Name" className="w-56">
+                <Input
+                  maxLength={MAX_SOURCE_NAME}
+                  value={newSource}
+                  onChange={(e) => setNewSource(e.target.value)}
+                  autoFocus
+                  required
+                />
+              </Field>
+              <Button type="submit" variant="primary">
+                Add
+              </Button>
+            </form>
+          )}
+        </div>
+      )}
 
       {/* 1. pick a file */}
       {!result && (
@@ -348,6 +446,27 @@ export default function ImportStatement() {
             <RowErrors errors={preview.errors} total={preview.error_count} pages={pdfPages} />
           )}
 
+          {/* The same rows in another data source: often a statement being split out of a mixed
+              list, and sometimes the wrong source chosen above. */}
+          {preview.elsewhere.length > 0 && (
+            <Card className="mb-4 space-y-2 text-sm">
+              <p className="font-semibold">
+                {preview.elsewhere.map((held) => `${held.count} of these are already in ${held.name}`).join(". ")}.
+              </p>
+              {(Object.keys(ELSEWHERE_LABELS) as ElsewhereChoice[]).map((choice) => (
+                <label key={choice} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="elsewhere"
+                    checked={elsewhere === choice}
+                    onChange={() => setElsewhere(choice)}
+                  />
+                  {ELSEWHERE_LABELS[choice]}
+                </label>
+              ))}
+            </Card>
+          )}
+
           {/* 4. confirm */}
           <Button variant="primary" loading={loading} disabled={preview.row_count === 0} onClick={handleConfirm}>
             Import {preview.row_count} transactions
@@ -362,6 +481,8 @@ export default function ImportStatement() {
           </h2>
           <p>
             {result.imported} imported, {result.duplicates} skipped as duplicates.
+            {result.moved > 0 && ` ${result.moved} moved here from another data source.`}
+            {result.skipped > 0 && ` ${result.skipped} left where they were, in another data source.`}
           </p>
           {result.errors.length > 0 && (
             <RowErrors errors={result.errors} total={result.errors.length} pages={pdfPages} />
@@ -370,6 +491,11 @@ export default function ImportStatement() {
             <Link href="/transactions" className={buttonClass("primary", "md")}>
               View transactions
             </Link>
+            {likelyTransfers > 0 && (
+              <Link href="/transactions/transfers" className={buttonClass("secondary", "md")}>
+                Review {likelyTransfers} likely {likelyTransfers === 1 ? "transfer" : "transfers"}
+              </Link>
+            )}
             <Link href="/transactions/categorize" className={buttonClass("secondary", "md")}>
               Categorize with AI
             </Link>

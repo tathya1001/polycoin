@@ -3,11 +3,29 @@ from decimal import Decimal
 from rest_framework import serializers
 
 from categories.models import Category
+from datasources.models import DataSource
 
 from .models import Transaction
 from .services import _money
 
 MAX_NOTES_LENGTH = 500
+
+
+def link_of(transaction: Transaction) -> dict | None:
+    """The transfer this row is part of: the link, the other row and that row's data source."""
+    link = getattr(transaction, "debit_link", None)
+    if link is not None:
+        partner = link.credit
+    else:
+        link = getattr(transaction, "credit_link", None)
+        partner = link.debit if link is not None else None
+    if link is None:
+        return None
+    return {
+        "id": str(link.pk),
+        "partner": str(partner.pk),
+        "partner_source": str(partner.data_source_id),
+    }
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -31,6 +49,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         model = Transaction
         fields = (
             "id",
+            "data_source",
             "date",
             "txn_type",
             "category",
@@ -40,7 +59,8 @@ class TransactionSerializer(serializers.ModelSerializer):
             "balance",
             "notes",
         )
-        read_only_fields = ("id",)
+        # Rows change source through bulk-source, which keeps the duplicate rules.
+        read_only_fields = ("id", "data_source")
 
     def get_fields(self):
         fields = super().get_fields()
@@ -48,6 +68,14 @@ class TransactionSerializer(serializers.ModelSerializer):
         if request is not None:
             fields["category"].queryset = Category.objects.filter(user=request.user)
         return fields
+
+    def validate(self, attrs):
+        # A link says these two rows are the same money, so the amount and direction must hold.
+        if {"amount", "txn_type"} & set(attrs) and self.instance and link_of(self.instance):
+            raise serializers.ValidationError(
+                "Unlink this transaction before changing its amount or type."
+            )
+        return attrs
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -63,6 +91,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             dec(instance.balance_enc, "txn.balance") if instance.balance_enc is not None else None
         )
         data["notes"] = dec(instance.notes_enc, "txn.notes") if instance.notes_enc is not None else ""
+        data["link"] = link_of(instance)
         return data
 
     def update(self, instance, validated_data):
@@ -108,6 +137,33 @@ class BulkDeleteSerializer(serializers.Serializer):
     transactions = serializers.ListField(
         child=serializers.UUIDField(), min_length=1, max_length=MAX_BULK_TRANSACTIONS
     )
+
+
+class BulkSourceSerializer(serializers.Serializer):
+    """POST /api/transactions/bulk-source/: move many transactions to another data source."""
+
+    transactions = serializers.ListField(
+        child=serializers.UUIDField(), min_length=1, max_length=MAX_BULK_TRANSACTIONS
+    )
+    data_source = serializers.PrimaryKeyRelatedField(queryset=DataSource.objects.none())
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields["data_source"].queryset = DataSource.objects.filter(user=self.context["request"].user)
+        return fields
+
+
+class LinkSerializer(serializers.Serializer):
+    """Two transactions that are one transfer, in either order."""
+
+    first = serializers.UUIDField()
+    second = serializers.UUIDField()
+
+
+class BulkLinkSerializer(serializers.Serializer):
+    """POST /api/transactions/links/bulk/: approve many suggested transfers at once."""
+
+    pairs = serializers.ListField(child=LinkSerializer(), min_length=1, max_length=200)
 
 
 class BulkCategorySerializer(serializers.Serializer):

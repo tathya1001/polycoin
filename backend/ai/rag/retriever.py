@@ -16,6 +16,7 @@ Decrypted text lives only in memory here: never log or persist it.
 import gc
 import re
 import time
+import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date
@@ -35,6 +36,7 @@ from rank_bm25 import BM25Okapi
 from ai.models import RagDocument
 from categories.models import Category
 from insights.spec import (
+    MAX_DATA_SOURCES,
     MIN_DATE,
     TXN_TYPES,
     SpecError,
@@ -192,13 +194,21 @@ def vector_ranking(
 
 
 def validate_ask_filters(raw) -> dict:
-    """The ask's own filters: {"date": a dashboard date filter, "type": "credit" | "debit" | None}.
+    """The ask's own filters: {"date": a dashboard date filter, "type": "credit" | "debit" | None,
+    "data_sources": [ids], empty for all of them}.
 
     Defaults to all time; "inherit" has no dashboard to inherit from, so it means all time.
     """
     raw = raw or {}
-    if not isinstance(raw, dict) or set(raw) - {"date", "type"}:
-        raise RagError("invalid_filters", "filters may only contain date and type.")
+    if not isinstance(raw, dict) or set(raw) - {"date", "type", "data_sources"}:
+        raise RagError("invalid_filters", "filters may only contain date, type and data_sources.")
+    sources = raw.get("data_sources") or []
+    try:
+        if not isinstance(sources, list) or len(sources) > MAX_DATA_SOURCES:
+            raise ValueError
+        sources = [uuid.UUID(item) for item in sources]
+    except (ValueError, TypeError, AttributeError):
+        raise RagError("invalid_filters", "filters.data_sources must list data source ids.") from None
     try:
         date_filter = validate_date_filter(raw.get("date") or {"preset": "all"})
     except SpecError as problem:
@@ -208,7 +218,7 @@ def validate_ask_filters(raw) -> dict:
     txn_type = raw.get("type")
     if txn_type is not None and txn_type not in TXN_TYPES:
         raise RagError("invalid_filters", "filters.type must be credit or debit.")
-    return {"date": date_filter, "type": txn_type}
+    return {"date": date_filter, "type": txn_type, "data_sources": sources}
 
 
 @contextmanager
@@ -266,7 +276,7 @@ def _fetch_binary(sql: str, params: list) -> list[tuple]:
         return cursor.fetchall()
 
 
-def _where(user, model: str, digest: str, dims: int, start: date, end: date, txn_type):
+def _where(user, model: str, digest: str, dims: int, start: date, end: date, txn_type, sources):
     clauses = [
         "d.user_id = %s", "t.user_id = %s", "d.model = %s", "d.model_digest = %s",
         "d.dims = %s", "d.text_version = %s", "t.date BETWEEN %s AND %s",
@@ -275,6 +285,9 @@ def _where(user, model: str, digest: str, dims: int, start: date, end: date, txn
     if txn_type:
         clauses.append("t.txn_type = %s")
         params.append(txn_type)
+    if sources:
+        clauses.append("t.data_source_id = ANY(%s)")
+        params.append(sources)
     return " AND ".join(clauses), params
 
 
@@ -320,13 +333,15 @@ class EncryptedHybridRetriever(BaseRetriever):
         query_vector = unit_query(self.query_vector)  # refuse a bad vector before any SQL
         date_filter, detected = self._date_filter(question, filters["date"], today)
         start, end = resolve_period(date_filter, date_filter, today)
-        txn_type = filters["type"]
+        txn_type, sources = filters["type"], filters["data_sources"]
         # The question's size goes straight into the WHERE clause, so a normal search makes no
         # extra round trip to look the size up; _explain_empty runs only when nothing came back.
         dims = len(query_vector)
         watch = _Stopwatch()
 
-        where, params = _where(self.user, self.model, self.digest, dims, start, end, txn_type)
+        where, params = _where(
+            self.user, self.model, self.digest, dims, start, end, txn_type, sources
+        )
         with watch.stage("sql"):
             rows = _fetch_binary(
                 f"SELECT d.transaction_id, d.payload_enc, c.name FROM {_DOCS} d "
@@ -338,7 +353,9 @@ class EncryptedHybridRetriever(BaseRetriever):
         if not rows:
             self._explain_empty(dims)
         with watch.stage("counts"):
-            coverage, first = self._coverage(len(rows), where, params, start, end, txn_type)
+            coverage, first = self._coverage(
+                len(rows), where, params, start, end, txn_type, sources
+            )
         with watch.stage("decrypt"):
             cipher = UserCipher(self.user)
             payloads = [cipher.decrypt(blob, DOC_CONTEXT) for _, blob, _ in rows]
@@ -414,7 +431,14 @@ class EncryptedHybridRetriever(BaseRetriever):
             )
 
     def _coverage(
-        self, searched: int, where: str, params: list, start: date, end: date, txn_type: str | None
+        self,
+        searched: int,
+        where: str,
+        params: list,
+        start: date,
+        end: date,
+        txn_type: str | None,
+        sources: list,
     ) -> tuple[dict, date | None]:
         """How much of the period was searched, and its first transaction's date.
 
@@ -435,6 +459,8 @@ class EncryptedHybridRetriever(BaseRetriever):
         in_period = Transaction.objects.filter(user=self.user, date__range=(start, end))
         if txn_type:
             in_period = in_period.filter(txn_type=txn_type)
+        if sources:
+            in_period = in_period.filter(data_source_id__in=sources)
         totals = in_period.aggregate(total=Count("id"), first=Min("date"))
         coverage = {"searched": searched, "indexed": indexed, "total": totals["total"]}
         return coverage, totals["first"]

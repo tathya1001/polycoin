@@ -66,6 +66,8 @@ export default function RowsDrawer({ title, request, onClose }: { title: string;
     };
   }, [request, more]);
 
+  const manySources = new Set(rows.map((row) => row.data_source)).size > 1;
+
   return (
     <Dialog open onClose={onClose} title={title || "Transactions"} size="lg">
       {error && <ErrorNote>{error}</ErrorNote>}
@@ -97,6 +99,7 @@ export default function RowsDrawer({ title, request, onClose }: { title: string;
                   <Th>Date</Th>
                   <Th>Name</Th>
                   <Th>Category</Th>
+                  {manySources && <Th>Data source</Th>}
                   <Th align="right">Amount</Th>
                 </Tr>
               </thead>
@@ -108,6 +111,7 @@ export default function RowsDrawer({ title, request, onClose }: { title: string;
                       {row.name}
                     </Td>
                     <Td>{row.category}</Td>
+                    {manySources && <Td>{row.data_source}</Td>}
                     <MoneyCell value={row.amount} type={row.txn_type} />
                   </Tr>
                 ))}

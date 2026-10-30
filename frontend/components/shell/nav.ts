@@ -1,7 +1,9 @@
 import {
   ArrowLeftRight,
+  Database,
   FileUp,
   LayoutDashboard,
+  Link2,
   MessageSquareText,
   Settings2,
   Sparkles,
@@ -26,11 +28,15 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/transactions", label: "Transactions", icon: ArrowLeftRight },
       { href: "/transactions/import", label: "Import", icon: FileUp },
       { href: "/transactions/categorize", label: "Categorize", icon: Sparkles },
+      { href: "/transactions/transfers", label: "Transfers", icon: Link2 },
     ],
   },
   {
     label: "Organise",
-    items: [{ href: "/categories", label: "Categories", icon: Tag }],
+    items: [
+      { href: "/data-sources", label: "Data Sources", icon: Database },
+      { href: "/categories", label: "Categories", icon: Tag },
+    ],
   },
 ];
 

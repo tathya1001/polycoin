@@ -22,7 +22,10 @@ from ai.rag.retriever import (
     vector_matches,
 )
 from categories.models import Category
+from datasources.services import create_source
+from transactions.models import Transaction
 from transactions.tests import make_txn, make_user
+from vault.services import UserCipher
 
 TODAY = date(2026, 2, 10)
 MODEL, DIGEST = "test-embed:latest", "sha256:aaaa"  # no profile: untuned, no prefixes
@@ -126,12 +129,15 @@ def test_rrf_breaks_a_tie_by_row_order_so_newer_rows_win():
 @pytest.mark.parametrize(
     "raw, expected",
     [
-        (None, {"date": {"preset": "all"}, "type": None}),
-        ({}, {"date": {"preset": "all"}, "type": None}),
-        ({"date": {"preset": "inherit"}}, {"date": {"preset": "all"}, "type": None}),
+        (None, {"date": {"preset": "all"}, "type": None, "data_sources": []}),
+        ({}, {"date": {"preset": "all"}, "type": None, "data_sources": []}),
+        (
+            {"date": {"preset": "inherit"}},
+            {"date": {"preset": "all"}, "type": None, "data_sources": []},
+        ),
         (
             {"date": {"preset": "last_month"}, "type": "debit"},
-            {"date": {"preset": "last_month"}, "type": "debit"},
+            {"date": {"preset": "last_month"}, "type": "debit", "data_sources": []},
         ),
     ],
 )
@@ -354,3 +360,19 @@ def test_a_period_with_no_documents_is_an_empty_result_not_an_error(alice, rows)
     assert result.documents == []
     assert result.coverage == {"searched": 0, "indexed": 0, "total": 0}
     assert result.period["from"] == "2024-01-01"
+
+
+def test_the_data_source_filter_runs_in_sql(alice, rows):
+    other = create_source(alice, UserCipher(alice), "RiverBank")
+    Transaction.objects.filter(pk=rows["salary"].pk).update(data_source=other)
+
+    result = search(alice, "acme payroll", filters={"data_sources": [str(other.pk)]})
+
+    assert ids(result) == [str(rows["salary"].id)]
+    assert result.coverage == {"searched": 1, "indexed": 1, "total": 1}
+
+
+def test_bad_data_source_filters_are_refused():
+    for raw in ({"data_sources": "x"}, {"data_sources": ["x"]}, {"data_sources": [1]}):
+        with pytest.raises(RagError):
+            validate_ask_filters(raw)

@@ -12,6 +12,7 @@ from backups.errors import BackupError
 from backups.fileformat import FORMAT, open_file, seal
 from backups.services import build_backup, file_name, restore_backup
 from categories.models import MAX_KEYWORDS_PER_CATEGORY, Category, CategoryKeyword
+from datasources.services import first_source
 from insights.models import MAX_DASHBOARDS_PER_USER, Dashboard, Panel
 from insights.services import (
     DASHBOARD_NAME,
@@ -160,7 +161,8 @@ def snapshot(user) -> dict:
 
 def restore(user, data: dict) -> dict:
     """Restore a backup built from `data` (for files the app itself would never write)."""
-    return restore_backup(user, seal(user, {"format": FORMAT, **data}))
+    file = {"format": FORMAT, "data_sources": [], "links": [], **data}
+    return restore_backup(user, seal(user, file))
 
 
 # --- the whole round trip ---------------------------------------------------------------
@@ -177,13 +179,27 @@ def test_everything_comes_back_after_deleting_the_data(alice):
 
     counts = restore_backup(alice, content)
     assert counts == {
+        "data_sources": {"added": 0},
         "transactions": {"added": 3, "skipped": 0},
+        "links": {"added": 0},
         "categories": {"added": 1},
         "keywords": {"added": 2},
         "dashboards": {"added": 1, "skipped": 0},
         "panels_skipped": 0,
     }
     assert snapshot(alice) == before
+
+
+def test_restored_rows_land_in_the_users_first_source(alice):
+    history(alice)
+    content = build_backup(alice)
+
+    delete_user_data(alice)
+    restore_backup(alice, content)
+
+    source = first_source(alice)
+    assert Transaction.objects.filter(user=alice).count() == 3
+    assert not Transaction.objects.filter(user=alice).exclude(data_source=source).exists()
 
 
 def test_panel_filters_point_at_the_new_category_ids(alice):
@@ -235,8 +251,10 @@ def test_a_backup_holds_only_this_accounts_data_and_no_ask_index(alice, bob):
         "format",
         "created",
         "app",
+        "data_sources",
         "categories",
         "transactions",
+        "links",
         "dashboards",
         "preferences",
     }

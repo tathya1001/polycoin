@@ -13,16 +13,18 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CircleStop, MessageSquareText, SearchX } from "lucide-react";
+import { loadSources } from "@/lib/dataSources";
 import { money } from "@/lib/format";
 import { PRESET_LABELS } from "@/lib/insights";
 import { chatStream, embed, listChatModels, listEmbeddingModels, OllamaError, savedOllamaUrl, saveOllamaUrl } from "@/lib/ollama";
 import { ask, httpRagApi, RagProblem, syncIndex, type SyncProgress } from "@/lib/rag";
 import { recall, remember } from "@/lib/storage";
-import type { AskResponse, ChatModel, DatePreset, EmbeddingModel, RagStatus } from "@/lib/types";
+import type { AskResponse, ChatModel, DataSource, DatePreset, EmbeddingModel, RagStatus } from "@/lib/types";
 import { OllamaSetup } from "@/components/ai/OllamaSetup";
 import { AnswerView } from "@/components/ask/AnswerView";
 import { IndexCard } from "@/components/ask/IndexCard";
 import { SourcesTable, sourceRowId } from "@/components/ask/SourcesTable";
+import SourcePicker from "@/components/dashboard/SourcePicker";
 import { Button, buttonClass } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
 import { useConfirm } from "@/components/ui/Confirm";
@@ -94,6 +96,8 @@ export default function Ask() {
   const [question, setQuestion] = useState("");
   const [preset, setPreset] = useState<DatePreset>("all");
   const [txnType, setTxnType] = useState<keyof typeof TYPES>("all");
+  const [sources, setSources] = useState<DataSource[]>([]);
+  const [askSources, setAskSources] = useState<string[]>([]);
   const [response, setResponse] = useState<AskResponse | null>(null);
   const [answer, setAnswer] = useState("");
   const [asking, setAsking] = useState(false);
@@ -194,6 +198,10 @@ export default function Ask() {
 
   useEffect(() => () => askAbort.current?.abort(), []);
 
+  useEffect(() => {
+    loadSources().then(setSources);
+  }, []);
+
   function checkAgain() {
     setLoadingSetup(true);
     setAttempt((n) => n + 1);
@@ -253,7 +261,7 @@ export default function Ask() {
         digest: digestOf(embedModel),
         queryPrefix: status.profile.query_prefix,
         question: text.trim(),
-        filters: { date: { preset }, type: txnType === "all" ? null : txnType },
+        filters: { date: { preset }, type: txnType === "all" ? null : txnType, data_sources: askSources },
         useQuestionPeriod,
         onResponse: (next) => {
           setResponse(next);
@@ -402,6 +410,11 @@ export default function Ask() {
                     ))}
                   </Select>
                 </Field>
+                {sources.length > 1 && (
+                  <Field label="Data sources" className="w-auto">
+                    <SourcePicker sources={sources} selected={askSources} onChange={setAskSources} />
+                  </Field>
+                )}
                 {asking ? (
                   <Button type="button" icon={<CircleStop size={16} />} onClick={() => askAbort.current?.abort()}>
                     Stop

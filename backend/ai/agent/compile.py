@@ -50,6 +50,7 @@ AGG_LABELS = {"avg": "Average", "min": "Smallest", "max": "Largest", "median": "
 FIELD_LABELS = {
     "date": "date", "weekday": "weekday", "month_of_year": "month of year",
     "category": "category", "txn_type": "type", "merchant": "merchant",
+    "data_source": "data source",
 }  # fmt: skip
 PERIOD_LABELS = {
     "this_month": "This month", "last_month": "Last month", "last_3_months": "Last 3 months",
@@ -71,6 +72,7 @@ class Grounding:
     """The user's words matched to their own data."""
 
     categories: list[str] = field(default_factory=list)  # category ids, for filters.categories
+    data_sources: list[str] = field(default_factory=list)  # ids, for filters.data_sources
     merchant: str = ""  # for filters.merchant_contains
     notes: list[str] = field(default_factory=list)
     # A merchant no name matched, while a search index exists: the workflow may embed it and
@@ -100,6 +102,16 @@ def ground(intent: PanelIntent, ctx: AgentContext, cache: dict | None = None) ->
             grounding.notes.append(
                 f"{_quoted(name)} was read as the category {found.category.name}."
             )
+
+    for name in intent.data_sources:
+        source = ctx.sources.match(name)
+        if source is None:
+            grounding.notes.append(
+                f"No data source matches {_quoted(name)}, so the panel shows all of them."
+            )
+            continue
+        if source.id not in grounding.data_sources:
+            grounding.data_sources.append(source.id)
 
     phrase = intent.merchant
     if phrase:
@@ -367,6 +379,7 @@ def compile_intent(
             "date": date_filter,
             "type": _txn_type(intent, encoding["y"]["measure"], notes),
             "categories": grounding.categories,
+            "data_sources": grounding.data_sources,
             "merchant_contains": grounding.merchant,
         },
     }
@@ -465,11 +478,14 @@ def run_preview(user, spec: dict, dashboard: dict, today: date, notes: list) -> 
 
 
 def spec_to_intent(
-    spec: dict, category_names: dict | None = None, title: str | None = None
+    spec: dict,
+    category_names: dict | None = None,
+    title: str | None = None,
+    source_names: dict | None = None,
 ) -> PanelIntent:
     """The intent that compiles back to `spec` (presentation fields aside). Values equal to the
-    validator's defaults are left unset, as the model is asked to do. `category_names` maps
-    category ids to names; ids it does not know are left out."""
+    validator's defaults are left unset, as the model is asked to do. `category_names` and
+    `source_names` map ids to names; ids they do not know are left out."""
     spec = validate_spec(spec)
     if spec["chart"] == "text":
         raise ValueError("A text panel has no intent.")
@@ -494,6 +510,11 @@ def spec_to_intent(
         "date_from": date_filter.get("from"),
         "date_to": date_filter.get("to"),
         "categories": [names[pk] for pk in filters["categories"] if pk in names],
+        "data_sources": [
+            (source_names or {})[pk]
+            for pk in filters["data_sources"]
+            if pk in (source_names or {})
+        ],
         "merchant": filters["merchant_contains"] or None,
         "txn_type": filters["type"],
         "limit": spec["limit"] if categorical and spec["limit"] != DEFAULT_LIMIT else None,

@@ -5,7 +5,7 @@ import { bucketEnd, calcAllowed, formatLabel } from "@/lib/insights";
 import type { Catalogue, Category, Cell, Dimension, Granularity, PanelConfig, Picked, QueryResult, Selection } from "@/lib/types";
 
 // What the backend calls the sum of everything past a chart's limit. It stands for many
-// categories or merchants, so a click on it has no single thing to filter by or open.
+// categories, merchants or data sources, so a click on it has no single thing to filter by or open.
 const FOLDED = "Other";
 
 // One level finer than each date grouping. A day has no finer level.
@@ -17,7 +17,7 @@ const FINER: Partial<Record<Granularity, Granularity>> = {
 };
 
 const isFolded = (field: Dimension | undefined, value: Cell) =>
-  value === FOLDED && (field === "category" || field === "merchant");
+  value === FOLDED && (field === "category" || field === "merchant" || field === "data_source");
 
 // The clicked mark as a filter for the other panels and for the transaction list.
 // Empty when the click stands for nothing a filter can say (a histogram bin, the folded "Other").
@@ -28,6 +28,7 @@ export function selectionFor(config: PanelConfig, picked: Picked): Selection {
     const text = String(value);
     if (field === "category") selection.categories = [text];
     else if (field === "merchant") selection.merchants = [text];
+    else if (field === "data_source") selection.data_sources = [text];
     else if (field === "txn_type") {
       if (text === "credit" || text === "debit") selection.type = text;
     } else if (field === "weekday") selection.weekdays = [Number(value)];

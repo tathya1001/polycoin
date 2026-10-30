@@ -36,7 +36,7 @@ def file_with(user, packed: bytes) -> bytes:
 
 def test_a_file_opens_for_the_account_that_made_it(alice):
     content = seal(alice, DATA)
-    assert content.startswith(b"polycoin-backup/1\n")
+    assert content.startswith(b"polycoin-backup/2\n")
     assert open_file(alice, content) == DATA
 
 
@@ -76,7 +76,7 @@ def test_an_unknown_older_format_is_not_a_backup(alice):
 
 
 def test_a_newer_format_says_so(alice):
-    assert code_of(alice, b"polycoin-backup/2\nanything") == "newer_format"
+    assert code_of(alice, b"polycoin-backup/3\nanything") == "newer_format"
 
 
 def test_an_empty_or_short_blob_is_not_yours(alice):

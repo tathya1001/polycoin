@@ -24,6 +24,7 @@ from insights.spec import (
     KPI_COMPARES,
     LIMIT_RANGE,
     MAX_CATEGORIES,
+    MAX_DATA_SOURCES,
     MAX_MERCHANT_LENGTH,
     SORTS,
     TXN_TYPES,
@@ -69,6 +70,7 @@ class PanelIntent(BaseModel):
     date_from: str | None = Field(default=None, pattern=DATE_PATTERN)  # only for "custom"
     date_to: str | None = Field(default=None, pattern=DATE_PATTERN)
     categories: list[str] = Field(default_factory=list, max_length=MAX_CATEGORIES)  # names
+    data_sources: list[str] = Field(default_factory=list, max_length=MAX_DATA_SOURCES)  # names
     merchant: str | None = Field(default=None, max_length=MAX_MERCHANT_LENGTH)  # user's words
     txn_type: Literal[TXN_TYPES] | None = None
 
@@ -92,9 +94,14 @@ class PanelIntent(BaseModel):
             return None
         return flatten(value) or None
 
-    @field_validator("categories")
+    @field_validator("data_sources", mode="before")
     @classmethod
-    def _category_names(cls, names: list[str]) -> list[str]:
+    def _null_is_none_named(cls, value):
+        return [] if value is None else value
+
+    @field_validator("categories", "data_sources")
+    @classmethod
+    def _names(cls, names: list[str]) -> list[str]:
         clean = []
         for name in names:
             name = flatten(name)

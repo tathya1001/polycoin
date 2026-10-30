@@ -18,7 +18,15 @@ import type {
 } from "echarts/components";
 import { FALLBACK_SERIES_COLORS } from "@/lib/colors";
 import { CHART_LOOKS, type ChartLook } from "@/lib/theme";
-import { MEASURE_LABELS, defaultFormat, formatLabel, formatValue, isPercent, isPlainNumber } from "@/lib/insights";
+import {
+  MEASURE_LABELS,
+  defaultFormat,
+  formatLabel,
+  formatValue,
+  isPercent,
+  isPlainNumber,
+  sourceColorKey,
+} from "@/lib/insights";
 import type { Cell, Dimension, PanelConfig, QueryResult } from "@/lib/types";
 
 export type ChartOption = ComposeOption<
@@ -110,7 +118,7 @@ function unique(values: Cell[]): Cell[] {
 
 // The colour of one series / bar / slice. Most specific wins:
 //   1. the panel's own override       (series_colors[key])
-//   2. the category's colour          (when the thing being coloured IS a category)
+//   2. the category's or data source's colour (when the thing being coloured IS one)
 //   3. the default sequence, by position
 // `key` is the raw value (a category name, "credit", a month...), or SINGLE_SERIES_KEY.
 export function resolveColor(
@@ -126,6 +134,10 @@ export function resolveColor(
   if (override) return look.series(override);
   if (field === "category" && key !== null) {
     const own = categoryColors.get(text.toLowerCase());
+    if (own) return look.series(own);
+  }
+  if (field === "data_source" && key !== null) {
+    const own = categoryColors.get(sourceColorKey(text));
     if (own) return look.series(own);
   }
   return look.series(FALLBACK_SERIES_COLORS[position % FALLBACK_SERIES_COLORS.length]);

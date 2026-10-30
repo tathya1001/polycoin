@@ -4,6 +4,7 @@
 import { money } from "@/lib/format";
 import { isText } from "@/lib/types";
 import type {
+  DataSource,
   Agg,
   AnyPanelConfig,
   BindField,
@@ -89,6 +90,7 @@ export const DIMENSION_LABELS: Record<Dimension, string> = {
   category: "Category",
   txn_type: "Money in / out",
   merchant: "Merchant",
+  data_source: "Data source",
 };
 
 export const MEASURE_LABELS: Record<Measure, string> = {
@@ -342,8 +344,14 @@ export function formatLabel(value: Cell, field: Dimension | undefined, granulari
 }
 
 // Category name (lower case) -> colour: what the charts use as each category's default colour.
-export function categoryColorMap(categories: Category[]): Map<string, string> {
-  return new Map(categories.map((c) => [c.name.toLowerCase(), c.color]));
+// A category and a data source can share a name, so a source's key has its own prefix.
+export const sourceColorKey = (name: string) => `source:${name.toLowerCase()}`;
+
+export function categoryColorMap(categories: Category[], sources: DataSource[] = []): Map<string, string> {
+  return new Map([
+    ...categories.map((c): [string, string] => [c.name.toLowerCase(), c.color]),
+    ...sources.map((s): [string, string] => [sourceColorKey(s.name), s.color]),
+  ]);
 }
 
 // --- building specs in the editor --------------------------------------------------
@@ -352,6 +360,7 @@ export const EMPTY_FILTERS: PanelFilters = {
   date: { preset: "inherit" },
   type: null,
   categories: [],
+  data_sources: [],
   merchant_contains: "",
 };
 
@@ -625,17 +634,22 @@ export function drillDownUrl(
   filters: PanelFilters,
   picked: Picked,
   categories: Category[],
+  sources: DataSource[] = [],
 ): string | null {
   let from = result.period.from;
   let to = result.period.to;
   let type = filters.type;
   let category = filters.categories.length === 1 ? filters.categories[0] : null;
+  let shown = filters.data_sources;
 
   const apply = (field: Dimension | undefined, value: Cell, granularity?: Granularity) => {
     if (value === null || field === undefined) return;
     if (field === "category") {
       const match = categories.find((c) => c.name.toLowerCase() === String(value).toLowerCase());
       if (match) category = match.id; // "Other" (the folded rest) has no single category
+    } else if (field === "data_source") {
+      const match = sources.find((s) => s.name.toLowerCase() === String(value).toLowerCase());
+      if (match) shown = [match.id];
     } else if (field === "txn_type" && (value === "credit" || value === "debit")) {
       type = value;
     } else if (field === "date" && granularity && typeof value === "string") {
@@ -656,6 +670,7 @@ export function drillDownUrl(
   const params = new URLSearchParams({ from, to });
   if (type) params.set("type", type);
   if (category) params.set("category", category);
+  if (shown.length) params.set("data_source", shown.join(","));
   return `/transactions?${params}`;
 }
 
@@ -665,6 +680,7 @@ export function effectiveFilters(panel: PanelFilters, dashboard: PanelFilters): 
     date: panel.date.preset === "inherit" ? dashboard.date : panel.date,
     type: panel.type ?? dashboard.type,
     categories: panel.categories.length ? panel.categories : dashboard.categories,
+    data_sources: panel.data_sources.length ? panel.data_sources : dashboard.data_sources,
     merchant_contains: panel.merchant_contains || dashboard.merchant_contains,
   };
 }

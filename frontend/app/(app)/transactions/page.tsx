@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState, type DragEvent } from "react";
-import { ArrowLeft, ArrowRight, FileUp, GripVertical, Receipt, Sparkles, Trash2, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileUp, GripVertical, Link2, Receipt, Sparkles, Trash2, X } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
+import { loadSources, sourceName } from "@/lib/dataSources";
 import { readError } from "@/lib/errors";
 import { money } from "@/lib/format";
-import type { Category, Page, Transaction } from "@/lib/types";
+import type { Category, DataSource, Page, Transaction } from "@/lib/types";
+import SourcePicker from "@/components/dashboard/SourcePicker";
 import { BucketBar, TXN_DRAG_TYPE } from "@/components/transactions/BucketBar";
+import LinkDialog from "@/components/transactions/LinkDialog";
 import { Button, buttonClass, IconButton } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useConfirm } from "@/components/ui/Confirm";
@@ -22,6 +25,7 @@ import { useToast } from "@/components/ui/Toast";
 const URL = "/api/transactions/";
 const BULK_URL = "/api/transactions/bulk-category/";
 const BULK_DELETE_URL = "/api/transactions/bulk-delete/";
+const BULK_SOURCE_URL = "/api/transactions/bulk-source/";
 const PAGE_SIZE = 50; // matches TransactionPagination on the backend
 
 // useSearchParams needs a Suspense boundary, or the production build refuses to prerender.
@@ -46,13 +50,16 @@ function dragBadge(count: number): HTMLElement {
 }
 
 function Transactions() {
-  // A dashboard chart click opens this page as /transactions?from=..&to=..&type=..&category=..
+  // A dashboard chart click opens this page as
+  // /transactions?from=..&to=..&type=..&category=..&data_source=..
   // so the filters start from the URL. After that they are ordinary page state.
   const searchParams = useSearchParams();
   const toast = useToast();
   const confirm = useConfirm();
   const [data, setData] = useState<Page<Transaction> | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [sources, setSources] = useState<DataSource[]>([]);
+  const [linking, setLinking] = useState<Transaction | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -62,6 +69,9 @@ function Transactions() {
   const [to, setTo] = useState(() => searchParams.get("to") ?? "");
   const [type, setType] = useState(() => searchParams.get("type") ?? "");
   const [categoryFilter, setCategoryFilter] = useState(() => searchParams.get("category") ?? "");
+  const [sourceFilter, setSourceFilter] = useState<string[]>(
+    () => searchParams.get("data_source")?.split(",").filter(Boolean) ?? [],
+  );
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -81,6 +91,7 @@ function Transactions() {
       if (res.ok) setCategories(await res.json());
     }
     loadCategories();
+    loadSources().then(setSources);
   }, []);
 
   useEffect(() => {
@@ -93,6 +104,7 @@ function Transactions() {
       if (to) params.set("to", to);
       if (type) params.set("type", type);
       if (categoryFilter) params.set("category", categoryFilter);
+      if (sourceFilter.length) params.set("data_source", sourceFilter.join(","));
       try {
         const res = await apiFetch(`${URL}?${params}`);
         if (cancelled) return;
@@ -112,7 +124,7 @@ function Transactions() {
     return () => {
       cancelled = true;
     };
-  }, [page, from, to, type, categoryFilter, reloadKey]);
+  }, [page, from, to, type, categoryFilter, sourceFilter, reloadKey]);
 
   // Changing any filter goes back to page 1.
   function changeFilter(setter: (value: string) => void, value: string) {
@@ -207,6 +219,28 @@ function Transactions() {
     );
   }
 
+  // --- moving rows to another data source ------------------------------------------
+
+  async function moveToSource(sourceId: string, ids: string[]) {
+    try {
+      const res = await apiFetch(BULK_SOURCE_URL, {
+        method: "POST",
+        body: JSON.stringify({ transactions: ids, data_source: sourceId }),
+      });
+      if (!res.ok) {
+        toast.error(await readError(res, "Could not move the transactions."));
+        return;
+      }
+      const body: { moved: number; skipped: number } = await res.json();
+      const held = body.skipped ? ` ${body.skipped} stayed: that source already holds them.` : "";
+      toast.success(`Moved ${body.moved} to ${sourceName(sourceId, sources)}.${held}`);
+      setSelected(new Set());
+      setReloadKey((k) => k + 1);
+    } catch {
+      toast.error("Cannot reach the server.");
+    }
+  }
+
   // --- deleting --------------------------------------------------------------------
 
   // A real delete. The same statement imported again brings the rows back, new and in "Others".
@@ -279,7 +313,8 @@ function Transactions() {
 
   const colorOf = (id: string) => categories.find((c) => c.id === id)?.color;
   const totalPages = data ? Math.max(1, Math.ceil(data.count / PAGE_SIZE)) : 1;
-  const filtered = !!(from || to || type || categoryFilter);
+  const filtered = !!(from || to || type || categoryFilter || sourceFilter.length);
+  const manySources = sources.length > 1;
   const rows = data?.results ?? [];
   const allSelected = rows.length > 0 && rows.every((t) => selected.has(t.id));
   const someSelected = selected.size > 0;
@@ -315,6 +350,14 @@ function Transactions() {
             <option value="debit">Money out</option>
           </Select>
         </Field>
+        <SourcePicker
+          sources={sources}
+          selected={sourceFilter}
+          onChange={(ids) => {
+            setSourceFilter(ids);
+            setPage(1);
+          }}
+        />
         {filtered && (
           <Button
             size="sm"
@@ -325,6 +368,7 @@ function Transactions() {
               setTo("");
               setType("");
               setCategoryFilter("");
+              setSourceFilter([]);
               setPage(1);
             }}
           >
@@ -361,6 +405,23 @@ function Transactions() {
             </select>
           </label>
           <span className="hidden text-on-fill/60 sm:inline">or drag them onto a bucket</span>
+          {manySources && (
+            <label className="flex items-center gap-2">
+              Data source
+              <select
+                className="h-8 rounded-sm border-[1.5px] border-on-fill bg-fill px-2 text-on-fill"
+                value=""
+                onChange={(e) => e.target.value && moveToSource(e.target.value, [...selected])}
+              >
+                <option value="">Move to…</option>
+                {sources.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <button
             type="button"
             className="inline-flex h-8 items-center gap-1.5 rounded-sm border-[1.5px] border-on-fill px-2 font-medium hover:bg-on-fill/10"
@@ -402,12 +463,13 @@ function Transactions() {
                 </Th>
                 <Th>Date</Th>
                 <Th>Name</Th>
+                {manySources && <Th>Data source</Th>}
                 <Th align="right">Amount</Th>
                 <Th align="right">Balance</Th>
                 <Th>Category</Th>
                 <Th>Notes</Th>
-                <Th className="w-12">
-                  <span className="sr-only">Delete</span>
+                <Th className="w-20">
+                  <span className="sr-only">Link and delete</span>
                 </Th>
               </Tr>
             </thead>
@@ -474,6 +536,7 @@ function Transactions() {
                         </button>
                       )}
                     </Td>
+                    {manySources && <Td className="whitespace-nowrap text-ink-2">{sourceName(txn.data_source, sources)}</Td>}
                     <MoneyCell value={txn.amount} type={txn.txn_type} />
                     <Td align="right" className="whitespace-nowrap text-ink-2">
                       {txn.balance === null ? "" : money(txn.balance)}
@@ -526,7 +589,19 @@ function Transactions() {
                         </button>
                       )}
                     </Td>
-                    <Td className="w-12">
+                    <Td className="w-20 whitespace-nowrap">
+                      {manySources && (
+                        <IconButton
+                          size="sm"
+                          label={txn.link ? `${txn.name} is linked as a transfer` : `Link ${txn.name} as a transfer`}
+                          icon={<Link2 size={15} />}
+                          className={cn(
+                            "focus-visible:opacity-100",
+                            txn.link ? "text-ink" : "text-muted md:opacity-0 md:group-hover:opacity-100",
+                          )}
+                          onClick={() => setLinking(txn)}
+                        />
+                      )}
                       {/* Shown on hover or focus where there is a pointer; always on touch screens. */}
                       <IconButton
                         size="sm"
@@ -559,6 +634,18 @@ function Transactions() {
             </Button>
           </div>
         </div>
+      )}
+
+      {linking && (
+        <LinkDialog
+          transaction={linking}
+          sources={sources}
+          onClose={() => setLinking(null)}
+          onChanged={() => {
+            setLinking(null);
+            setReloadKey((k) => k + 1);
+          }}
+        />
       )}
     </>
   );

@@ -7,8 +7,9 @@ Three kinds, one template:
 - repair: the last reply and the server's reason for refusing it.
 
 What reaches the model: the rules, field notes generated from insights/spec.py, the user's
-category names, worked examples and the user's own words. Merchant names never do: they come
-from bank narrations, which a third party writes, so they are an indirect injection path. The
+category and data source names, worked examples and the user's own words. Merchant names never
+do: they come from bank narrations, which a third party writes, so they are an indirect injection
+path. The
 user's words sit in <request> tags as one flattened line, and the reply is constrained to the
 PanelIntent schema, so an instruction hidden in the request can at most produce a bad panel,
 which the compiler and validator still check.
@@ -41,7 +42,7 @@ from .compile import spec_to_intent
 from .schema import AGENT_CHARTS, MAX_TITLE_LENGTH, PanelIntent, ollama_schema
 
 # Sent with every model request and logged, so each evaluation result is tied to the prompt.
-PROMPT_VERSION = "agent-v1"
+PROMPT_VERSION = "agent-v2"
 MAX_PROMPT_CATEGORIES = 60  # names listed in the prompt; more would crowd out the rules
 KINDS = ("understand", "refine", "repair")
 
@@ -103,6 +104,8 @@ bar, line and area.
 - period: {_one_of(DATE_PRESETS)}. null means the dashboard's period. For custom, set \
 date_from and date_to as YYYY-MM-DD.
 - categories: category names, copied exactly from the list below. Empty when none is named.
+- data_sources: data source names, copied exactly from the list below. Empty when none is named: \
+the panel then shows all of them.
 - merchant: a shop or payee, as the user wrote it.
 - txn_type: credit (money in) | debit (money out). Usually null: spend and income already pick \
 their type.
@@ -115,7 +118,8 @@ label. Both only when x is not date.
 change_as: {_one_of(CHANGE_AS)}.
 
 Today is {{today}}.
-The user's categories: {{categories}}."""
+The user's categories: {{categories}}.
+The user's data sources: {{data_sources}}."""
 
 PROMPT = ChatPromptTemplate.from_messages(
     [("system", SYSTEM), MessagesPlaceholder("examples"), ("human", "{body}")]
@@ -124,6 +128,7 @@ PROMPT = ChatPromptTemplate.from_messages(
 # --- worked examples ------------------------------------------------------------------
 
 _EXAMPLE_CATEGORY = "00000000-0000-4000-8000-000000000001"  # stands for "Groceries"
+_EXAMPLE_SOURCE = "00000000-0000-4000-8000-000000000002"  # stands for "OakBank"
 
 
 def _template(title: str) -> dict:
@@ -170,6 +175,16 @@ EXAMPLES = [
         "Income, running total",
     ),
     (
+        "Monthly spend from OakBank",
+        {
+            "chart": "bar",
+            "x": {"field": "date", "granularity": "month"},
+            "y": {"measure": "spend"},
+            "filters": {"data_sources": [_EXAMPLE_SOURCE]},
+        },
+        "OakBank spend",
+    ),
+    (
         "Why did I spend so much in March?",
         "This asks for a reason, not a chart. The Ask page can answer questions.",
         None,
@@ -185,7 +200,12 @@ def intent_json(intent: PanelIntent) -> str:
 def _example_intent(target, title: str | None) -> PanelIntent:
     if isinstance(target, str):
         return PanelIntent(kind="not_a_panel", reason=target)
-    return spec_to_intent(target, {_EXAMPLE_CATEGORY: "Groceries"}, title=title)
+    return spec_to_intent(
+        target,
+        {_EXAMPLE_CATEGORY: "Groceries"},
+        title=title,
+        source_names={_EXAMPLE_SOURCE: "OakBank"},
+    )
 
 
 @cache
@@ -229,6 +249,7 @@ def build_messages(
     today: date,
     intent: PanelIntent | None = None,
     error: str | None = None,
+    source_names: list[str] = (),
 ) -> list[dict]:
     """The chat messages for Ollama: [{"role", "content"}]. `message` is the user's latest
     message (for repair: the message the failed reply answered). refine needs `intent`; repair
@@ -241,6 +262,7 @@ def build_messages(
     formatted = PROMPT.format_messages(
         today=today.isoformat(),
         categories=", ".join(names[:MAX_PROMPT_CATEGORIES]) or "none",
+        data_sources=", ".join(flatten(name) for name in source_names) or "none",
         examples=list(example_messages()),
         body=_body(kind, message, intent, error),
     )

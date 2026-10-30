@@ -283,6 +283,7 @@ describe("effectiveFilters", () => {
     date: { preset: "this_month" },
     type: "debit",
     categories: ["c-rent"],
+    data_sources: ["s-oak"],
     merchant_contains: "fuel",
   };
 
@@ -307,6 +308,7 @@ describe("effectiveFilters", () => {
       date: { preset: "this_month" },
       type: "debit",
       categories: ["c-food"],
+      data_sources: ["s-oak"],
       merchant_contains: "fuel",
     });
   });
@@ -316,9 +318,14 @@ describe("effectiveFilters", () => {
       date: { preset: "last_3_months" },
       type: "credit",
       categories: ["c-salary"],
+      data_sources: ["s-river"],
       merchant_contains: "payroll",
     };
     expect(effectiveFilters(panel, dashboard)).toEqual(panel);
+  });
+
+  it("falls back to the dashboard's data sources when the panel has none", () => {
+    expect(effectiveFilters(EMPTY_FILTERS, dashboard).data_sources).toEqual(["s-oak"]);
   });
 
   it("leaves both sides unchanged", () => {

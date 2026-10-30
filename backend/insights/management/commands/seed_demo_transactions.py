@@ -16,6 +16,7 @@ from django.utils import timezone
 
 from categories.models import Category
 from categories.services import get_default_category
+from datasources.services import first_source
 from insights.engine import add_months
 from transactions.models import Transaction
 from transactions.services import create_transaction
@@ -119,6 +120,7 @@ class Command(BaseCommand):
         # A renamed or deleted seed category falls back to the default ("Others").
         categories = {c.name.lower(): c for c in Category.objects.filter(user=user)}
         fallback = get_default_category(user)
+        source = first_source(user)
         cipher = UserCipher(user)  # one DEK load for every row
 
         with transaction.atomic():  # all or nothing: never a half-seeded account
@@ -133,6 +135,7 @@ class Command(BaseCommand):
                     amount=row["amount"],
                     balance=row["balance"],
                     category=categories.get(row["category"].lower(), fallback),
+                    data_source=source,
                 )
 
         self.stdout.write(self.style.SUCCESS(f"Added {len(rows)} demo transactions."))

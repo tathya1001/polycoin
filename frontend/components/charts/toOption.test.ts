@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import catalogueJson from "@/lib/__fixtures__/catalogue.json";
 import { defaultConfig, normalizeConfig } from "@/lib/insights";
 import type { Catalogue, FormatOptions, PanelConfig, QueryResult } from "@/lib/types";
-import { escapeHtml, legendPosition, seriesSwatches, toOption } from "./toOption";
+import { CHART_LOOKS } from "@/lib/theme";
+import { escapeHtml, legendPosition, resolveColor, seriesSwatches, toOption } from "./toOption";
 
 const catalogue = catalogueJson as unknown as Catalogue;
 
@@ -18,6 +19,25 @@ function result(columns: string[], rows: (string | null)[][]): QueryResult {
 }
 
 const BARS = result(["x", "value"], [["Food", "12000.50"], ["Rent", "22000.00"]]);
+
+describe("a data source's colour", () => {
+  const colors = new Map([
+    ["oakbank", "#111111"],
+    ["source:oakbank", "#222222"],
+  ]);
+
+  it("is used when the chart is split by source, even if a category has the same name", () => {
+    const line = resolveColor("OakBank", 0, "data_source", { series_colors: {} }, colors, CHART_LOOKS.classic);
+    expect(line).toBe(CHART_LOOKS.classic.series("#222222"));
+  });
+
+  it("gives way to the panel's own colour", () => {
+    const own = { series_colors: { OakBank: "#333333" } };
+    expect(resolveColor("OakBank", 0, "data_source", own, colors, CHART_LOOKS.classic)).toBe(
+      CHART_LOOKS.classic.series("#333333"),
+    );
+  });
+});
 const SPLIT = result(["x", "color", "value"], [["Food", "credit", "5"], ["Food", "debit", "7"]]);
 const PIE = result(["x", "value"], [["Food", "30"], ["Rent", "70"]]);
 const HISTOGRAM = result(["start", "end", "count"], [["0.00", "100.00", "4"], ["100.00", "200.00", "1"]]);

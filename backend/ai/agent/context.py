@@ -1,9 +1,10 @@
 """What the panel builder knows about one user, and how it matches the user's words to it.
 
-The model only ever sees the user's own request and category names. Matching a phrase to a
-category or a merchant happens here, in code, against the user's own data: categories by name,
-stem, keyword or spelling; merchants by the names on the user's newest transactions. A merchant
-that matches no name can fall back to the "Ask" search index, by meaning.
+The model only ever sees the user's own request, category names and data source names. Matching
+a phrase to one of them or to a merchant happens here, in code, against the user's own data:
+categories by name, stem, keyword or spelling; data sources by name or spelling; merchants by
+the names on the user's newest transactions. A merchant that matches no name can fall back to
+the "Ask" search index, by meaning.
 """
 
 import difflib
@@ -17,6 +18,8 @@ from django.conf import settings
 from django.utils import timezone
 
 from categories.models import Category, CategoryKeyword
+from datasources.services import sources_for
+from insights.formula import source_key
 from insights.services import first_transaction_date
 from insights.spec import MAX_MERCHANT_LENGTH
 from transactions.models import Transaction
@@ -91,6 +94,36 @@ class CategoryIndex:
         return None
 
 
+@dataclass(frozen=True)
+class SourceRef:
+    id: str
+    name: str
+
+
+class SourceIndex:
+    """The user's data sources: an exact name first, then a near spelling. Spaces don't count,
+    so "oak bank" finds "OakBank"."""
+
+    def __init__(self, sources: list[SourceRef] = ()):
+        self.sources = list(sources)
+        self._by_key = {self._key(ref.name): ref for ref in self.sources}
+
+    @staticmethod
+    def _key(name: str) -> str:
+        return source_key(name).replace(" ", "")
+
+    @property
+    def names(self) -> list[str]:
+        return [ref.name for ref in self.sources]
+
+    def match(self, phrase: str) -> SourceRef | None:
+        key = self._key(phrase)
+        if key in self._by_key:
+            return self._by_key[key]
+        close = difflib.get_close_matches(key, list(self._by_key), n=1, cutoff=FUZZY_CUTOFF)
+        return self._by_key[close[0]] if close else None
+
+
 @dataclass
 class AgentContext:
     """Facts for one request, built per request from the database. Passed to the graph as its
@@ -101,6 +134,7 @@ class AgentContext:
     categories: CategoryIndex
     first_date: date | None  # the user's oldest transaction, for the "all" period
     embed: dict | None = None  # {"model", "digest"} when that model's search index exists
+    sources: SourceIndex = field(default_factory=SourceIndex)
     # The turn's result, set by the graph's last node and read by the caller. It holds the
     # preview's chart data, which must not go into the token.
     outcome: dict | None = None
@@ -135,12 +169,16 @@ def build_context(user, today: date | None = None, embed: dict | None = None) ->
     ]
     if embed and not rag_available(user, embed["model"], embed["digest"]):
         embed = None
+    sources = [
+        SourceRef(str(source.pk), source.name) for source in sources_for(user, UserCipher(user))
+    ]
     return AgentContext(
         user=user,
         today=today or timezone.localdate(),
         categories=CategoryIndex(categories, keywords),
         first_date=first_transaction_date(user),
         embed=embed,
+        sources=SourceIndex(sources),
     )
 
 

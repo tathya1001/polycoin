@@ -65,12 +65,14 @@ import {
   panelUrl,
   panelsUrl,
 } from "@/lib/insights";
+import { knownSources, loadSources } from "@/lib/dataSources";
 import { recall, remember } from "@/lib/storage";
 import { isText } from "@/lib/types";
 import type {
   AnyPanelConfig,
   Catalogue,
   Category,
+  DataSource,
   DashboardDetail,
   DashboardParameters,
   DashboardSummary,
@@ -113,10 +115,16 @@ export default function DashboardPage() {
   const toast = useToast();
   const [catalogue, setCatalogue] = useState<Catalogue | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [sources, setSources] = useState<DataSource[]>([]);
   const [dashboards, setDashboards] = useState<DashboardSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<DashboardDetail | null>(null);
-  const [filters, setFilters] = useState<PanelFilters>(DEFAULT_DASHBOARD_FILTERS);
+  const [savedBar, setFilters] = useState<PanelFilters>(DEFAULT_DASHBOARD_FILTERS);
+  // The bar is remembered in this browser, so it can still name a source deleted since.
+  const filters = useMemo(
+    () => ({ ...savedBar, data_sources: knownSources(savedBar.data_sources, sources) }),
+    [savedBar, sources],
+  );
   const [results, setResults] = useState<Record<string, QueryOutcome>>({});
   // The exact config each result was computed for, so a panel whose config has just changed
   // (an edit, a drill-down) shows "Loading…" instead of the old answer drawn with the new config.
@@ -167,10 +175,11 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadSetup() {
       try {
-        const [fieldsRes, categoriesRes, dashboardsRes] = await Promise.all([
+        const [fieldsRes, categoriesRes, dashboardsRes, sourceList] = await Promise.all([
           apiFetch(FIELDS_URL),
           apiFetch("/api/categories/"),
           apiFetch(DASHBOARDS_URL),
+          loadSources(),
         ]);
         if (!fieldsRes.ok || !dashboardsRes.ok) {
           setError("Could not load your dashboards.");
@@ -178,6 +187,7 @@ export default function DashboardPage() {
         }
         setCatalogue(await fieldsRes.json());
         if (categoriesRes.ok) setCategories(await categoriesRes.json());
+        setSources(sourceList);
         const list: DashboardSummary[] = await dashboardsRes.json();
         setDashboards(list);
         const remembered = recall(ACTIVE_KEY);
@@ -533,7 +543,7 @@ export default function DashboardPage() {
         run: () => openRows(panel.id, `${panel.title}: ${label}`, config, mark),
       });
     }
-    const url = drillDownUrl(config, outcome, effectiveFilters(config.filters, filters), picked, categories);
+    const url = drillDownUrl(config, outcome, effectiveFilters(config.filters, filters), picked, categories, sources);
     if (url) {
       actions.push({ id: "open", label: "Open in Transactions", icon: <ExternalLink size={15} />, run: () => router.push(url) });
     }
@@ -542,7 +552,7 @@ export default function DashboardPage() {
 
   // --- render -----------------------------------------------------------------
 
-  const categoryColors = useMemo(() => categoryColorMap(categories), [categories]);
+  const categoryColors = useMemo(() => categoryColorMap(categories, sources), [categories, sources]);
   const panelsById = useMemo(() => new Map((detail?.panels ?? []).map((p) => [p.id, p])), [detail]);
   const boxes = useMemo<Box[]>(
     () => (detail?.panels ?? []).map(({ id, x, y, w, h }) => ({ id, x, y, w, h })),
@@ -626,7 +636,7 @@ export default function DashboardPage() {
           />
 
           <div className="my-4 space-y-3">
-            <FilterBar filters={filters} categories={categories} onChange={changeFilters} />
+            <FilterBar filters={filters} categories={categories} sources={sources} onChange={changeFilters} />
             {parameters && (
               <ParameterBar catalogue={catalogue} parameters={parameters} used={used} onChange={changeParameters} />
             )}
@@ -755,6 +765,7 @@ export default function DashboardPage() {
           key={editor.panel?.id ?? `new-${editor.seed ?? 0}`}
           catalogue={catalogue}
           categories={categories}
+          sources={sources}
           parameters={parameters ?? catalogue.parameters.defaults}
           initial={{ title: editor.title, showTitle: editor.showTitle, config: editor.config }}
           isNew={!editor.panel}

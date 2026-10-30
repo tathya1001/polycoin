@@ -3,6 +3,7 @@ from django.db import transaction
 from rest_framework import serializers
 
 from categories.services import seed_default_categories
+from datasources.services import seed_default_source
 from vault.services import create_user_key
 
 from .models import User, UserPreferences
@@ -27,6 +28,7 @@ class RegisterSerializer(serializers.Serializer):
             user = User.objects.create_user(**validated_data)
             create_user_key(user)
             seed_default_categories(user)
+            seed_default_source(user)
         return user
 
 

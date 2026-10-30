@@ -194,7 +194,13 @@ def test_the_date_limits_are_accepted():
 
 
 def test_empty_filters_get_defaults():
-    expected = {"date": INHERIT, "type": None, "categories": [], "merchant_contains": ""}
+    expected = {
+        "date": INHERIT,
+        "type": None,
+        "categories": [],
+        "data_sources": [],
+        "merchant_contains": "",
+    }
     assert validate_filters(None) == expected
     assert validate_filters({}) == expected
 
@@ -260,6 +266,7 @@ def test_validate_spec_returns_the_clean_shape():
         "date": INHERIT,
         "type": "debit",
         "categories": [],
+        "data_sources": [],
         "merchant_contains": "tasty",
     }
     assert spec["stacked"] is True

@@ -56,7 +56,7 @@ def test_download_is_a_private_file_attachment(alice):
         f'attachment; filename="backup-{today:%Y-%m-%d}.polycoin"'
     )
     assert "no-store" in response["Cache-Control"]
-    assert response.content.startswith(b"polycoin-backup/1\n")
+    assert response.content.startswith(b"polycoin-backup/2\n")
     assert b"Tastybites" not in response.content
 
 

@@ -13,8 +13,24 @@ export type Category = {
   keywords: Keyword[];
 };
 
+// A named group of transactions, such as one bank account's statements (GET /api/data-sources/).
+export type DataSource = {
+  id: string;
+  name: string;
+  color: string; // "#RRGGBB": the default colour of this source in every chart
+  position: number;
+  transactions: number;
+  first_date: string | null;
+  last_date: string | null;
+  balance: string | null; // the latest balance its statements show
+};
+
+// The other side of a transfer between two of the user's data sources.
+export type TransactionLink = { id: string; partner: string; partner_source: string };
+
 export type Transaction = {
   id: string;
+  data_source: string; // data source id
   date: string; // YYYY-MM-DD
   txn_type: "credit" | "debit";
   category: string; // category id
@@ -23,7 +39,29 @@ export type Transaction = {
   amount: string; // decimal as a string, always positive: the sign lives in txn_type
   balance: string | null;
   notes: string; // the user's own optional note ("" when none); also read by the AI
+  link: TransactionLink | null;
 };
+
+// One side of a possible transfer.
+export type TransferSide = {
+  id: string;
+  date: string;
+  txn_type: "credit" | "debit";
+  name: string;
+  data_source: string;
+  data_source_name: string;
+};
+
+export type LinkCandidate = TransferSide & { days_apart: number };
+
+export type TransferPair = {
+  amount: string;
+  days_apart: number;
+  debit: TransferSide;
+  credit: TransferSide;
+};
+
+export type TransferSuggestions = { total: number; pairs: TransferPair[] };
 
 
 // DRF page-number pagination
@@ -67,11 +105,18 @@ export type Preview = {
   row_count: number;
   error_count: number;
   errors: ImportRowError[];
+  duplicates: number; // rows the chosen data source already holds
+  elsewhere: { data_source: string; name: string; count: number }[]; // held by another source
 };
+
+// What happens to rows another data source already holds.
+export type ElsewhereChoice = "skip" | "move" | "add";
 
 export type ImportResult = {
   imported: number;
   duplicates: number;
+  moved: number;
+  skipped: number;
   errors: ImportRowError[];
 };
 
@@ -154,7 +199,11 @@ export type StoreResult = { stored: number; stale: number; rejected: number };
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-export type AskFilters = { date: DateFilter; type: "credit" | "debit" | null };
+export type AskFilters = {
+  date: DateFilter;
+  type: "credit" | "debit" | null;
+  data_sources?: string[]; // ids; empty or missing means all of them
+};
 
 export type RagSource = {
   n: number; // the number the model cites as [n]
@@ -251,7 +300,14 @@ export type ChartType =
 // Every chart that shows data. A text panel is a note: it has no measure, filters or query.
 export type DataChartType = Exclude<ChartType, "text">;
 export type Granularity = "day" | "week" | "month" | "quarter" | "year";
-export type Dimension = "date" | "weekday" | "month_of_year" | "category" | "txn_type" | "merchant";
+export type Dimension =
+  | "date"
+  | "weekday"
+  | "month_of_year"
+  | "category"
+  | "txn_type"
+  | "merchant"
+  | "data_source";
 // "formula" is a calculated field: a number the panel works out from each group's totals.
 export type Measure = "spend" | "income" | "net" | "amount" | "count" | "balance" | "formula";
 // How a calculated field's result reads: a plain number, a percentage, or money.
@@ -279,6 +335,7 @@ export type PanelFilters = {
   date: DateFilter;
   type: "credit" | "debit" | null;
   categories: string[]; // category ids
+  data_sources: string[]; // data source ids; empty means all of them
   merchant_contains: string;
 };
 
@@ -448,10 +505,11 @@ export type QueryResult = {
 };
 
 // A clicked mark, as the backend reads it (insights.spec.validate_selection): every key is
-// optional, and categories / merchants are names as a chart labels them.
+// optional, and categories / merchants / data sources are names as a chart labels them.
 export type Selection = {
   categories?: string[];
   merchants?: string[];
+  data_sources?: string[];
   type?: "credit" | "debit";
   weekdays?: number[]; // 0 = Monday
   months?: number[]; // 1-12
@@ -468,7 +526,14 @@ export type RowsPage = {
   value: string | null; // what the chart shows for these rows
   totals: { debit: string; credit: string };
   period: { from: string; to: string };
-  rows: { date: string; name: string; category: string; txn_type: "credit" | "debit"; amount: string }[];
+  rows: {
+    date: string;
+    name: string;
+    category: string;
+    data_source: string; // the source's name
+    txn_type: "credit" | "debit";
+    amount: string;
+  }[];
 };
 
 export type QueryError = { error: { code: string; detail: string } };

@@ -1,8 +1,9 @@
 """The chart engine: a validated spec and plain rows in, a small result out.
 
 Pure Python: no Django, no database, no HTTP. Money is Decimal throughout and leaves the
-engine as strings. Rows are dicts with the keys date, txn_type, category_name, amount, name
-and balance, and the specs it reads are produced by `insights.spec.validate_spec`.
+engine as strings. Rows are dicts with the keys date, txn_type, category_name, source_name,
+source_key, amount, name and balance, and the specs it reads are produced by
+`insights.spec.validate_spec`.
 """
 
 from collections.abc import Callable
@@ -10,12 +11,24 @@ from datetime import date, timedelta
 from decimal import Decimal
 from functools import partial
 
-from .formula import FORMULA, days_in, evaluate_rows, parse_once
+from .balances import closing_balance
+from .formula import (
+    FORMULA,
+    PanelView,
+    Span,
+    current_view,
+    days_in,
+    evaluate_rows,
+    panel_view,
+    parse_once,
+)
 
 GRANULARITIES = ("day", "week", "month", "quarter", "year")
 MEASURES = ("spend", "income", "net", "amount", "count", "balance")
 AGGS = ("sum", "avg", "min", "max", "median", "count", "last")
-DIMENSIONS = ("date", "weekday", "month_of_year", "category", "txn_type", "merchant")
+DIMENSIONS = (
+    "date", "weekday", "month_of_year", "category", "txn_type", "merchant", "data_source",
+)  # fmt: skip
 GROUPED_CHARTS = ("bar", "line", "area", "pie", "donut")
 
 OTHER_LABEL = "Other"
@@ -216,6 +229,24 @@ def group_days(dims: list[tuple[str, str | None]], key: tuple, start: date, end:
     return days_in(start, end, weekdays, months)
 
 
+def _bucket_end(bucket: date, granularity: str, end: date) -> date:
+    return min(end, next_bucket(bucket, granularity) - timedelta(days=1))
+
+
+def group_span(
+    dims: list[tuple[str, str | None]], key: tuple, start: date, end: date
+) -> Callable[[], int]:
+    """The days one group covers, for the group's calculated values.
+
+    A group split only by time also knows its last day, which is what a balance is read at. Any
+    other group is a slice of the rows, so a balance there comes from those rows alone.
+    """
+    count = partial(group_days, dims, key, start, end)
+    if len(dims) == 1 and dims[0][0] == "date":
+        return Span(count, _bucket_end(key[0], dims[0][1], end))
+    return count
+
+
 def dimension_key(row: dict, dimension: str, granularity: str | None = None):
     """Which group `row` belongs to for this dimension. The result must be hashable."""
     if dimension == "date":
@@ -233,6 +264,8 @@ def dimension_key(row: dict, dimension: str, granularity: str | None = None):
     if dimension == "merchant":
         # "TASTYBITES", "tastybites " and "Tastybites" are one merchant.
         return " ".join(row["name"].split()).title()
+    if dimension == "data_source":
+        return row["source_name"]
     raise ValueError(f"Unknown dimension: {dimension!r}")
 
 
@@ -311,6 +344,9 @@ def _y_cell(rows: list[dict], y: dict, days: Callable[[], int] | None = None) ->
     """
     if y["measure"] == FORMULA:  # worked out from the whole group, not row by row
         return evaluate_rows(y["formula"]["expression"], rows, days) if rows else None
+    if y["measure"] == "balance":
+        book, last = current_view().book, getattr(days, "last", None)
+        return closing_balance(rows) if book is None or last is None else book.at(last)
     values = []
     for row in rows:
         value = measure_value(row, y["measure"])
@@ -433,6 +469,29 @@ def _fmt_cell(value: Decimal | None, y: dict, calc: dict | None) -> str | None:
     return _fmt(value, y)
 
 
+def _balance_cells(book, x: dict, color: dict | None, span: tuple[date, date]) -> dict | None:
+    """A balance per bucket or per source, or None if the chart splits it some other way.
+
+    These cells come from the book and not from groups of rows: a source keeps its balance
+    through a bucket where it has no rows, so every bucket has a value.
+    """
+    start, end = span
+    keys = sorted(book.keys, key=lambda key: book.names.get(key, key or ""))
+    if x["field"] == "date" and (not color or color["field"] == "data_source"):
+        granularity = x["granularity"]
+        days = [(k, _bucket_end(k, granularity, end)) for k in bucket_range(start, end, granularity)]
+        if not color:
+            return {(bucket,): book.at(last) for bucket, last in days}
+        return {
+            (bucket, book.names.get(key, key)): book.of(key, last)
+            for bucket, last in days
+            for key in keys
+        }
+    if x["field"] == "data_source" and not color:
+        return {(book.names.get(key, key),): book.of(key, end) for key in keys}
+    return None
+
+
 def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict:
     """bar / line / area / pie / donut: aggregate `y` for each value of `x` (and of `color`).
 
@@ -445,10 +504,14 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
     dims = [x_dim] + ([(color["field"], None)] if color else [])
 
     span = (load_start(spec, period), period[1])  # the days the rows were loaded for
-    cells = {
-        key: _y_cell(group, y, partial(group_days, dims, key, *span))
-        for key, group in group_rows(rows, dims).items()
-    }
+    book = current_view().book
+    balances = _balance_cells(book, x, color, span) if y["measure"] == "balance" and book else None
+    cells = balances
+    if cells is None:
+        cells = {
+            key: _y_cell(group, y, group_span(dims, key, *span))
+            for key, group in group_rows(rows, dims).items()
+        }
     values = {key: value for key, value in cells.items() if value is not None}
 
     # "No data in this slot" is a true zero for totals, but unknown for an average or a max.
@@ -463,9 +526,9 @@ def run_grouped(spec: dict, rows: list[dict], period: tuple[date, date]) -> dict
         x_keys = list(range(7))
     elif x["field"] == "month_of_year":
         x_keys = list(range(1, 13))
-    else:  # category / merchant / txn_type: rank the x values, keep the top few
-        x_only = {
-            key[0]: _y_cell(group, y, partial(group_days, [x_dim], key, *span))
+    else:  # category / merchant / txn_type / data_source: rank the x values, keep the top few
+        x_only = {key[0]: value for key, value in values.items()} if balances else {
+            key[0]: _y_cell(group, y, group_span([x_dim], key, *span))
             for key, group in group_rows(rows, [x_dim]).items()
         }
         ranked = top_n(
@@ -612,12 +675,16 @@ def _or_zero(value: Decimal | None, y: dict) -> Decimal | None:
     return value
 
 
+def _period_span(period: tuple[date, date]) -> Span:
+    return Span(partial(days_in, *period), period[1])
+
+
 def _baseline(rows: list[dict], periods: list[tuple[date, date]], y: dict) -> Decimal | None:
     """The number a KPI is compared with: its value in the one comparison period, or the mean of
     its values over several. A period with no rows counts as 0 for totals, and is skipped for
     averages, minimums and maximums (unknown, not zero)."""
-    values = [_or_zero(_y_cell(_in_period(rows, *p), y, partial(days_in, *p)), y) for p in periods]
-    known = [value for value in values if value is not None]
+    values = [_or_zero(_y_cell(_in_period(rows, *p), y, _period_span(p)), y) for p in periods]
+    known =[value for value in values if value is not None]
     return sum(known, Decimal(0)) / len(known) if known else None
 
 
@@ -643,7 +710,9 @@ def secondary_figures(
     and the value as a share of income. `rows` are the period's rows after the panel's filters;
     `income_rows` are the period's rows with every filter but the type, so a spend KPI that
     only counts debits can still be set against income."""
-    amounts = [v for v in (measure_value(row, y["measure"]) for row in rows) if v is not None]
+    # A calculated field has no value per transaction: its figures describe the rows themselves.
+    measure = "amount" if y["measure"] == FORMULA else y["measure"]
+    amounts = [v for v in (measure_value(row, measure) for row in rows) if v is not None]
     figures = []
     for figure in ids:
         if figure == "count":
@@ -676,7 +745,7 @@ def run_kpi(
     """
     y, kpi = spec["y"], spec["kpi"]
     current_rows = _in_period(rows, *period)
-    current = _or_zero(_y_cell(current_rows, y, partial(days_in, *period)), y)
+    current = _or_zero(_y_cell(current_rows, y, _period_span(period)), y)
 
     previous = change = None
     periods = comparison_periods(kpi, period)
@@ -731,12 +800,18 @@ def run_histogram(spec: dict, rows: list[dict]) -> dict:
 
 
 def run(
-    spec: dict, rows: list[dict], period: tuple[date, date], all_types: list[dict] | None = None
+    spec: dict,
+    rows: list[dict],
+    period: tuple[date, date],
+    all_types: list[dict] | None = None,
+    view: PanelView | None = None,
 ) -> dict:
     """The engine's one public entry point: a validated spec and plain rows in, a result out.
 
-    `all_types` is only read by a KPI that shows its share of income (see run_kpi)."""
-    with parse_once():  # a calculated field is worked out per group: parse its formula once
+    `all_types` is only read by a KPI that shows its share of income (see run_kpi). `view` holds
+    what balances and named data sources need besides the rows."""
+    # A calculated field is worked out per group: parse its formula once.
+    with parse_once(), panel_view(view):
         return _run(spec, rows, period, all_types)
 
 

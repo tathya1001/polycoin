@@ -66,6 +66,7 @@ import {
   normalizeConfig,
   todayLocal,
 } from "@/lib/insights";
+import { sourceRef } from "@/lib/dataSources";
 import { CHART_LOOKS } from "@/lib/theme";
 import { isText } from "@/lib/types";
 import type {
@@ -77,6 +78,7 @@ import type {
   Catalogue,
   Category,
   ChartType,
+  DataSource,
   DatePreset,
   Dimension,
   FormatOptions,
@@ -101,6 +103,7 @@ import { ColorPicker } from "@/components/ui/ColorPicker";
 import { ErrorNote } from "@/components/ui/Feedback";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/Field";
 import CategoryPicker from "./CategoryPicker";
+import SourcePicker from "./SourcePicker";
 
 const PREVIEW_DELAY_MS = 500; // the preview shares the 600/hour "insights" throttle
 const MAX_TITLE = 80; // PanelUpdateSerializer.title max_length
@@ -122,6 +125,7 @@ const CHART_ICONS: Record<ChartType, LucideIcon> = {
 type Props = {
   catalogue: Catalogue;
   categories: Category[];
+  sources: DataSource[];
   parameters: DashboardParameters; // the dashboard's current values, for the live preview
   initial: { title: string; showTitle: boolean; config: AnyPanelConfig };
   isNew: boolean;
@@ -131,7 +135,7 @@ type Props = {
 };
 
 export default function PanelEditor(props: Props) {
-  const { catalogue, categories, parameters, initial, isNew, dashboardFilters, onCancel, onSave } = props;
+  const { catalogue, categories, sources, parameters, initial, isNew, dashboardFilters, onCancel, onSave } = props;
   const { theme } = useSession();
   const [title, setTitle] = useState(initial.title);
   const [showTitle, setShowTitle] = useState(initial.showTitle);
@@ -152,7 +156,7 @@ export default function PanelEditor(props: Props) {
   const measure = catalogue.measures.find((m) => m.id === config.y.measure);
   const categorical = !!config.x && config.x.field !== "date";
   const dimensions = catalogue.dimensions.map((d) => d.id);
-  const categoryColors = useMemo(() => categoryColorMap(categories), [categories]);
+  const categoryColors = useMemo(() => categoryColorMap(categories, sources), [categories, sources]);
 
   // The series the preview draws, each with its current colour: the Colors section below.
   const swatches = useMemo(
@@ -388,6 +392,7 @@ export default function PanelEditor(props: Props) {
                       <FormulaFields
                         config={config}
                         catalogue={catalogue}
+                        sources={sources}
                         onChange={(formula) => update({ y: { ...config.y, formula } })}
                       />
                     )}
@@ -612,6 +617,15 @@ export default function PanelEditor(props: Props) {
                           onChange={(ids) => updateFilters({ categories: ids })}
                         />
                       </div>
+                      <div className="space-y-1.5">
+                        {sources.length > 1 && <span className="block text-[13px] font-medium">Data sources</span>}
+                        <SourcePicker
+                          sources={sources}
+                          selected={config.filters.data_sources}
+                          allLabel="Same as dashboard"
+                          onChange={(ids) => updateFilters({ data_sources: ids })}
+                        />
+                      </div>
                     </div>
                     <Field label="Merchant name contains">
                       <Input
@@ -676,10 +690,12 @@ function clamp(value: number, [low, high]: [number, number]): number {
 function FormulaFields({
   config,
   catalogue,
+  sources,
   onChange,
 }: {
   config: PanelConfig;
   catalogue: Catalogue;
+  sources: DataSource[];
   onChange: (formula: Formula) => void;
 }) {
   const formula = config.y.formula ?? DEFAULT_FORMULA;
@@ -761,6 +777,15 @@ function FormulaFields({
           <FormulaReference
             title="Fields"
             items={rules.fields.map((f) => ({ label: `[${f.name}]`, help: f.help, before: `[${f.name}]` }))}
+            onPick={insert}
+          />
+          <FormulaReference
+            title="Data sources"
+            items={sources.map((source) => ({
+              label: `${sourceRef(source.name, rules.keywords)}.spend`,
+              help: `Reads ${source.name} whatever the panel shows. Also .income, .net, .count, .balance, or .SUM(…).`,
+              before: `${sourceRef(source.name, rules.keywords)}.spend`,
+            }))}
             onPick={insert}
           />
           {groups.map((group) => (

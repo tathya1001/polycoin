@@ -65,6 +65,15 @@ def test_category_names_are_flattened_and_capped():
     assert f"Cat{MAX_PROMPT_CATEGORIES - 1}" not in system
 
 
+def test_the_prompt_lists_the_data_sources():
+    system = messages(source_names=["OakBank", "Oak\nSalary"])[0]["content"]
+    assert "The user's data sources: OakBank, Oak Salary." in system
+
+
+def test_no_data_sources_says_none():
+    assert "The user's data sources: none." in messages()[0]["content"]
+
+
 def test_no_categories_says_none():
     assert "The user's categories: none." in messages(names=[])[0]["content"]
 
@@ -136,7 +145,7 @@ def test_the_chat_request_constrains_the_reply_and_bounds_the_model(settings):
 
 
 def test_the_prompt_version_is_set():
-    assert PROMPT_VERSION == "agent-v1"
+    assert PROMPT_VERSION == "agent-v2"
 
 
 # --- the token budget (about 4 characters per token for English) -------------------------------

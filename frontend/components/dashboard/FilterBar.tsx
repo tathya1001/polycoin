@@ -3,11 +3,12 @@
 import { CalendarDays, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { PRESET_LABELS, todayLocal } from "@/lib/insights";
-import type { Category, DatePreset, PanelFilters } from "@/lib/types";
+import type { Category, DataSource, DatePreset, PanelFilters } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Field";
 import { Popover } from "@/components/ui/Popover";
 import CategoryPicker from "./CategoryPicker";
+import SourcePicker from "./SourcePicker";
 
 const PRESETS: DatePreset[] = [
   "this_month",
@@ -28,6 +29,7 @@ const MONEY_OPTIONS: { value: "" | "debit" | "credit"; label: string }[] = [
 type Props = {
   filters: PanelFilters;
   categories: Category[];
+  sources: DataSource[];
   onChange: (next: PanelFilters) => void;
 };
 
@@ -39,7 +41,7 @@ function dateSummary(date: PanelFilters["date"]): string {
 // The dashboard's filters, shown as pills that open a popover.
 // They apply to every panel, except where a panel pins its own. Changing one re-runs every
 // panel in a single request.
-export default function FilterBar({ filters, categories, onChange }: Props) {
+export default function FilterBar({ filters, categories, sources, onChange }: Props) {
   const date = filters.date;
 
   function setPreset(preset: DatePreset) {
@@ -156,6 +158,11 @@ export default function FilterBar({ filters, categories, onChange }: Props) {
         categories={categories}
         selected={filters.categories}
         onChange={(ids) => onChange({ ...filters, categories: ids })}
+      />
+      <SourcePicker
+        sources={sources}
+        selected={filters.data_sources}
+        onChange={(ids) => onChange({ ...filters, data_sources: ids })}
       />
     </div>
   );

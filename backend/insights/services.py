@@ -9,20 +9,34 @@ builder for starter templates.
 """
 
 import json
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from functools import partial
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Min
+from django.db.models import Max, Min
 from django.utils import timezone
 
-from transactions.models import Transaction
+from datasources.services import sources_for
+from transactions.models import Transaction, TransferLink
 from vault.services import UserCipher
 
 from . import engine
-from .formula import FORMULA, days_in, fields_used
+from .balances import BalanceBook, closing_row
+from .formula import (
+    FORMULA,
+    FormulaError,
+    PanelView,
+    Span,
+    compile_expression,
+    days_in,
+    panel_view,
+    parse_once,
+    rename_source,
+    source_key,
+)
 from .models import Dashboard, Panel
 from .spec import (
     MIN_DATE,
@@ -41,6 +55,34 @@ class TooManyRows(Exception):
     """The period holds more transactions than one request may decrypt."""
 
 
+@dataclass(frozen=True, slots=True)
+class Label:
+    """One data source as rows and panels refer to it."""
+
+    id: str
+    name: str
+    key: str  # how a formula's reference to it is matched
+
+
+def source_labels(user, cipher) -> dict:
+    """The user's data sources: {primary key: Label}."""
+    return {
+        source.pk: Label(str(source.pk), source.name, source_key(source.name))
+        for source in sources_for(user, cipher)
+    }
+
+
+def _link_partners(user) -> dict:
+    """{transaction id: the data source of the transaction it is linked to}."""
+    partners = {}
+    for debit, debit_source, credit, credit_source in TransferLink.objects.filter(
+        user=user
+    ).values_list("debit_id", "debit__data_source_id", "credit_id", "credit__data_source_id"):
+        partners[debit] = str(credit_source)
+        partners[credit] = str(debit_source)
+    return partners
+
+
 def load_rows(
     user,
     start: date,
@@ -48,47 +90,64 @@ def load_rows(
     types: tuple = (),
     category_ids: tuple = (),
     need: frozenset = frozenset(),
+    source_ids: tuple = (),
+    cipher=None,
+    labels: dict | None = None,
 ) -> list[dict]:
     """The user's transactions from `start` to `end` as the plain dicts the engine reads.
 
-    `types` and `category_ids` narrow the rows in the DB; empty means "don't filter".
-    `amount` is always decrypted (every measure reads it). Pass "name" and/or "balance" in
-    `need` only when a panel uses them, so we skip decrypting what nobody looks at. "id" adds
-    each row's primary key, for a stable order where rows are paged.
+    `types`, `category_ids` and `source_ids` narrow the rows in the DB; empty means "don't
+    filter". `amount` is always decrypted (every measure reads it). Pass "name" and/or "balance"
+    in `need` only when a panel uses them, so we skip decrypting what nobody looks at. "id" adds
+    each row's primary key, for a stable order where rows are paged, and "stored_order" returns
+    rows in the order they were stored, which settles a balance. `cipher` and `labels` save a
+    load when the caller has them.
     """
     queryset = Transaction.objects.filter(user=user, date__range=(start, end))
     if types:
         queryset = queryset.filter(txn_type__in=types)
     if category_ids:
         queryset = queryset.filter(category_id__in=category_ids)
+    if source_ids:
+        queryset = queryset.filter(data_source_id__in=source_ids)
 
     # Count BEFORE fetching or decrypting anything, so a huge range costs one cheap query.
     if queryset.count() > settings.INSIGHTS_MAX_ROWS:
         raise TooManyRows(f"More than {settings.INSIGHTS_MAX_ROWS} transactions in the period.")
 
-    cipher = UserCipher(user)  # one DEK load for every row
+    cipher = cipher or UserCipher(user)  # one DEK load for every row
+    labels = source_labels(user, cipher) if labels is None else labels
+    partners = _link_partners(user)
 
     def dec(blob, context):
         return cipher.decrypt(bytes(blob), context).decode()  # bytes(): Postgres gives memoryview
 
-    want_name, want_balance, want_id = "name" in need, "balance" in need, "id" in need
+    want_name, want_balance = "name" in need, "balance" in need
+    want_id = "id" in need or bool(partners)
     # Plain tuples, not model objects: building a Transaction per row was most of the time at
-    # 20k rows on a slow CPU. No ORDER BY either: the engine sorts by date itself.
-    columns = ["date", "txn_type", "category_id", "category__name", "amount_enc"]
+    # 20k rows on a slow CPU. No ORDER BY either, unless asked: the engine sorts by date itself.
+    # The database does that sort, because turning 20k timestamps into Python ones is slower.
+    columns = ["date", "txn_type", "category_id", "category__name", "data_source_id", "amount_enc"]
     columns += ["name_enc"] if want_name else []
     columns += ["balance_enc"] if want_balance else []
     columns += ["id"] if want_id else []
+    ordering = ("created_at",) if "stored_order" in need else ()
 
     rows = []
-    for values in queryset.order_by().values_list(*columns):
-        day, txn_type, category_id, category_name, amount_enc, *optional = values
+    for values in queryset.order_by(*ordering).values_list(*columns):
+        day, txn_type, category_id, category_name, source_id, amount_enc, *optional = values
         name_enc = optional.pop(0) if want_name else None
         balance_enc = optional.pop(0) if want_balance else None
+        label = labels[source_id]
         row = {
             "date": day,
             "txn_type": txn_type,
             "category_id": str(category_id),  # for each panel's own category filter
             "category_name": category_name,
+            "source_id": label.id,
+            "source_name": label.name,
+            "source_key": label.key,
+            "link_source": None,  # the data source of the other side of a transfer
             "amount": Decimal(dec(amount_enc, "txn.amount")),
             "name": dec(name_enc, "txn.name") if want_name else "",
             "balance": (
@@ -97,6 +156,7 @@ def load_rows(
         }
         if want_id:
             row["id"] = optional.pop(0)
+            row["link_source"] = partners.get(row["id"])
         rows.append(row)
     return rows
 
@@ -104,6 +164,33 @@ def load_rows(
 def first_transaction_date(user) -> date | None:
     """The date of the user's oldest transaction, or None if they have none."""
     return Transaction.objects.filter(user=user).aggregate(first=Min("date"))["first"]
+
+
+def opening_balances(user, cipher, before: date, labels: dict) -> dict[str, Decimal]:
+    """Each source's balance at the end of its last day with one before `before`.
+
+    {source key: balance}. One small query per source, and only when a panel reads a balance.
+    """
+    balances = {}
+    for source_id, label in labels.items():
+        known = Transaction.objects.filter(
+            data_source_id=source_id, date__lt=before, balance_enc__isnull=False
+        ).order_by()
+        day = known.aggregate(day=Max("date"))["day"]
+        if day is None:
+            continue
+        rows = [
+            {
+                "txn_type": txn_type,
+                "amount": Decimal(cipher.decrypt(bytes(amount), "txn.amount").decode()),
+                "balance": Decimal(cipher.decrypt(bytes(balance), "txn.balance").decode()),
+            }
+            for txn_type, amount, balance in known.filter(date=day)
+            .order_by("created_at")
+            .values_list("txn_type", "amount_enc", "balance_enc")
+        ]
+        balances[label.key] = closing_row(rows)["balance"]
+    return balances
 
 
 def _error(code: str, detail: str) -> dict:
@@ -115,6 +202,7 @@ def _effective_filters(panel: dict, dashboard: dict) -> dict:
     return {
         "type": panel["type"] or dashboard["type"],
         "categories": panel["categories"] or dashboard["categories"],
+        "data_sources": panel["data_sources"] or dashboard["data_sources"],
         "merchant_contains": panel["merchant_contains"] or dashboard["merchant_contains"],
     }
 
@@ -126,10 +214,100 @@ def _fields_needed(spec: dict, filters: dict) -> set:
     if "merchant" in fields or filters["merchant_contains"]:
         need.add("name")
     if spec["y"]["measure"] == "balance":
-        need.add("balance")
+        need |= {"balance", "stored_order"}
     if spec["y"]["measure"] == FORMULA:  # [Merchant] needs the name, [Balance] the balance
-        need |= fields_used(spec["y"]["formula"]["expression"])
+        compiled = compile_expression(spec["y"]["formula"]["expression"])
+        need |= compiled.fields
+        if compiled.uses_balance:
+            need.add("stored_order")
     return need
+
+
+@dataclass(frozen=True, slots=True)
+class SourceScope:
+    """Which data sources one panel reads."""
+
+    shown: frozenset | None  # the ids it shows; None means every source
+    named: frozenset  # the ids its formula names, which it reads whatever `shown` says
+    balance: bool  # it reads a balance, which needs a BalanceBook
+
+    @property
+    def wanted(self) -> frozenset | None:
+        return None if self.shown is None else self.shown | self.named
+
+
+def _scope_of(spec: dict, filters: dict, labels: dict) -> SourceScope:
+    """Raises SpecError if the panel uses a data source that doesn't exist (any more)."""
+    shown = frozenset(filters["data_sources"]) or None
+    if shown and not shown <= {label.id for label in labels.values()}:
+        raise SpecError(
+            "unknown_data_source",
+            "This panel uses a data source that no longer exists. Choose another one.",
+        )
+    named, reads_balance = frozenset(), spec["y"]["measure"] == "balance"
+    if spec["y"]["measure"] == FORMULA:
+        compiled = compile_expression(spec["y"]["formula"]["expression"])
+        reads_balance = compiled.uses_balance
+        ids = {label.key: label.id for label in labels.values()}
+        for key in compiled.sources:
+            if key not in ids:
+                raise SpecError("unknown_data_source", f'There is no data source named "{key}".')
+        named = frozenset(ids[key] for key in compiled.sources)
+    return SourceScope(shown, named, reads_balance)
+
+
+def _visible(shown: frozenset | None) -> callable:
+    """Whether a row counts for a calculation over the sources `shown`.
+
+    A transfer between two of the user's own sources cancels out when both sides are in view.
+    The test is on the source, not on the other row being loaded, so a transfer that crosses
+    the end of a period still cancels.
+    """
+
+    def visible(row: dict) -> bool:
+        if shown is not None and row["source_id"] not in shown:
+            return False
+        partner = row["link_source"]
+        return partner is None or (shown is not None and partner not in shown)
+
+    return visible
+
+
+def _panel_rows(
+    matched: list[dict],
+    scope: SourceScope,
+    picked: dict,
+    openings: dict,
+    labels: dict,
+    linked: bool,
+) -> tuple[list[dict], PanelView]:
+    """A panel's rows after the data source rules, and the view its calculations need.
+
+    `matched` has passed every other filter, and `linked` says whether any loaded row is part
+    of a transfer. A balance reads the rows before transfers cancel: a transfer is a real change
+    to what each source holds.
+    """
+    wanted = scope.wanted
+    rows = matched if wanted is None else [r for r in matched if r["source_id"] in wanted]
+
+    book = None
+    if scope.balance:
+        keys = None
+        if scope.shown is not None:
+            keys = {label.key for label in labels.values() if label.id in scope.shown}
+        if picked.get("data_sources"):
+            chosen = {source_key(name) for name in picked["data_sources"]}
+            every = {label.key for label in labels.values()}
+            keys = chosen & (every if keys is None else keys)
+        names = {label.key: label.name for label in labels.values()}
+        book = BalanceBook(rows, openings, keys, names)
+
+    visible = _visible(scope.shown)
+    if scope.named:  # bare names skip rows that only a named source may read
+        return rows, PanelView(book, visible)
+    if scope.shown is None and not linked:
+        return rows, PanelView(book)  # nothing to take away, so no extra pass over the rows
+    return list(filter(visible, rows)), PanelView(book)
 
 
 def _matching(rows: list[dict], filters: dict) -> list[dict]:
@@ -154,6 +332,7 @@ def _selected(rows: list[dict], selection: dict) -> list[dict]:
     period instead (see _narrow), so a KPI still has earlier rows to compare with."""
     categories = {name.lower() for name in selection.get("categories", ())}
     merchants = {_normal_merchant(name) for name in selection.get("merchants", ())}
+    sources = {source_key(name) for name in selection.get("data_sources", ())}
     weekdays, months = selection.get("weekdays"), selection.get("months")
     kind = selection.get("type")
     return [
@@ -162,6 +341,7 @@ def _selected(rows: list[dict], selection: dict) -> list[dict]:
         if (not kind or row["txn_type"] == kind)
         and (not categories or row["category_name"].lower() in categories)
         and (not merchants or _normal_merchant(row["name"]) in merchants)
+        and (not sources or row["source_key"] in sources)
         and (not weekdays or row["date"].weekday() in weekdays)
         and (not months or row["date"].month in months)
     ]
@@ -213,6 +393,8 @@ def run_queries(
     parameters = validate_parameters(parameters)
     selection = validate_selection(selection)
     first = first_transaction_date(user)
+    cipher = UserCipher(user)  # one DEK load for the names and every row
+    labels = source_labels(user, cipher)
 
     results, plans = {}, {}
     for query in queries:
@@ -223,6 +405,8 @@ def run_queries(
                 results[key] = {"columns": [], "rows": [], "meta": {"chart": "text"}}
                 continue
             period = resolve_period(spec["filters"]["date"], dashboard["date"], today)
+            filters = _effective_filters(spec["filters"], dashboard)
+            scope = _scope_of(spec, filters, labels)
         except SpecError as problem:
             results[key] = _error(problem.code, problem.detail)
             continue
@@ -236,7 +420,6 @@ def run_queries(
         start, end = narrowed or (start, end)
         # A KPI that compares, or a calculation that looks back, needs earlier rows too.
         load_start = engine.load_start(spec, (start, end))
-        filters = _effective_filters(spec["filters"], dashboard)
         need = _fields_needed(spec, filters)
         if picked.get("merchants"):
             need.add("name")
@@ -245,6 +428,7 @@ def run_queries(
             "period": (start, end),
             "load_start": load_start,
             "filters": filters,
+            "scope": scope,
             "picked": picked,
             "blank": blank,
             "need": need,
@@ -261,32 +445,42 @@ def run_queries(
     if any(plan["needs_all_types"] for plan in plans.values()):
         types.add(None)  # None means "every type": the DB can't narrow
     categories = [plan["filters"]["categories"] for plan in plans.values()]
+    wanted = [plan["scope"].wanted for plan in plans.values()]
+    first_day = min(plan["load_start"] for plan in plans.values())
     try:
         rows = load_rows(
             user,
-            min(plan["load_start"] for plan in plans.values()),
+            first_day,
             max(plan["period"][1] for plan in plans.values()),
             types=() if None in types else tuple(types),
             category_ids=(
                 () if not all(categories) else tuple({c for ids in categories for c in ids})
             ),
             need=frozenset().union(*(plan["need"] for plan in plans.values())),
+            source_ids=() if None in wanted else tuple(frozenset().union(*wanted)),
+            cipher=cipher,
+            labels=labels,
         )
     except TooManyRows:
         detail = "Too many transactions in the period. Pick a shorter date range or add filters."
         return results | {key: _error("too_many_rows", detail) for key in plans}
 
+    needs_balance = any(plan["scope"].balance for plan in plans.values())
+    openings = opening_balances(user, cipher, first_day, labels) if needs_balance else {}
+    linked = any(row["link_source"] for row in rows)
+
     for key, plan in plans.items():
         start, end = plan["period"]
         try:
-            own = [] if plan["blank"] else _selected(_matching(rows, plan["filters"]), plan["picked"])
-            all_types = (
-                _selected(_matching(rows, {**plan["filters"], "type": None}), plan["picked"])
-                if plan["needs_all_types"] and not plan["blank"]
-                else None
-            )
+            filters, scope, picked = plan["filters"], plan["scope"], plan["picked"]
+            matched = [] if plan["blank"] else _selected(_matching(rows, filters), picked)
+            own, view = _panel_rows(matched, scope, picked, openings, labels, linked)
+            all_types = None
+            if plan["needs_all_types"] and not plan["blank"]:
+                all_types = _selected(_matching(rows, {**filters, "type": None}), picked)
+                all_types = list(filter(_visible(scope.shown), all_types))
             results[key] = {
-                **engine.run(plan["spec"], own, plan["period"], all_types),
+                **engine.run(plan["spec"], own, plan["period"], all_types, view),
                 # The dates the panel covers, so a click can open /transactions for them.
                 "period": {"from": start.isoformat(), "to": end.isoformat()},
             }
@@ -347,7 +541,10 @@ def list_rows(
 
     measure = spec["y"]["measure"]
     filters = _effective_filters(spec["filters"], dashboard)
-    rows = []
+    cipher = UserCipher(user)
+    labels = source_labels(user, cipher)
+    scope = _scope_of(spec, filters, labels)
+    rows, view = [], None
     if period is not None:
         rows = load_rows(
             user,
@@ -355,18 +552,26 @@ def list_rows(
             types=(filters["type"],) if filters["type"] else (),
             category_ids=tuple(filters["categories"]),
             need=frozenset({"name", "id"} | _fields_needed(spec, filters)),
+            source_ids=tuple(scope.wanted or ()),
+            cipher=cipher,
+            labels=labels,
         )
+        linked = any(row["link_source"] for row in rows)
         rows = _selected(_selected(_matching(rows, filters), selection), mark)
+        openings = opening_balances(user, cipher, period[0], labels) if scope.balance else {}
+        rows, view = _panel_rows(rows, scope, {**selection, **mark}, openings, labels, linked)
         if measure != FORMULA:  # a formula reads every transaction, whatever its type
             rows = [row for row in rows if engine.measure_value(row, measure) is not None]
     rows.sort(key=lambda row: (row["date"], row["amount"], row["id"]), reverse=True)
 
+    days = Span(partial(days_in, *shown, *_day_keys(selection, mark)), shown[1])
+    with parse_once(), panel_view(view):
+        value = engine.value_of(rows, spec["y"], days)
+
     page = rows[offset : offset + min(limit, ROWS_PAGE_MAX)]
     return {
         "total": len(rows),
-        "value": engine.value_of(
-            rows, spec["y"], partial(days_in, *shown, *_day_keys(selection, mark))
-        ),
+        "value": value,
         "totals": {
             kind: _money(sum((row["amount"] for row in rows if row["txn_type"] == kind), Decimal(0)))
             for kind in ("debit", "credit")
@@ -377,6 +582,7 @@ def list_rows(
                 "date": row["date"].isoformat(),
                 "name": row["name"],
                 "category": row["category_name"],
+                "data_source": row["source_name"],
                 "txn_type": row["txn_type"],
                 "amount": _money(row["amount"]),
             }
@@ -424,6 +630,57 @@ def decrypt_parameters(cipher, blob) -> dict:
 def decrypt_config(cipher, blob) -> dict:
     """Decrypt a saved config and validate it again, so an old shape can't reach the engine."""
     return validate_spec(json.loads(cipher.decrypt(bytes(blob), PANEL_CONFIG)))
+
+
+def _stored_configs(user, cipher) -> list[tuple[Panel, dict]]:
+    """Every panel of the user with its config as saved, not validated: a panel whose settings
+    no longer work must not stop a rename."""
+    return [
+        (panel, json.loads(cipher.decrypt(bytes(panel.config_enc), PANEL_CONFIG)))
+        for panel in Panel.objects.filter(dashboard__user=user)
+    ]
+
+
+def _formula_text(config: dict) -> str | None:
+    y = config.get("y")
+    formula = y.get("formula") if isinstance(y, dict) else None
+    return formula.get("expression") if isinstance(formula, dict) else None
+
+
+def rename_source_in_panels(user, cipher, old: str, new: str) -> int:
+    """Keeps formulas working after a data source is renamed. Returns how many panels changed."""
+    changed = []
+    for panel, config in _stored_configs(user, cipher):
+        text = _formula_text(config)
+        if not text:
+            continue
+        try:
+            renamed = rename_source(text, old, new)
+        except FormulaError:
+            continue  # it was already broken: the panel says so when it runs
+        if renamed != text:
+            config["y"]["formula"]["expression"] = renamed
+            clean = json.dumps(config, separators=(",", ":")).encode()
+            panel.config_enc = cipher.encrypt(clean, PANEL_CONFIG)
+            changed.append(panel)
+    Panel.objects.bulk_update(changed, ["config_enc"])
+    return len(changed)
+
+
+def panels_using_source(user, cipher, source_id: str, name: str) -> int:
+    """How many panels stop working if this data source goes."""
+    key, count = source_key(name), 0
+    for _, config in _stored_configs(user, cipher):
+        filters = config.get("filters")
+        used = isinstance(filters, dict) and source_id in (filters.get("data_sources") or ())
+        text = _formula_text(config)
+        if not used and text:
+            try:
+                used = key in compile_expression(text).sources
+            except FormulaError:
+                pass
+        count += bool(used)
+    return count
 
 
 def create_from_template(user, cipher, name: str, template: str, position: int) -> Dashboard:

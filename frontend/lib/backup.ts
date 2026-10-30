@@ -14,6 +14,8 @@ export const MAX_BACKUP_BYTES = 4 * 1024 * 1024; // the server's BACKUP_MAX_BYTE
 export { RagProblem as BackupProblem };
 
 export type RestoreCounts = {
+  data_sources?: { added: number };
+  links?: { added: number };
   transactions: { added: number; skipped: number };
   categories: { added: number };
   keywords: { added: number };

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import catalogueJson from "./__fixtures__/catalogue.json";
 import { drillDownUrl, defaultConfig, normalizeConfig } from "./insights";
 import { drillInto, isEmptySelection, pickedLabel, selectionFor } from "./drill";
-import type { Catalogue, Category, PanelConfig, QueryResult } from "./types";
+import type { Catalogue, Category, DataSource, PanelConfig, QueryResult } from "./types";
 
 const catalogue = catalogueJson as unknown as Catalogue;
 
@@ -22,6 +22,12 @@ function result(period = { from: "2026-01-01", to: "2026-12-31" }): QueryResult 
 describe("selectionFor", () => {
   it("turns a clicked category into a category filter", () => {
     expect(selectionFor(panel("bar"), { x: "Food" })).toEqual({ categories: ["Food"] });
+  });
+
+  it("turns a clicked data source into a data source filter", () => {
+    expect(selectionFor(panel("bar", { x: { field: "data_source" } }), { x: "OakBank" })).toEqual({
+      data_sources: ["OakBank"],
+    });
   });
 
   it("turns a clicked merchant, type, weekday and month into their filters", () => {
@@ -146,6 +152,25 @@ describe("drillInto", () => {
     const before = JSON.stringify(original);
     drillInto(original, result(), { x: "2026-03-01" }, CATEGORIES, catalogue);
     expect(JSON.stringify(original)).toBe(before);
+  });
+});
+
+describe("the link to the Transactions page for data sources", () => {
+  const SOURCES: DataSource[] = [
+    { id: "s-oak", name: "OakBank", color: "#2A78D6", position: 0, transactions: 1, first_date: null, last_date: null, balance: null },
+  ];
+
+  it("carries a clicked source", () => {
+    const config = panel("bar", { x: { field: "data_source" } });
+    const url = drillDownUrl(config, result(), config.filters, { x: "OakBank" }, CATEGORIES, SOURCES);
+    expect(new URL(url!, "http://x").searchParams.get("data_source")).toBe("s-oak");
+  });
+
+  it("keeps the sources the panel already shows", () => {
+    const config = panel("bar");
+    const filters = { ...config.filters, data_sources: ["s-oak", "s-river"] };
+    const url = drillDownUrl(config, result(), filters, { x: "Food" }, CATEGORIES, SOURCES);
+    expect(new URL(url!, "http://x").searchParams.get("data_source")).toBe("s-oak,s-river");
   });
 });
 
