@@ -8,7 +8,6 @@ import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { LogoMark, Wordmark } from "@/components/shell/Logo";
 import { NAV_GROUPS, SETTINGS_ITEM, activeHref, type NavItem } from "@/components/shell/nav";
-import { useSession } from "@/components/shell/Session";
 
 type Props = {
   collapsed: boolean; // only the desktop rail collapses; the mobile drawer is always full
@@ -21,7 +20,6 @@ type Props = {
 export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
   const pathname = usePathname();
   const router = useRouter();
-  const { email } = useSession();
   const current = activeHref(pathname);
 
   const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
@@ -139,23 +137,12 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
       </nav>
 
       <div className="shrink-0 border-t border-hairline p-3">
-        <div className="flex h-10 items-center gap-3 px-1.5" title={collapsed ? (email ?? undefined) : undefined}>
-          <span
-            aria-hidden
-            className="grid size-8 shrink-0 place-items-center rounded-full border-[1.5px] border-line bg-wash text-xs font-semibold uppercase"
-          >
-            {email?.[0] ?? "·"}
-          </span>
-          <Label collapsed={collapsed}>
-            <span className="block max-w-36 truncate text-[13px] text-ink-2">{email ?? "Signed in"}</span>
-          </Label>
-        </div>
         <button
           type="button"
           onClick={logOut}
           title={collapsed ? "Log out" : undefined}
           aria-label="Log out"
-          className="mt-1 flex h-10 w-full items-center gap-3 rounded-md px-3.5 text-sm font-medium text-ink-2 transition-colors duration-200 hover:bg-wash hover:text-ink"
+          className="flex h-10 w-full items-center gap-3 rounded-md px-3.5 text-sm font-medium text-ink-2 transition-colors duration-200 hover:bg-wash hover:text-ink"
         >
           <LogOut size={20} strokeWidth={1.75} className="shrink-0" aria-hidden />
           <Label collapsed={collapsed}>Log out</Label>

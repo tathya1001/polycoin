@@ -64,7 +64,7 @@ function dragBadge(count: number): HTMLElement {
   el.style.cssText =
     "position:fixed;top:-100px;left:-100px;padding:6px 12px;border:1.5px solid var(--color-fill);" +
     "border-radius:999px;background:var(--color-fill);color:var(--color-on-fill);" +
-    "font:600 13px system-ui,sans-serif;box-shadow:3px 3px 0 var(--color-shadow);";
+    "font:600 13px system-ui,sans-serif;box-shadow:var(--shadow-lifted);";
   document.body.appendChild(el);
   return el;
 }
@@ -393,7 +393,7 @@ function Transactions() {
 
       {/* What to do with the selection, for keyboards and touch screens (no dragging needed). */}
       {someSelected && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-fill bg-fill px-4 py-2 text-sm text-on-fill shadow-hard-sm">
+        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-fill bg-fill px-4 py-2 text-sm text-on-fill shadow-raised">
           <span className="font-semibold">{selected.size} selected</span>
           <label className="flex items-center gap-2">
             Move to

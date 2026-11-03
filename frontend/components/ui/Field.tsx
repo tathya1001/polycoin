@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 
 const CONTROL =
   "w-full border-[1.5px] border-line bg-surface text-ink placeholder:text-muted " +
-  "transition-[box-shadow,border-color] duration-150 focus-visible:border-edge focus-visible:shadow-hard-sm " +
+  "transition-[box-shadow,border-color] duration-150 focus-visible:border-edge focus-visible:shadow-focus " +
   "aria-[invalid=true]:border-neg disabled:cursor-not-allowed disabled:bg-wash disabled:text-muted";
 
 type Dense = { dense?: boolean };

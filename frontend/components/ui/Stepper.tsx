@@ -14,7 +14,7 @@ export function Stepper({ steps, current }: { steps: string[]; current: number }
               className={cn(
                 "grid size-7 place-items-center rounded-full border-[1.5px] border-edge text-xs font-semibold transition-colors",
                 done && "bg-fill text-on-fill",
-                active && "bg-surface shadow-hard-sm",
+                active && "bg-surface shadow-raised",
                 !done && !active && "border-ink/30 text-muted",
               )}
             >

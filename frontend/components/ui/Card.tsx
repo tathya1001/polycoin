@@ -13,7 +13,7 @@ export function Card({
       className={cn(
         "rounded-md border-[1.5px] border-line bg-surface shadow-card",
         padded && "p-5",
-        interactive && "transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-hard",
+        interactive && "transition-[transform,box-shadow] duration-150 hover:-translate-y-px hover:shadow-lifted",
         className,
       )}
       {...rest}

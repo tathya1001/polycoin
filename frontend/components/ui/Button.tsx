@@ -10,14 +10,14 @@ const BASE =
   "border-[1.5px] transition-[transform,box-shadow,background-color,opacity] duration-150 ease-out " +
   "disabled:pointer-events-none disabled:opacity-40";
 
-// The "raised" feel: hover lifts 1px, press drops 2px and loses the shadow (pushed in).
+// The "raised" feel: hover lifts 1px on a deeper soft shadow, press sinks flush and loses it.
 const RAISED =
-  "hover:-translate-y-px active:translate-x-0.5 active:translate-y-0.5 active:shadow-none";
+  "shadow-raised hover:-translate-y-px hover:shadow-lifted active:translate-y-0 active:shadow-none";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: `${RAISED} border-fill bg-fill text-on-fill shadow-hard-sm hover:shadow-hard`,
-  secondary: `${RAISED} border-edge bg-surface text-ink shadow-hard-sm hover:shadow-hard`,
-  danger: `${RAISED} border-neg bg-surface text-neg shadow-[2px_2px_0_0_var(--color-neg)] hover:shadow-[4px_4px_0_0_var(--color-neg)]`,
+  primary: `${RAISED} border-fill bg-fill text-on-fill`,
+  secondary: `${RAISED} border-edge bg-surface text-ink`,
+  danger: `${RAISED} border-neg bg-surface text-neg`,
   ghost: "border-transparent bg-transparent text-ink hover:bg-wash active:bg-hairline",
 };
 

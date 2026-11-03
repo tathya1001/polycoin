@@ -70,7 +70,7 @@ export function BucketBar({ categories, activeId, dragCount, onFilter, onDropInt
           aria-pressed={activeId === ""}
           className={cn(
             "flex h-10 items-center gap-2 rounded-md border-[1.5px] border-edge px-3 text-sm font-medium transition-[transform,box-shadow,background-color] duration-150",
-            activeId === "" ? "bg-fill text-on-fill shadow-hard-sm" : "bg-surface hover:-translate-y-px hover:shadow-hard-sm",
+            activeId === "" ? "bg-fill text-on-fill shadow-raised" : "bg-surface hover:-translate-y-px hover:shadow-lifted",
             dragging && "opacity-40",
           )}
         >
@@ -95,12 +95,12 @@ export function BucketBar({ categories, activeId, dragCount, onFilter, onDropInt
               style={hot ? { backgroundColor: category.color, color: readableOn(category.color) } : undefined}
               className={cn(
                 "flex h-10 items-center gap-2 rounded-md border-[1.5px] px-3 text-sm font-medium transition-[transform,box-shadow,background-color] duration-150",
-                active ? "border-fill bg-fill text-on-fill shadow-hard-sm" : "border-edge bg-surface",
-                !dragging && !active && "hover:-translate-y-px hover:shadow-hard-sm",
+                active ? "border-fill bg-fill text-on-fill shadow-raised" : "border-edge bg-surface",
+                !dragging && !active && "hover:-translate-y-px hover:shadow-lifted",
                 // While dragging, every bucket shows it can take the rows; the one under the
                 // pointer fills with its own colour and lifts.
                 dragging && !hot && "border-dashed",
-                hot && "-translate-y-0.5 scale-105 border-solid shadow-hard",
+                hot && "-translate-y-0.5 scale-105 border-solid shadow-lifted",
               )}
             >
               <span

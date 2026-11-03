@@ -159,10 +159,10 @@ export default function Settings() {
 
 // A thumbnail of each mode, drawn in that mode's own colours whatever mode is on screen (so it
 // can't use the page's tokens). Values from app/globals.css.
-const PREVIEW: Record<ResolvedTheme, { canvas: string; surface: string; ink: string; fill: string; line: string; muted: string; shadow: string }> = {
-  classic: { canvas: "#f7f6f2", surface: "#f7f6f2", ink: "#111111", fill: "#111111", line: "#111111", muted: "#e4e2dc", shadow: "#111111" },
-  light: { canvas: "#fbfbf9", surface: "#fbfbf9", ink: "#2b2b2e", fill: "#2b2b2e", line: "#e4e3df", muted: "#eeede9", shadow: "#d2d1cc" },
-  dark: { canvas: "#0f0f10", surface: "#0f0f10", ink: "#d6d6d8", fill: "#2e2e33", line: "#2c2c2f", muted: "#222224", shadow: "#000000" },
+const PREVIEW: Record<ResolvedTheme, { canvas: string; surface: string; ink: string; fill: string; line: string; muted: string }> = {
+  classic: { canvas: "#f7f6f2", surface: "#f7f6f2", ink: "#111111", fill: "#111111", line: "#111111", muted: "#e4e2dc" },
+  light: { canvas: "#fbfbf9", surface: "#fbfbf9", ink: "#2b2b2e", fill: "#2b2b2e", line: "#e4e3df", muted: "#eeede9" },
+  dark: { canvas: "#0f0f10", surface: "#0f0f10", ink: "#d6d6d8", fill: "#2e2e33", line: "#2c2c2f", muted: "#222224" },
 };
 
 function MiniPage({ theme }: { theme: ResolvedTheme }) {
@@ -179,10 +179,7 @@ function MiniPage({ theme }: { theme: ResolvedTheme }) {
         ))}
         <span className="ml-auto h-1.5 w-8 self-center rounded-full" style={{ background: c.muted }} />
       </span>
-      <span
-        className="h-3 w-12 rounded-[4px]"
-        style={{ background: c.fill, boxShadow: `2px 2px 0 ${c.shadow}` }}
-      />
+      <span className="h-3 w-12 rounded-[4px]" style={{ background: c.fill }} />
     </span>
   );
 }
@@ -212,7 +209,7 @@ function ChoiceCard({ selected, onSelect, children }: { selected: boolean; onSel
       onClick={onSelect}
       className={cn(
         "relative rounded-md border-[1.5px] border-edge bg-surface p-5 text-left transition-[transform,box-shadow] duration-150",
-        selected ? "shadow-hard" : "shadow-hard-sm hover:-translate-y-px hover:shadow-hard",
+        selected ? "shadow-lifted" : "shadow-raised hover:-translate-y-px hover:shadow-lifted",
       )}
     >
       {selected && (

@@ -6,7 +6,7 @@
 import { darkStep } from "@/lib/colors";
 
 export const THEME_OPTIONS = [
-  { id: "classic", name: "Classic", blurb: "Bold black outlines and hard shadows. The original look." },
+  { id: "classic", name: "Classic", blurb: "Bold black outlines on a warm paper tone. The original look." },
   { id: "light", name: "Light", blurb: "A clean white tone, softer than pure white." },
   { id: "dark", name: "Dark", blurb: "Neutral black with soft text, easy on the eyes at night." },
   { id: "system", name: "Match device", blurb: "Light or Dark, following your device's setting." },
