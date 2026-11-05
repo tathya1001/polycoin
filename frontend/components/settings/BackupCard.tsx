@@ -4,6 +4,7 @@ import { useRef, useState, type ChangeEvent } from "react";
 import { Download, Upload } from "lucide-react";
 import {
   BACKUP_EXTENSION,
+  LEGACY_BACKUP_EXTENSION,
   BackupProblem,
   fetchBackup,
   restoreBackup,
@@ -70,7 +71,7 @@ export function BackupCard() {
           <p className="font-medium">Data Backup File</p>
           <p className="text-sm text-ink-2">
             Your transactions, notes, categories, dashboards and settings in one encrypted file. Only your
-            Polycoin account can open it, so keep it somewhere safe. Restoring adds only what is missing, even
+            MoneyAngle account can open it, so keep it somewhere safe. Restoring adds only what is missing, even
             after you delete your data.
           </p>
         </div>
@@ -89,7 +90,7 @@ export function BackupCard() {
           <input
             ref={picker}
             type="file"
-            accept={BACKUP_EXTENSION}
+            accept={`${BACKUP_EXTENSION},${LEGACY_BACKUP_EXTENSION}`}
             className="hidden"
             aria-label="Backup file to restore"
             onChange={restore}

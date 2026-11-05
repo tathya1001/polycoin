@@ -23,8 +23,8 @@ import { chatStream, embed, listChatModels, listEmbeddingModels, OllamaError, sa
 import { recall, remember } from "@/lib/storage";
 import type { AgentDashboard, AgentOutcome, Category, ChatModel, EmbeddingModel, PanelConfig } from "@/lib/types";
 
-const EMBED_MODEL_KEY = "polycoin.ai.model"; // shared with Ask and Categorize
-const CHAT_MODEL_KEY = "polycoin.ai.chatModel"; // shared with Ask
+const EMBED_MODEL_KEY = "moneyangle.ai.model"; // shared with Ask and Categorize
+const CHAT_MODEL_KEY = "moneyangle.ai.chatModel"; // shared with Ask
 const NO_EMBEDDER = "";
 
 type Preview = Extract<AgentOutcome, { kind: "preview" }>;

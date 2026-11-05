@@ -31,18 +31,18 @@ jobs:
       db:
         image: postgres:16
         env:
-          POSTGRES_DB: polycoin
-          POSTGRES_USER: polycoin
-          POSTGRES_PASSWORD: polycoin
+          POSTGRES_DB: moneyangle
+          POSTGRES_USER: moneyangle
+          POSTGRES_PASSWORD: moneyangle
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U polycoin"
+          --health-cmd "pg_isready -U moneyangle"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
     env:
       # CI-only throwaway values. They're public in this file and must never be used anywhere else.
-      DATABASE_URL: postgres://polycoin:polycoin@localhost:5432/polycoin
+      DATABASE_URL: postgres://moneyangle:moneyangle@localhost:5432/moneyangle
       DJANGO_SECRET_KEY: ci-only-QpZ7v2Lk9WmX4tR8nB3cY6hJ1sD5fG0aE2uI7oP4lK9jH3gF6dS
       JWT_SIGNING_KEY: ci-only-jwt-Ns8Vb2Xm5Qw9Er3Ty6Ui1Op4As7Df0Gh2Jk5Lz8Xc1Vb4Nm7
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1

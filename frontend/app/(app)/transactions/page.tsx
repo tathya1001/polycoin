@@ -30,7 +30,7 @@ const BULK_URL = "/api/transactions/bulk-category/";
 const BULK_DELETE_URL = "/api/transactions/bulk-delete/";
 const BULK_SOURCE_URL = "/api/transactions/bulk-source/";
 const PAGE_SIZE = 50; // matches TransactionPagination on the backend
-const WIDTHS_KEY = "polycoin.transactions.columns";
+const WIDTHS_KEY = "moneyangle.transactions.columns";
 
 // The checkbox and action columns have no `min`: their contents never change size. The other
 // defaults add up to about what a laptop shows beside the sidebar.

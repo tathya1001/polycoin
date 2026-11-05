@@ -3,12 +3,12 @@
 Run inside the PRODUCTION image, started with Render's limits (PowerShell; throwaway secrets, no
 database needed):
 
-    docker build -t polycoin-api:check backend
+    docker build -t moneyangle-api:check backend
     docker run -d --name rag-memory --memory 512m --memory-swap 512m --cpus 0.1 `
       -e DJANGO_PRODUCTION=TRUE -e DJANGO_SECRET_KEY=check -e JWT_SIGNING_KEY=check-jwt `
       -e DJANGO_ALLOWED_HOSTS=localhost -e CSRF_TRUSTED_ORIGINS=http://localhost `
       -e FIELD_ENCRYPTION_KEYS=v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= `
-      -e FIELD_ENCRYPTION_ACTIVE_KEY=v1 polycoin-api:check
+      -e FIELD_ENCRYPTION_ACTIVE_KEY=v1 moneyangle-api:check
     docker exec rag-memory python -m ai.rag_memory gunicorn   # the real master and workers
     docker exec rag-memory python -m ai.rag_memory worker     # boot, then a 20,000-row search
     docker rm -f rag-memory

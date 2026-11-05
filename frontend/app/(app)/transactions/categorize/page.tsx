@@ -28,7 +28,7 @@ import { useToast } from "@/components/ui/Toast";
 const PREPARE_URL = "/api/ai/categorize/prepare/";
 const APPLY_URL = "/api/ai/categorize/apply/";
 
-const MODEL_KEY = "polycoin.ai.model";
+const MODEL_KEY = "moneyangle.ai.model";
 
 // Why a row isn't pre-selected; null for rows the AI is confident about.
 function reasonFor(p: Proposal): string | null {

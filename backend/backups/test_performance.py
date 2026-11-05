@@ -8,8 +8,8 @@ cap? Seeding takes a while, so this is skipped unless asked for.
 
 2. The gate numbers, under Render's limits, in a fresh container (PowerShell):
 
-       docker run --rm --cpus 0.1 --memory 512m --memory-swap 512m --network polycoin_default `
-         --env-file .env -e BACKUP_PERF=1 -v "${PWD}\\backend:/app" polycoin-backend `
+       docker run --rm --cpus 0.1 --memory 512m --memory-swap 512m --network moneyangle_default `
+         --env-file .env -e BACKUP_PERF=1 -v "${PWD}\\backend:/app" moneyangle-backend `
          pytest backups/test_performance.py -s -q -p no:cacheprovider
 
 The gates are asserted only in run 2.

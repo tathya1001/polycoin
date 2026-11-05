@@ -9,8 +9,8 @@ Gates: the batch takes under 2 s on a normal CPU and under 12 s at Render's 0.1 
 more than 1.5x slower (2x for a calculated field that tests each transaction). Listing the transactions behind one mark must fit the same budget. Run it at Render's
 limits with (PowerShell):
 
-    docker run --rm --cpus 0.1 --memory 512m --memory-swap 512m --network polycoin_default `
-      --env-file .env -e INSIGHTS_PERF=1 -v "${PWD}/backend:/app" polycoin-backend `
+    docker run --rm --cpus 0.1 --memory 512m --memory-swap 512m --network moneyangle_default `
+      --env-file .env -e INSIGHTS_PERF=1 -v "${PWD}/backend:/app" moneyangle-backend `
       pytest insights/test_performance.py -s -q -p no:cacheprovider
 
 The measured times are printed; they decide whether INSIGHTS_MAX_ROWS needs to change.

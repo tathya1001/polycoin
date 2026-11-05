@@ -117,7 +117,7 @@ def old_file(user) -> bytes:
         del row["data_source"]
     del data["data_sources"], data["links"]
     data["format"] = 1
-    return b"polycoin-backup/1\n" + seal(user, data).split(b"\n", 1)[1]
+    return b"moneyangle-backup/1\n" + seal(user, data).split(b"\n", 1)[1]
 
 
 def test_a_file_from_before_data_sources_goes_into_the_first_source(alice):

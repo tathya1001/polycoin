@@ -53,7 +53,7 @@ export default function Settings() {
 
   return (
     <>
-      <PageHeader title="Settings" subtitle="Make Polycoin look the way you like. Saved to your account, so it follows you." />
+      <PageHeader title="Settings" subtitle="Make MoneyAngle look the way you like. Saved to your account, so it follows you." />
 
       <section className="mb-8">
         <h2 className="mb-3 text-lg font-semibold tracking-tight">Appearance</h2>

@@ -33,7 +33,7 @@ export default function Home() {
           Your bank statement, <span className="rounded-md bg-fill px-3 text-on-fill">finally</span> readable.
         </h1>
         <p className="mt-6 max-w-xl text-lg text-ink-2">
-          Import a statement, let Polycoin sort every transaction, and build colourful dashboards that show where
+          Import a statement, let MoneyAngle sort every transaction, and build colourful dashboards that show where
           the money went. Encrypted, and yours alone.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">

@@ -14,7 +14,7 @@ import { readableOn } from "@/lib/colors";
 import type { Category } from "@/lib/types";
 
 // The drag payload's type: other drags (text, files, links) are ignored by the buckets.
-export const TXN_DRAG_TYPE = "application/x-polycoin-transactions";
+export const TXN_DRAG_TYPE = "application/x-moneyangle-transactions";
 
 type Props = {
   categories: Category[];

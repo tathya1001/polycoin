@@ -12,5 +12,5 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
 }
 
 export function Wordmark({ className }: { className?: string }) {
-  return <span className={cn("text-lg font-semibold tracking-tight", className)}>Polycoin</span>;
+  return <span className={cn("text-lg font-semibold tracking-tight", className)}>MoneyAngle</span>;
 }

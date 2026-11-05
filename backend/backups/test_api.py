@@ -38,7 +38,7 @@ def bob():
     return make_user("bob@example.com")
 
 
-def upload(api, content: bytes, name="backup.polycoin"):
+def upload(api, content: bytes, name="backup.moneyangle"):
     return api.post(RESTORE, {"file": SimpleUploadedFile(name, content)}, format="multipart")
 
 
@@ -53,10 +53,10 @@ def test_download_is_a_private_file_attachment(alice):
     assert response["Content-Type"] == "application/octet-stream"
     today = timezone.localdate()
     assert response["Content-Disposition"] == (
-        f'attachment; filename="backup-{today:%Y-%m-%d}.polycoin"'
+        f'attachment; filename="backup-{today:%Y-%m-%d}.moneyangle"'
     )
     assert "no-store" in response["Cache-Control"]
-    assert response.content.startswith(b"polycoin-backup/2\n")
+    assert response.content.startswith(b"moneyangle-backup/2\n")
     assert b"Tastybites" not in response.content
 
 

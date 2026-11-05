@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Polycoin design tokens. Three colour modes, set by Settings > Appearance as data-theme on <html>:
+/* MoneyAngle design tokens. Three colour modes, set by Settings > Appearance as data-theme on <html>:
    - Classic (no attribute): black-and-white chrome with bold outlines, colourful charts.
    - Light / Dark: soft and modern. Quiet structural lines, calm contrast (body text about 13:1,
      never pure black on pure white).

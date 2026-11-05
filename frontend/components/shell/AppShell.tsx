@@ -10,7 +10,7 @@ import { LogoMark, Wordmark } from "@/components/shell/Logo";
 import { Sidebar } from "@/components/shell/Sidebar";
 
 // Whether the desktop sidebar is folded to an icon rail: a per-device convenience.
-const collapsedStore = createLocalStore("polycoin.sidebar.collapsed", (raw) => raw === "1", (v) => (v ? "1" : "0"), false);
+const collapsedStore = createLocalStore("moneyangle.sidebar.collapsed", (raw) => raw === "1", (v) => (v ? "1" : "0"), false);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();

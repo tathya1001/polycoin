@@ -29,7 +29,7 @@ const deviceIsDarkOnServer = () => false;
 
 // The cached copy of the preferences. app/layout.tsx reads the same key before first paint.
 const preferencesStore = createLocalStore<Preferences>(
-  "polycoin.prefs",
+  "moneyangle.prefs",
   (raw) => {
     try {
       return raw ? parsePreferences(JSON.parse(raw)) : DEFAULT_PREFS;

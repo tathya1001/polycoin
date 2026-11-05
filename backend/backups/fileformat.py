@@ -1,6 +1,6 @@
 """The bytes of a Data Backup File.
 
-    polycoin-backup/1\\n<encrypted blob>
+    moneyangle-backup/1\\n<encrypted blob>
 
 The blob is the user's data as gzip-compressed JSON, encrypted with vault.UserCipher: AES-GCM
 with the user's own data key, and associated data that names the user and this context. So
@@ -23,7 +23,8 @@ from vault.services import UserCipher
 
 from .errors import BackupError
 
-MAGIC = b"polycoin-backup/"
+MAGIC = b"moneyangle-backup/"
+LEGACY_MAGIC = b"polycoin-backup/"  # files made before the rename to MoneyAngle; still restored
 FORMAT = 2  # 2 added data sources and transfer links
 OLDEST_FORMAT = 1  # the oldest file a restore still reads
 CONTEXT = "backup.file"
@@ -68,17 +69,19 @@ def open_file(user, content: bytes) -> dict:
     if len(content) > settings.BACKUP_MAX_BYTES:
         raise too_large()
     header, newline, blob = content.partition(b"\n")
-    if not newline or len(header) > MAX_HEADER or not header.startswith(MAGIC):
-        raise BackupError("not_a_backup", "This is not a Polycoin backup file.")
-    version = header[len(MAGIC) :]
+    magic = next((m for m in (MAGIC, LEGACY_MAGIC) if header.startswith(m)), None)
+    if not newline or len(header) > MAX_HEADER or magic is None:
+        raise BackupError("not_a_backup", "This is not a MoneyAngle backup file.")
+    version = header[len(magic) :]
     if not version.isdigit():
-        raise BackupError("not_a_backup", "This is not a Polycoin backup file.")
+        raise BackupError("not_a_backup", "This is not a MoneyAngle backup file.")
     if int(version) > FORMAT:
         raise BackupError(
-            "newer_format", "This backup was made by a newer version of Polycoin. Reload the page."
+            "newer_format",
+            "This backup was made by a newer version of MoneyAngle. Reload the page.",
         )
     if int(version) < OLDEST_FORMAT:
-        raise BackupError("not_a_backup", "This is not a Polycoin backup file.")
+        raise BackupError("not_a_backup", "This is not a MoneyAngle backup file.")
     try:
         packed = UserCipher(user).decrypt(blob, CONTEXT)
     except (InvalidTag, ValueError):

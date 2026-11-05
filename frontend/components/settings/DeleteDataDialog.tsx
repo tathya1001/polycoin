@@ -44,7 +44,7 @@ export function DeleteDataDialog({ open, onClose }: { open: boolean; onClose: ()
       });
       if (res.ok) {
         const erased: Erased = await res.json();
-        forgetAll("polycoin.dashboard."); // the open tab and filters point at dashboards that are gone
+        forgetAll("moneyangle.dashboard."); // the open tab and filters point at dashboards that are gone
         setPassword("");
         toast.success(
           `All your data was deleted: ${erased.transactions} transactions and ${erased.dashboards} dashboards.`,

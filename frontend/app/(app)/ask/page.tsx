@@ -33,8 +33,8 @@ import { Field, Input, Select } from "@/components/ui/Field";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/Toast";
 
-const EMBED_MODEL_KEY = "polycoin.ai.model"; // shared with Categorize: one embedding model for both
-const CHAT_MODEL_KEY = "polycoin.ai.chatModel";
+const EMBED_MODEL_KEY = "moneyangle.ai.model"; // shared with Categorize: one embedding model for both
+const CHAT_MODEL_KEY = "moneyangle.ai.chatModel";
 const MAX_QUESTION = 300; // the server's limit
 const PERIODS: DatePreset[] = ["all", "this_month", "last_month", "last_3_months", "last_12_months", "this_year"];
 const TYPES = { all: "Money in and out", debit: "Money out", credit: "Money in" } as const;

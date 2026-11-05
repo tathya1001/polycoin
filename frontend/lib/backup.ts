@@ -7,7 +7,8 @@ import { problemFrom, RagProblem } from "@/lib/rag";
 
 const BACKUP_URL = "/api/backup/";
 const RESTORE_URL = "/api/backup/restore/";
-export const BACKUP_EXTENSION = ".polycoin";
+export const BACKUP_EXTENSION = ".moneyangle";
+export const LEGACY_BACKUP_EXTENSION = ".polycoin"; // files made before the rename; still restorable
 export const MAX_BACKUP_BYTES = 4 * 1024 * 1024; // the server's BACKUP_MAX_BYTES
 
 // The server's {code, detail} refusals, as elsewhere.

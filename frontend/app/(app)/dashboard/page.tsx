@@ -85,8 +85,8 @@ import type {
   Selection,
 } from "@/lib/types";
 
-const ACTIVE_KEY = "polycoin.dashboard.active";
-const filtersKey = (id: string) => `polycoin.dashboard.filters.${id}`;
+const ACTIVE_KEY = "moneyangle.dashboard.active";
+const filtersKey = (id: string) => `moneyangle.dashboard.filters.${id}`;
 const LAYOUT_SAVE_DELAY_MS = 600;
 const PARAMETER_SAVE_DELAY_MS = 600;
 const MAX_DASHBOARDS = 20; // insights.models.MAX_DASHBOARDS_PER_USER

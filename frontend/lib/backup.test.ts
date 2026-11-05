@@ -13,14 +13,14 @@ const TODAY = new Date("2026-10-25T10:00:00Z");
 
 describe("fileNameFrom", () => {
   it("uses the name the server sent", () => {
-    const header = 'attachment; filename="backup-2026-10-24.polycoin"';
-    expect(fileNameFrom(header, TODAY)).toBe("backup-2026-10-24.polycoin");
+    const header = 'attachment; filename="backup-2026-10-24.moneyangle"';
+    expect(fileNameFrom(header, TODAY)).toBe("backup-2026-10-24.moneyangle");
   });
 
-  it.each([null, "attachment", 'attachment; filename="../../evil.sh"', 'attachment; filename="a b.polycoin"'])(
+  it.each([null, "attachment", 'attachment; filename="../../evil.sh"', 'attachment; filename="a b.moneyangle"'])(
     "falls back to a dated name for %s",
     (header) => {
-      expect(fileNameFrom(header, TODAY)).toBe("backup-2026-10-25.polycoin");
+      expect(fileNameFrom(header, TODAY)).toBe("backup-2026-10-25.moneyangle");
     },
   );
 });
@@ -72,17 +72,17 @@ describe("the server calls", () => {
     mockFetch(
       () =>
         new Response(new Uint8Array([1, 2, 3]), {
-          headers: { "Content-Disposition": 'attachment; filename="backup-2026-10-25.polycoin"' },
+          headers: { "Content-Disposition": 'attachment; filename="backup-2026-10-25.moneyangle"' },
         }),
     );
     const { name, blob } = await fetchBackup();
-    expect(name).toBe("backup-2026-10-25.polycoin");
+    expect(name).toBe("backup-2026-10-25.moneyangle");
     expect(blob.size).toBe(3);
   });
 
   it("uploads the file as multipart form data", async () => {
     const calls = mockFetch(() => new Response(JSON.stringify({ panels_skipped: 0 }), { status: 200 }));
-    await restoreBackup(new File([new Uint8Array([1])], "backup.polycoin"));
+    await restoreBackup(new File([new Uint8Array([1])], "backup.moneyangle"));
     expect(calls[0].url).toBe("/api/backup/restore/");
     expect(calls[0].init?.method).toBe("POST");
     expect((calls[0].init?.body as FormData).get("file")).toBeInstanceOf(File);
@@ -90,7 +90,7 @@ describe("the server calls", () => {
 
   it("refuses a file that is too big without uploading it", async () => {
     const calls = mockFetch(() => new Response("{}"));
-    const big = new File([new Uint8Array(MAX_BACKUP_BYTES + 1)], "big.polycoin");
+    const big = new File([new Uint8Array(MAX_BACKUP_BYTES + 1)], "big.moneyangle");
     await expect(restoreBackup(big)).rejects.toMatchObject({ code: "too_large" });
     expect(calls).toHaveLength(0);
   });
@@ -102,9 +102,9 @@ describe("the server calls", () => {
           status: 400,
         }),
     );
-    const failure = restoreBackup(new File([new Uint8Array([1])], "x.polycoin"));
+    const failure = restoreBackup(new File([new Uint8Array([1])], "x.moneyangle"));
     await expect(failure).rejects.toBeInstanceOf(BackupProblem);
-    await expect(restoreBackup(new File([new Uint8Array([1])], "x.polycoin"))).rejects.toMatchObject({
+    await expect(restoreBackup(new File([new Uint8Array([1])], "x.moneyangle"))).rejects.toMatchObject({
       code: "not_your_backup",
       message: "Not a backup of this account.",
     });

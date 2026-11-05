@@ -117,7 +117,7 @@ export default function EChart({ option, onPick }: Props) {
     // whichever the user picked in Settings) as a plain string.
     const fontFamily = getComputedStyle(document.body).fontFamily;
     const scale = CHART_TEXT_SCALE[font] ?? 1;
-    const themeName = `polycoin-${theme}-${fontFamily}-${scale}`;
+    const themeName = `moneyangle-${theme}-${fontFamily}-${scale}`;
     echarts.registerTheme(themeName, themeFor(fontFamily, scale, CHART_LOOKS[theme]));
 
     const instance = echarts.init(node, themeName, { renderer });

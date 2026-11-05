@@ -85,7 +85,7 @@ COPY_COLUMNS = (
 
 
 def file_name(today: date) -> str:
-    return f"backup-{today:%Y-%m-%d}.polycoin"
+    return f"backup-{today:%Y-%m-%d}.moneyangle"
 
 
 # --- making a backup -----------------------------------------------------------------

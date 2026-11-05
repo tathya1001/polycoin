@@ -31,7 +31,7 @@ import { useToast } from "@/components/ui/Toast";
 const PREVIEW_URL = "/api/transactions/import/preview/";
 const IMPORT_URL = "/api/transactions/import/";
 const SUGGESTIONS_URL = "/api/transactions/transfer-suggestions/";
-const SOURCE_KEY = "polycoin.import.source"; // the last source chosen, in this browser
+const SOURCE_KEY = "moneyangle.import.source"; // the last source chosen, in this browser
 const NEW_SOURCE = "new"; // the dropdown's "New data source…" option
 
 const ELSEWHERE_LABELS: Record<ElsewhereChoice, string> = {
@@ -357,7 +357,7 @@ export default function ImportStatement() {
                 placeholder="File password"
                 aria-label="File password"
                 // "off" is ignored for password fields; "new-password" stops the browser
-                // pre-filling the saved polycoin LOGIN password into this box.
+                // pre-filling the saved moneyangle LOGIN password into this box.
                 autoComplete="new-password"
                 name="statement-file-password"
                 value={password}

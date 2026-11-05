@@ -1,4 +1,4 @@
-# Polycoin
+# MoneyAngle
 
 A personal secure bank-statement analyser. Import a statement, and every transaction is stored encrypted per user. Uncategorised rows can be categorised by an AI model that runs on your own machine, so no bank data ever leaves it.
 

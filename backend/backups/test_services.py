@@ -438,7 +438,7 @@ def test_the_logs_have_counts_but_no_content(alice, caplog):
 
 
 def test_the_file_name_has_the_date():
-    assert file_name(date(2026, 10, 25)) == "backup-2026-10-25.polycoin"
+    assert file_name(date(2026, 10, 25)) == "backup-2026-10-25.moneyangle"
 
 
 # --- the bulk loader ---------------------------------------------------------------------------
