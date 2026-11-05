@@ -1,89 +1,375 @@
+"""Per-user encryption keys. Phase 12.1: the password is the key.
+
+Each user has one random data key (DEK). Every encrypted column of theirs is AES-256-GCM under it,
+and it never changes, so nothing is ever re-encrypted. What protects it is how it is stored
+(vault.models.UserDataKey): locked with a key derived from the user's password, and locked with
+their recovery key. Neither of those is stored, so the database, even together with every
+environment variable, can't open it.
+
+While a user is signed in, one more copy is locked with a random secret that only their browser
+holds (VaultSession + the "vault" cookie). Each request opens it into a per-request registry
+(`request_scope`), and UserCipher reads the key from there, for that request only.
+
+Why each piece is the way it is: dev-docs/phase-12.1-password-key-plan.md (decisions D1-D18).
+"""
+
 import base64
+import binascii
 import hashlib
 import hmac
 import os
+import uuid
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass
 
+from argon2.low_level import Type, hash_secret_raw
+from cryptography.exceptions import InvalidTag
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
+from django.utils import timezone
 
-from .models import UserDataKey
+from .models import UserDataKey, VaultSession
 
 BLOB_VERSION = 1
 NONCE_SIZE = 12  # 96 bits, the size GCM is designed for
+KEY_SIZE = 32  # AES-256
+SALT_SIZE = 16
+RECOVERY_KEY_BYTES = 20  # 160 bits, written as 32 base32 characters
+SESSION_SECRET_BYTES = 32
 
 
-def _load_keks() -> dict[str, bytes]:
-    """Parse FIELD_ENCRYPTION_KEYS ("v1:b64,v2:b64") into {"v1": 32 bytes, ...}."""
-    keks = {}
-    for item in settings.FIELD_ENCRYPTION_KEYS.split(","):
-        version, _, b64 = item.strip().partition(":")
-        key = base64.b64decode(b64)
-        if not version or len(key) != 32:
-            raise ValueError("Each KEK must be 'version:base64' and decode to 32 bytes.")
-        keks[version] = key
-    return keks
+class VaultLocked(Exception):
+    """The user's data key is not unlocked in this request: there is no signed-in session."""
 
 
-def check_keys() -> None:
-    """Refuse to start with unusable KEK settings. The keys are otherwise only parsed at the
-    first signup, which turned a typo into a 500 for every new user. The messages never
-    contain key material."""
-    try:
-        keks = _load_keks()
-    except ValueError:  # includes binascii.Error, i.e. text that isn't base64
-        raise ImproperlyConfigured(
-            "FIELD_ENCRYPTION_KEYS must be comma-separated 'version:base64' items, each "
-            "decoding to 32 bytes, e.g. v1:<44 base64 characters>."
-        ) from None
-    if settings.FIELD_ENCRYPTION_ACTIVE_KEY not in keks:
-        raise ImproperlyConfigured(
-            "FIELD_ENCRYPTION_ACTIVE_KEY must name one of the versions in FIELD_ENCRYPTION_KEYS."
-        )
+class WrongSecret(Exception):
+    """The password or recovery key does not open this user's data key."""
 
 
-def _wrap_aad(user) -> bytes:
-    # Binds a wrapped DEK to its owner: it can't be copied onto another user's row.
-    return f"dek:{user.id}".encode()
+class KeyUnavailable(Exception):
+    """A key from before Phase 12.1 needs the master key, which is not set or doesn't open it."""
 
 
-def _wrap_dek(user, dek: bytes, version: str) -> bytes:
-    kek = _load_keks()[version]
+# --- locks ---------------------------------------------------------------------------------------
+# A lock is AES-256-GCM: nonce(12) | ciphertext + tag. Its associated data names the user and the
+# kind of lock, so a lock can't be copied onto another user's row or used as a different kind.
+
+
+def _lock(key: bytes, dek: bytes, aad: bytes) -> bytes:
     nonce = os.urandom(NONCE_SIZE)
-    return nonce + AESGCM(kek).encrypt(nonce, dek, _wrap_aad(user))
+    return nonce + AESGCM(key).encrypt(nonce, dek, aad)
 
 
-def _unwrap_dek(user, record: UserDataKey) -> bytes:
-    kek = _load_keks()[record.kek_version]
-    wrapped = bytes(record.wrapped_dek)  # Postgres may hand back a memoryview
-    nonce, ciphertext = wrapped[:NONCE_SIZE], wrapped[NONCE_SIZE:]
-    return AESGCM(kek).decrypt(nonce, ciphertext, _wrap_aad(user))
+def _open(key: bytes, blob, aad: bytes) -> bytes:
+    blob = bytes(blob)  # Postgres may hand back a memoryview
+    return AESGCM(key).decrypt(blob[:NONCE_SIZE], blob[NONCE_SIZE:], aad)  # InvalidTag if wrong
 
 
-def create_user_key(user) -> UserDataKey:
-    """Generate a fresh DEK for the user and store it wrapped by the active KEK."""
-    version = settings.FIELD_ENCRYPTION_ACTIVE_KEY
-    wrapped = _wrap_dek(user, os.urandom(32), version)
-    return UserDataKey.objects.create(user=user, wrapped_dek=wrapped, kek_version=version)
+def _aad(user_id, kind: str) -> bytes:
+    return f"dek:{user_id}:{kind}".encode()
 
 
-def _get_dek(user) -> bytes:
-    return _unwrap_dek(user, UserDataKey.objects.get(user=user))
+# --- the password key (D2) -----------------------------------------------------------------------
 
 
-def rewrap_user_key(record: UserDataKey) -> bool:
-    """Re-wrap a user's DEK under the active KEK. The DEK itself, and therefore
-    every blob encrypted with it, is unchanged. Returns False if already current."""
-    active = settings.FIELD_ENCRYPTION_ACTIVE_KEY
-    if record.kek_version == active:
+def _current_kdf() -> dict[str, int]:
+    return {
+        "t": settings.VAULT_KDF_TIME_COST,
+        "m": settings.VAULT_KDF_MEMORY_KIB,
+        "p": settings.VAULT_KDF_PARALLELISM,
+    }
+
+
+def _format_kdf(params: dict[str, int]) -> str:
+    return "argon2id:" + ",".join(f"{name}={params[name]}" for name in ("t", "m", "p"))
+
+
+def _parse_kdf(text: str) -> dict[str, int]:
+    kind, _, rest = text.partition(":")
+    if kind != "argon2id":
+        raise ValueError(f"Unknown key derivation {kind!r}.")
+    return {name: int(value) for name, value in (item.split("=") for item in rest.split(","))}
+
+
+def _password_key(password: str, salt: bytes, params: dict[str, int]) -> bytes:
+    return hash_secret_raw(
+        secret=password.encode(),
+        salt=salt,
+        time_cost=params["t"],
+        memory_cost=params["m"],  # KiB
+        parallelism=params["p"],
+        hash_len=KEY_SIZE,
+        type=Type.ID,
+    )
+
+
+# --- the recovery key (D3) -----------------------------------------------------------------------
+
+
+def _new_recovery_key() -> tuple[str, bytes]:
+    """("ABCD-EFGH-...", its 20 bytes). Base32 has no 0, 1, 8 or 9."""
+    raw = os.urandom(RECOVERY_KEY_BYTES)
+    text = base64.b32encode(raw).decode()  # 32 characters, no padding for 20 bytes
+    return "-".join(text[i : i + 4] for i in range(0, len(text), 4)), raw
+
+
+def _recovery_bytes(text: str) -> bytes | None:
+    """The bytes of a recovery key as the user typed it: any case, spaces and dashes ignored, and
+    a 0 or 1 read as the O or I it must have been. None if it can't be one."""
+    cleaned = "".join(str(text).split()).replace("-", "").upper().replace("0", "O").replace("1", "I")
+    if len(cleaned) != 32:
+        return None
+    try:
+        raw = base64.b32decode(cleaned)
+    except (binascii.Error, ValueError):
+        return None
+    return raw if len(raw) == RECOVERY_KEY_BYTES else None
+
+
+def _recovery_lock_key(raw: bytes) -> bytes:
+    # HKDF, not Argon2: the recovery key is 160 random bits, so there is nothing to slow down.
+    return HKDF(
+        algorithm=hashes.SHA256(), length=KEY_SIZE, salt=None, info=b"moneyangle recovery key"
+    ).derive(raw)
+
+
+# --- the per-request registry (D5, D17) ----------------------------------------------------------
+
+_unlocked: ContextVar[dict | None] = ContextVar("vault_unlocked", default=None)
+
+
+@contextmanager
+def request_scope():
+    """Run one request with its own registry of unlocked keys, emptied when it ends.
+
+    It starts as a copy of whatever was unlocked outside any request. Production never unlocks a
+    key outside a request, so there that copy is always empty; tests do (D17)."""
+    token = _unlocked.set(dict(_unlocked.get() or {}))
+    try:
+        yield
+    finally:
+        _unlocked.reset(token)
+
+
+def _remember(user, dek: bytes) -> None:
+    keys = _unlocked.get()
+    if keys is None:  # outside any request: only tests and management commands get here
+        keys = {}
+        _unlocked.set(keys)
+    keys[user.pk] = dek
+
+
+def unlocked_key(user) -> bytes:
+    dek = (_unlocked.get() or {}).get(user.pk)
+    if dek is None:
+        raise VaultLocked("This user's data key is not unlocked in this request.")
+    return dek
+
+
+def forget_unlocked_keys() -> None:
+    """Empty the registry outside a request (tests use it between tests)."""
+    _unlocked.set(None)
+
+
+# --- creating and opening a user's key -----------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class Unlocked:
+    dek: bytes
+    recovery_key: str | None = None  # a new recovery key, to show the user once
+
+
+def _set_password_lock(record: UserDataKey, dek: bytes, password: str) -> None:
+    params = _current_kdf()
+    salt = os.urandom(SALT_SIZE)
+    key = _password_key(password, salt, params)
+    record.password_wrapped_dek = _lock(key, dek, _aad(record.user_id, "password"))
+    record.password_salt = salt
+    record.kdf_params = _format_kdf(params)
+
+
+def _set_recovery_lock(record: UserDataKey, dek: bytes) -> str:
+    text, raw = _new_recovery_key()
+    record.recovery_wrapped_dek = _lock(_recovery_lock_key(raw), dek, _aad(record.user_id, "recovery"))
+    return text
+
+
+def create_user_key(user, password: str) -> str:
+    """A new user's data key, locked with their password and a new recovery key. Returns the
+    recovery key, to show them once. The key is unlocked for the rest of this request."""
+    dek = os.urandom(KEY_SIZE)
+    record = UserDataKey(user=user)
+    _set_password_lock(record, dek, password)
+    recovery_key = _set_recovery_lock(record, dek)
+    record.save()
+    _remember(user, dek)
+    return recovery_key
+
+
+def unlock_with_password(user, password: str) -> Unlocked:
+    """Open the user's key with their password, for this request.
+
+    A key from before Phase 12.1 switches over here (D8), and the result then carries the new
+    recovery key. Raises WrongSecret (D11), or KeyUnavailable for an old key without its master key.
+    """
+    record = UserDataKey.objects.get(user=user)
+    if record.password_wrapped_dek is None:
+        return _switch_over(user, record, password)
+
+    params = _parse_kdf(record.kdf_params)
+    key = _password_key(password, bytes(record.password_salt), params)
+    try:
+        dek = _open(key, record.password_wrapped_dek, _aad(user.pk, "password"))
+    except InvalidTag:
+        raise WrongSecret from None
+    if params != _current_kdf():  # D10: re-lock with the current settings
+        _set_password_lock(record, dek, password)
+        record.save(update_fields=["password_wrapped_dek", "password_salt", "kdf_params"])
+    _remember(user, dek)
+    return Unlocked(dek)
+
+
+def _switch_over(user, record: UserDataKey, password: str) -> Unlocked:
+    """D8: open an old key with the master key, lock it with the password and a new recovery key,
+    and erase the master-locked copy, all in one save."""
+    dek = _open_with_master_key(user, record)
+    _set_password_lock(record, dek, password)
+    recovery_key = _set_recovery_lock(record, dek)
+    record.wrapped_dek = None
+    record.kek_version = ""
+    record.save()
+    _remember(user, dek)
+    return Unlocked(dek, recovery_key)
+
+
+def unlock_with_recovery_key(user, recovery_key: str) -> bytes:
+    """Open the user's key with their recovery key, for this request. Raises WrongSecret."""
+    record = UserDataKey.objects.filter(user=user).first()
+    raw = _recovery_bytes(recovery_key)
+    if record is None or record.recovery_wrapped_dek is None or raw is None:
+        raise WrongSecret
+    try:
+        dek = _open(_recovery_lock_key(raw), record.recovery_wrapped_dek, _aad(user.pk, "recovery"))
+    except InvalidTag:
+        raise WrongSecret from None
+    _remember(user, dek)
+    return dek
+
+
+def set_password_lock(user, dek: bytes, password: str) -> None:
+    """After a password change or a recovery: lock the key with the new password. The old password
+    stops opening it. The recovery key is left as it is (D12)."""
+    record = UserDataKey.objects.get(user=user)
+    _set_password_lock(record, dek, password)
+    record.save(update_fields=["password_wrapped_dek", "password_salt", "kdf_params"])
+
+
+def replace_recovery_key(user, dek: bytes) -> str:
+    """A new recovery key. The old one stops opening the key. Returns the new one, to show once."""
+    record = UserDataKey.objects.get(user=user)
+    recovery_key = _set_recovery_lock(record, dek)
+    record.save(update_fields=["recovery_wrapped_dek"])
+    return recovery_key
+
+
+# --- browser sessions (D4, D6, D7) ---------------------------------------------------------------
+
+
+def _session_lifetime():
+    return settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"]  # D7: as long as the login
+
+
+def _b64(raw: bytes) -> str:
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def _parse_cookie(value) -> tuple[uuid.UUID, bytes] | None:
+    if not value:
+        return None
+    session_id, _, secret_text = str(value).partition(".")
+    try:
+        parsed_id = uuid.UUID(session_id)
+        secret = base64.urlsafe_b64decode(secret_text + "=" * (-len(secret_text) % 4))
+    except (ValueError, binascii.Error):
+        return None
+    return (parsed_id, secret) if len(secret) == SESSION_SECRET_BYTES else None
+
+
+def open_session(user, dek: bytes) -> str:
+    """Lock `dek` to a new browser session. Returns the "vault" cookie's value, which holds the
+    only copy of the session's secret."""
+    now = timezone.now()
+    VaultSession.objects.filter(user=user, expires_at__lte=now).delete()  # this user's stale ones
+    secret = os.urandom(SESSION_SECRET_BYTES)
+    session = VaultSession(user=user, expires_at=now + _session_lifetime())
+    session.wrapped_dek = _lock(secret, dek, _aad(user.pk, f"session:{session.pk}"))
+    session.save()
+    return f"{session.pk}.{_b64(secret)}"
+
+
+def _open_session(user_id, cookie) -> tuple[VaultSession, bytes] | None:
+    parsed = _parse_cookie(cookie)
+    if parsed is None:
+        return None
+    session_id, secret = parsed
+    session = VaultSession.objects.filter(
+        pk=session_id, user_id=user_id, expires_at__gt=timezone.now()
+    ).first()
+    if session is None:
+        return None
+    try:
+        dek = _open(secret, session.wrapped_dek, _aad(user_id, f"session:{session.pk}"))
+    except InvalidTag:
+        return None
+    return session, dek
+
+
+def unlock_session(user, cookie) -> bool:
+    """Open this browser's session into the current request. False if it has no usable one."""
+    opened = _open_session(user.pk, cookie)
+    if opened is None:
         return False
-    dek = _unwrap_dek(record.user, record)
-    record.wrapped_dek = _wrap_dek(record.user, dek, active)
-    record.kek_version = active
-    record.save(update_fields=["wrapped_dek", "kek_version"])
+    _remember(user, opened[1])
     return True
+
+
+def renew_session(user_id, cookie) -> bool:
+    """On a token refresh: check the browser's session still opens, and extend it (D7)."""
+    opened = _open_session(user_id, cookie)
+    if opened is None:
+        return False
+    session = opened[0]
+    session.expires_at = timezone.now() + _session_lifetime()
+    session.save(update_fields=["expires_at"])
+    return True
+
+
+def close_session(cookie) -> None:
+    """Log-out: delete this browser's session, and with it this copy of the key."""
+    parsed = _parse_cookie(cookie)
+    if parsed is not None:
+        VaultSession.objects.filter(pk=parsed[0]).delete()
+
+
+def close_other_sessions(user, keep_cookie) -> None:
+    """Every session of the user except this browser's (after a password change, D12)."""
+    others = VaultSession.objects.filter(user=user)
+    parsed = _parse_cookie(keep_cookie)
+    if parsed is not None:
+        others = others.exclude(pk=parsed[0])
+    others.delete()
+
+
+def close_all_sessions(user) -> None:
+    VaultSession.objects.filter(user=user).delete()
+
+
+# --- encrypting the user's data ------------------------------------------------------------------
 
 
 def _data_aad(user, context: str) -> bytes:
@@ -92,12 +378,12 @@ def _data_aad(user, context: str) -> bytes:
 
 
 class UserCipher:
-    """Holds one user's DEK in memory so bulk work (an import, a list response)
-    costs a single UserDataKey query instead of one per field."""
+    """One user's data key, for their fields in this request. Raises VaultLocked if the key isn't
+    unlocked here, so code can never read data without the user's session (D5)."""
 
     def __init__(self, user):
         self.user = user
-        self._dek = _get_dek(user)
+        self._dek = unlocked_key(user)
         self._aead = AESGCM(self._dek)
         # Separate key for blind indexes: the DEK is never used for two purposes.
         self._blind_key = HKDF(
@@ -131,3 +417,42 @@ def encrypt(user, plaintext: bytes, context: str) -> bytes:
 
 def decrypt(user, blob: bytes, context: str) -> bytes:
     return UserCipher(user).decrypt(blob, context)
+
+
+# --- the old master key, for accounts that haven't switched over yet (D8, D9, D15) ---------------
+
+
+def _load_keks() -> dict[str, bytes]:
+    """FIELD_ENCRYPTION_KEYS ("v1:b64,v2:b64") as {"v1": 32 bytes, ...}; {} when it isn't set."""
+    keks: dict[str, bytes] = {}
+    if not settings.FIELD_ENCRYPTION_KEYS:
+        return keks
+    for item in settings.FIELD_ENCRYPTION_KEYS.split(","):
+        version, _, b64 = item.strip().partition(":")
+        key = base64.b64decode(b64)
+        if not version or len(key) != 32:
+            raise ValueError("Each KEK must be 'version:base64' and decode to 32 bytes.")
+        keks[version] = key
+    return keks
+
+
+def check_keys() -> None:
+    """Refuse to start with a malformed master key. It is optional (D9): only accounts that
+    haven't logged in since Phase 12.1 need it. The message never contains key material."""
+    try:
+        _load_keks()
+    except ValueError:  # includes binascii.Error, i.e. text that isn't base64
+        raise ImproperlyConfigured(
+            "FIELD_ENCRYPTION_KEYS must be comma-separated 'version:base64' items, each decoding "
+            "to 32 bytes, e.g. v1:<44 base64 characters>. Leave it unset once no account needs it."
+        ) from None
+
+
+def _open_with_master_key(user, record: UserDataKey) -> bytes:
+    kek = _load_keks().get(record.kek_version)
+    if kek is None:
+        raise KeyUnavailable
+    try:
+        return _open(kek, record.wrapped_dek, f"dek:{user.pk}".encode())  # the pre-12.1 format
+    except InvalidTag:
+        raise KeyUnavailable from None

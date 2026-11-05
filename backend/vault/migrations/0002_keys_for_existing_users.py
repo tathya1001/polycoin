@@ -1,25 +1,19 @@
-import os
-
-from django.conf import settings
 from django.db import migrations
 
 
-def create_missing_keys(apps, schema_editor):
-    """Users registered before the vault existed have no data key, so any encrypted
-    write (like an import) crashed with UserDataKey.DoesNotExist."""
-    # Imported here, not at module top: it is the one place that knows the wrapping
-    # format (AAD etc.), so reusing it beats a copy that could silently drift.
-    from vault.services import _wrap_dek
+def check_no_user_lacks_a_key(apps, schema_editor):
+    """This migration used to give a master-locked data key to users registered before the vault
+    existed. Every database that had such users ran it long ago, and a fresh database has none.
 
+    Since Phase 12.1 a key is locked with its user's password (D18 in
+    dev-docs/phase-12.1-password-key-plan.md), which a migration doesn't have. So this now only
+    checks, and stops with a clear message instead of guessing."""
     User = apps.get_model("accounts", "User")
-    UserDataKey = apps.get_model("vault", "UserDataKey")
-    version = settings.FIELD_ENCRYPTION_ACTIVE_KEY
-
-    for user in User.objects.filter(data_key__isnull=True):
-        UserDataKey.objects.create(
-            user=user,
-            wrapped_dek=_wrap_dek(user, os.urandom(32), version),  # only needs user.id
-            kek_version=version,
+    missing = User.objects.filter(data_key__isnull=True).count()
+    if missing:
+        raise RuntimeError(
+            f"{missing} user(s) have no data key, and one can't be made without their password. "
+            "Delete those accounts, or have them sign up again."
         )
 
 
@@ -30,4 +24,4 @@ class Migration(migrations.Migration):
         ("vault", "0001_initial"),
     ]
 
-    operations = [migrations.RunPython(create_missing_keys, migrations.RunPython.noop)]
+    operations = [migrations.RunPython(check_no_user_lacks_a_key, migrations.RunPython.noop)]

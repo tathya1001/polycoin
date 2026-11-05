@@ -56,6 +56,26 @@ MAX_UPLOAD_BYTES = 4 * 1024 * 1024
 PREVIEW_SAMPLE_ROWS = 10
 PREVIEW_MAX_ERRORS = 50
 
+# The list's filters. Those on encrypted columns (SEARCH_KEYS) say what the user's money is, and a
+# URL lands in plain text in Gunicorn's and Vercel's request logs, so they only travel in the body
+# of POST /api/transactions/search/. The plain ones (dates, type, ids) may also be in a URL.
+PLAIN_FILTER_KEYS = ("from", "to", "type", "category", "data_source")
+SEARCH_KEYS = ("name", "notes", "amount_min", "amount_max", "balance_min", "balance_max")
+
+
+def _body_filters(data) -> dict[str, str]:
+    """A search body, as the same text values the query string carries. Anything that isn't text
+    is refused here, so it can't reach the parsers below and become a 500."""
+    if not isinstance(data, dict):
+        raise ValidationError({"detail": "Send the filters as a JSON object."})
+    filters = {}
+    for key in (*PLAIN_FILTER_KEYS, *SEARCH_KEYS):
+        if key in data:
+            if not isinstance(data[key], str):
+                raise ValidationError({key: "Must be text."})
+            filters[key] = data[key]
+    return filters
+
 
 class TransactionPagination(PageNumberPagination):
     page_size = 50
@@ -79,7 +99,7 @@ class TransactionViewSet(
     )
     serializer_class = TransactionSerializer
     pagination_class = TransactionPagination
-    # No PUT. POST only reaches the bulk actions: there is no create.
+    # No PUT. POST only reaches search and the bulk actions: there is no create.
     http_method_names = ["get", "post", "patch", "delete", "head", "options"]
     throttle_scope = None  # only `candidates` and a search of encrypted columns have one
 
@@ -88,9 +108,15 @@ class TransactionViewSet(
         context["cipher"] = UserCipher(self.request.user)  # one DEK query per request
         return context
 
+    def filter_params(self):
+        """This request's filters: the JSON body of a search, the query string otherwise."""
+        if self.action == "search":
+            return _body_filters(self.request.data)
+        return self.request.query_params
+
     def get_queryset(self):
         qs = super().get_queryset()  # already scoped to request.user
-        params = self.request.query_params
+        params = self.filter_params()
 
         for param, lookup in (("from", "date__gte"), ("to", "date__lte")):
             if param in params:
@@ -117,14 +143,25 @@ class TransactionViewSet(
         return qs.order_by("-date", "-created_at", "id")
 
     def get_throttles(self):
-        if self.action == "list" and parse_search(self.request.query_params):
+        if self.action in ("list", "search") and parse_search(self.filter_params()):
             self.throttle_scope = "transaction_search"
         return super().get_throttles()
 
     def list(self, request, *args, **kwargs):
-        search = parse_search(request.query_params)
+        if any(key in request.query_params for key in SEARCH_KEYS):
+            detail = "Search with POST /api/transactions/search/, so the terms stay out of URLs."
+            return Response({"code": "use_search", "detail": detail}, status=status.HTTP_400_BAD_REQUEST)
+        return self._filtered_list()
+
+    @action(detail=False, methods=["post"])
+    def search(self, request):
+        """The list, with its filters in a JSON body (see SEARCH_KEYS). `page` stays in the URL."""
+        return self._filtered_list()
+
+    def _filtered_list(self):
+        search = parse_search(self.filter_params())
         if search is None:
-            return super().list(request, *args, **kwargs)
+            return super().list(self.request)
         queryset = self.filter_queryset(self.get_queryset())
         cipher = self.get_serializer_context()["cipher"]
         try:

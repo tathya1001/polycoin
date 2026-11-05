@@ -20,7 +20,7 @@ from datasources.services import first_source
 from insights.engine import add_months
 from transactions.models import Transaction
 from transactions.services import create_transaction
-from vault.services import UserCipher
+from vault.services import KeyUnavailable, UserCipher, WrongSecret, unlock_with_password
 
 OPENING_BALANCE = Decimal("50000.00")
 MAX_MONTHS = 60
@@ -92,6 +92,8 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--user", required=True, help="Email of an existing test user.")
+        # Since Phase 12.1 only the password opens a user's key, so the seeder needs it too.
+        parser.add_argument("--password", required=True, help="That test user's password.")
         parser.add_argument("--months", type=int, default=12, help="How many months back.")
         parser.add_argument(
             "--scale", type=int, default=1, help="Multiplies the everyday spends per month."
@@ -121,7 +123,11 @@ class Command(BaseCommand):
         categories = {c.name.lower(): c for c in Category.objects.filter(user=user)}
         fallback = get_default_category(user)
         source = first_source(user)
-        cipher = UserCipher(user)  # one DEK load for every row
+        try:
+            unlock_with_password(user, options["password"])
+        except (WrongSecret, KeyUnavailable):
+            raise CommandError("That password doesn't open this user's data.") from None
+        cipher = UserCipher(user)
 
         with transaction.atomic():  # all or nothing: never a half-seeded account
             for row in rows:

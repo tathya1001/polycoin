@@ -81,7 +81,10 @@ EXTRA = [
 def test_a_twelve_panel_batch_over_twenty_thousand_rows(settings):
     settings.DEBUG = True
     user = make_user("perf@example.com")
-    call_command("seed_demo_transactions", user=user.email, months=12, scale=55, seed=1)
+    call_command(
+        "seed_demo_transactions", user=user.email, password="x-Str0ng-pass!", months=12, scale=55,
+        seed=1,
+    )
     assert Transaction.objects.filter(user=user).count() >= TARGET_ROWS
 
     specs = [panel["config"] for panel in TEMPLATES["overview"]] + EXTRA

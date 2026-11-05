@@ -1,6 +1,9 @@
 // localStorage can be missing or throw (private windows, blocked site data): it is a
 // convenience, never something a page depends on.
 
+// Every key the app keeps starts with this, so lib/signOut.ts can forget them all at once.
+export const STORAGE_PREFIX = "moneyangle.";
+
 export function recall(key: string): string | null {
   try {
     return localStorage.getItem(key);

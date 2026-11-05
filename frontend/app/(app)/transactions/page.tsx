@@ -10,7 +10,7 @@ import { totalWidth, type ColumnSpec } from "@/lib/columnWidths";
 import { loadSources, sourceName } from "@/lib/dataSources";
 import { readError } from "@/lib/errors";
 import { money } from "@/lib/format";
-import { activeFilters, filterParams, filtersFromUrl, NO_FILTERS, type FilterColumn, type TxnFilters } from "@/lib/transactionFilters";
+import { activeFilters, filterBody, filtersFromUrl, NO_FILTERS, type FilterColumn, type TxnFilters } from "@/lib/transactionFilters";
 import type { Category, DataSource, Page, Transaction } from "@/lib/types";
 import { BucketBar, TXN_DRAG_TYPE } from "@/components/transactions/BucketBar";
 import { AmountFilter, Checklist, DateFilter, RangeFilter, TextFilter } from "@/components/transactions/ColumnFilters";
@@ -26,6 +26,7 @@ import { MoneyCell, Table, Td, Th, Tr } from "@/components/ui/Table";
 import { useToast } from "@/components/ui/Toast";
 
 const URL = "/api/transactions/";
+const SEARCH_URL = "/api/transactions/search/"; // the filters go in its body, never in a URL
 const BULK_URL = "/api/transactions/bulk-category/";
 const BULK_DELETE_URL = "/api/transactions/bulk-delete/";
 const BULK_SOURCE_URL = "/api/transactions/bulk-source/";
@@ -115,7 +116,10 @@ function Transactions() {
       setLoading(true);
       setError(null);
       try {
-        const res = await apiFetch(`${URL}?${filterParams(filters, page)}`);
+        const res = await apiFetch(`${SEARCH_URL}?page=${page}`, {
+          method: "POST",
+          body: JSON.stringify(filterBody(filters)),
+        });
         if (cancelled) return;
         if (res.ok) {
           setData(await res.json());

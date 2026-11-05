@@ -8,6 +8,7 @@ from django.db.models import ProtectedError
 from django.test import Client
 
 from accounts.models import User
+from accounts.testing import confirm_age
 from categories.models import Category
 from categories.services import get_default_category, seed_default_categories
 from transactions.models import Transaction
@@ -22,7 +23,8 @@ DESCRIPTION = "UPI/TASTYBITES/DESC-MARKER"
 
 def make_user(email):
     user = User.objects.create_user(email=email, password="x-Str0ng-pass!")
-    create_user_key(user)
+    create_user_key(user, "x-Str0ng-pass!")
+    confirm_age(user)
     seed_default_categories(user)
     return user
 

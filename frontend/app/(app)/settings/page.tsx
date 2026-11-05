@@ -1,16 +1,18 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { Check, Gem, LogOut, Trash2, Zap } from "lucide-react";
-import { apiFetch } from "@/lib/api";
+import { Check, Gem, KeyRound, LifeBuoy, LogOut, Trash2, UserX, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { FONT_OPTIONS, fontFamilyOf, type FontKind } from "@/lib/fonts";
+import { signOut } from "@/lib/signOut";
 import { THEME_OPTIONS, type ResolvedTheme, type ThemeChoice } from "@/lib/theme";
 import type { ChartQuality, Preferences } from "@/lib/types";
 import { useSession } from "@/components/shell/Session";
 import { BackupCard } from "@/components/settings/BackupCard";
+import { ChangePasswordDialog } from "@/components/settings/ChangePasswordDialog";
+import { DeleteAccountDialog } from "@/components/settings/DeleteAccountDialog";
 import { DeleteDataDialog } from "@/components/settings/DeleteDataDialog";
+import { NewRecoveryKeyDialog } from "@/components/settings/NewRecoveryKeyDialog";
 import { Button } from "@/components/ui/Button";
 import { Badge, Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -36,19 +38,16 @@ const CHART_QUALITIES: { id: ChartQuality; name: string; blurb: string; icon: Re
 ];
 
 export default function Settings() {
-  const router = useRouter();
   const toast = useToast();
   const { email, preferences, updatePreferences } = useSession();
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingAccountDelete, setConfirmingAccountDelete] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [makingRecoveryKey, setMakingRecoveryKey] = useState(false);
 
   async function choose(change: Partial<Preferences>, failure: string) {
     const ok = await updatePreferences(change);
     if (!ok) toast.error(failure);
-  }
-
-  async function logOut() {
-    await apiFetch("/api/accounts/logout/", { method: "POST" });
-    router.push("/login");
   }
 
   return (
@@ -148,10 +147,42 @@ export default function Settings() {
             <p className="text-sm text-ink-2">Signed in as</p>
             <p className="font-medium">{email ?? "…"}</p>
           </div>
-          <Button icon={<LogOut size={16} />} onClick={logOut}>
+          <Button icon={<LogOut size={16} />} onClick={signOut}>
             Log out
           </Button>
         </Card>
+        <Card className="mt-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="max-w-xl">
+            <p className="font-medium">Password and recovery key</p>
+            <p className="text-sm text-ink-2">
+              Your data is locked with your password. Nobody can reset it for you: if you forget it, your recovery key
+              is the only way back.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button icon={<KeyRound size={16} />} onClick={() => setChangingPassword(true)}>
+              Change password
+            </Button>
+            <Button icon={<LifeBuoy size={16} />} onClick={() => setMakingRecoveryKey(true)}>
+              New recovery key
+            </Button>
+          </div>
+        </Card>
+        <ChangePasswordDialog open={changingPassword} onClose={() => setChangingPassword(false)} />
+        <NewRecoveryKeyDialog open={makingRecoveryKey} onClose={() => setMakingRecoveryKey(false)} />
+        <Card className="mt-4 flex flex-wrap items-center justify-between gap-4 border-neg">
+          <div className="max-w-xl">
+            <p className="font-medium">Delete my account</p>
+            <p className="text-sm text-ink-2">
+              Permanently deletes your account and everything in it, including your login and encryption key. Backup
+              files you downloaded can no longer be opened. You will be asked for your password.
+            </p>
+          </div>
+          <Button variant="danger" icon={<UserX size={16} />} onClick={() => setConfirmingAccountDelete(true)}>
+            Delete my account
+          </Button>
+        </Card>
+        <DeleteAccountDialog open={confirmingAccountDelete} onClose={() => setConfirmingAccountDelete(false)} />
       </section>
     </>
   );

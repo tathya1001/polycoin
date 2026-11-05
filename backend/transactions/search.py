@@ -56,7 +56,7 @@ def _text(params, key: str) -> str:
 
 
 def parse_search(params) -> Search | None:
-    """The encrypted-column filters in the query string, or None if there are none."""
+    """The encrypted-column filters in `params`, or None if there are none."""
     search = Search(
         name=_text(params, "name"),
         notes=_text(params, "notes"),

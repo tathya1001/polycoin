@@ -1,10 +1,13 @@
 import pytest
 from rest_framework.test import APIClient
 
+from vault.services import create_user_key
+
 from .models import User
 
 EMAIL = "me@example.com"
 PASSWORD = "S3cure-pass-998"
+ADULT = "1990-06-15"  # a date of birth that passes the 18+ check
 
 REGISTER = "/api/accounts/register/"
 LOGIN = "/api/accounts/login/"
@@ -22,7 +25,9 @@ def client():
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user(EMAIL, PASSWORD)
+    user = User.objects.create_user(EMAIL, PASSWORD)
+    create_user_key(user, PASSWORD)
+    return user
 
 
 def login(client, email=EMAIL, password=PASSWORD):
@@ -39,19 +44,20 @@ def csrf_header(client):
 
 
 def test_register_creates_user_without_leaking_secrets(client, db):
-    r = client.post(REGISTER, {"email": "new@example.com", "password": PASSWORD}, format="json")
+    r = client.post(REGISTER, {"email": "new@example.com", "password": PASSWORD, "birth_date": ADULT}, format="json")
     assert r.status_code == 201
-    assert set(r.json()) == {"id", "email"}
+    # The recovery key is the one secret it returns, on purpose: shown once (Phase 12.1).
+    assert set(r.json()) == {"id", "email", "recovery_key"}
     assert User.objects.get(email="new@example.com").password.startswith("argon2$argon2id$")
 
 
 def test_register_rejects_duplicate_email_case_insensitively(client, user):
-    r = client.post(REGISTER, {"email": EMAIL.upper(), "password": PASSWORD}, format="json")
+    r = client.post(REGISTER, {"email": EMAIL.upper(), "password": PASSWORD, "birth_date": ADULT}, format="json")
     assert r.status_code == 400
 
 
 def test_register_rejects_weak_password(client, db):
-    r = client.post(REGISTER, {"email": "weak@example.com", "password": "12345678"}, format="json")
+    r = client.post(REGISTER, {"email": "weak@example.com", "password": "12345678", "birth_date": ADULT}, format="json")
     assert r.status_code == 400
     assert not User.objects.filter(email="weak@example.com").exists()
 
@@ -116,7 +122,7 @@ def test_stale_access_cookie_does_not_break_public_endpoints(client, db):
     """An expired/garbage access cookie must be treated as anonymous, not as an error."""
     client.cookies["access"] = "not-a-jwt"
     assert client.get("/api/health/").status_code == 200
-    r = client.post(REGISTER, {"email": "stale@example.com", "password": PASSWORD}, format="json")
+    r = client.post(REGISTER, {"email": "stale@example.com", "password": PASSWORD, "birth_date": ADULT}, format="json")
     assert r.status_code == 201
 
 

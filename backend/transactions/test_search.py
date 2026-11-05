@@ -1,4 +1,7 @@
-"""The transactions list filtered on its columns, including the encrypted ones."""
+"""The transactions list filtered on its columns, including the encrypted ones.
+
+Filters on encrypted columns only travel in the body of POST /api/transactions/search/: a URL
+lands in plain text in the hosts' request logs."""
 
 from datetime import date
 from decimal import Decimal
@@ -11,11 +14,13 @@ from datasources.services import create_source, first_source
 from vault.services import UserCipher
 
 from .tests import make_txn, make_user
+from .views import SEARCH_KEYS
 
 pytestmark = pytest.mark.django_db
 
 D = Decimal
 URL = "/api/transactions/"
+SEARCH_URL = "/api/transactions/search/"
 
 
 @pytest.fixture
@@ -45,8 +50,13 @@ def add(user, name="Tastybites", amount="10.00", balance="100.00", notes=None, *
     return row
 
 
-def names(api, **params):
-    return [row["name"] for row in api.get(URL, params).data["results"]]
+def search(api, page=None, body=None, **filters):
+    url = SEARCH_URL if page is None else f"{SEARCH_URL}?page={page}"
+    return api.post(url, filters if body is None else body, format="json")
+
+
+def names(api, **filters):
+    return [row["name"] for row in search(api, **filters).data["results"]]
 
 
 def test_name_is_matched_anywhere_in_it_ignoring_case(alice, api):
@@ -67,18 +77,18 @@ def test_notes_are_searched_and_a_row_with_none_never_matches(alice, api):
 
 
 @pytest.mark.parametrize(
-    "params, expected",
+    "filters, expected",
     [
         ({"amount_min": "20"}, ["Mid", "Big"]),
         ({"amount_max": "20"}, ["Small", "Mid"]),
         ({"amount_min": "15", "amount_max": "25"}, ["Mid"]),
     ],
 )
-def test_amount_range_includes_both_ends(alice, api, params, expected):
+def test_amount_range_includes_both_ends(alice, api, filters, expected):
     add(alice, "Small", "10.00")
     add(alice, "Mid", "20.00")
     add(alice, "Big", "30.00")
-    assert sorted(names(api, **params), key=expected.index) == expected
+    assert sorted(names(api, **filters), key=expected.index) == expected
 
 
 def test_a_balance_can_be_negative(alice, api):
@@ -123,11 +133,12 @@ def test_a_search_is_paged_and_says_the_true_total(alice, api):
         add(alice, f"Cafe {number:02d}", date=date(2026, 1, 1))
     add(alice, "Other")
 
-    first = api.get(URL, {"name": "cafe"}).data
-    second = api.get(URL, {"name": "cafe", "page": 2}).data
+    first = search(api, name="cafe").data
+    second = search(api, page=2, name="cafe").data
 
     assert first["count"] == 53
     assert len(first["results"]) == 50 and len(second["results"]) == 3
+    assert first["next"].endswith("/api/transactions/search/?page=2")  # the terms are not in it
     seen = {row["id"] for row in first["results"]} | {row["id"] for row in second["results"]}
     assert len(seen) == 53
 
@@ -135,8 +146,8 @@ def test_a_search_is_paged_and_says_the_true_total(alice, api):
 def test_same_day_rows_never_repeat_or_vanish_between_pages(alice, api):
     for number in range(55):
         add(alice, f"Row {number}", date=date(2026, 1, 1))
-    first = api.get(URL).data["results"]
-    second = api.get(URL, {"page": 2}).data["results"]
+    first = search(api).data["results"]
+    second = search(api, page=2).data["results"]
     assert len({row["id"] for row in [*first, *second]}) == 55
 
 
@@ -150,14 +161,14 @@ def test_a_search_can_be_limited_to_a_source(alice, api):
     river = create_source(alice, UserCipher(alice), "River Bank")
     add(alice, "Cafe", data_source=first_source(alice))
     add(alice, "Cafe", amount="11.00", data_source=river)
-    assert api.get(URL, {"name": "cafe", "data_source": str(river.pk)}).data["count"] == 1
+    assert search(api, name="cafe", data_source=str(river.pk)).data["count"] == 1
 
 
 def test_a_search_past_the_row_cap_is_refused_before_decrypting(alice, api, settings):
     settings.INSIGHTS_MAX_ROWS = 1
     add(alice, "A")
     add(alice, "B", amount="11.00")
-    response = api.get(URL, {"name": "a"})
+    response = search(api, name="a")
     assert response.status_code == 400
     assert response.data["code"] == "too_many_rows"
 
@@ -166,11 +177,12 @@ def test_plain_filters_ignore_the_row_cap(alice, api, settings):
     settings.INSIGHTS_MAX_ROWS = 1
     add(alice, "A")
     add(alice, "B", amount="11.00")
+    assert search(api).data["count"] == 2
     assert api.get(URL).data["count"] == 2
 
 
 @pytest.mark.parametrize(
-    "params",
+    "filters",
     [
         {"amount_min": "lots"},
         {"balance_max": "NaN"},
@@ -178,15 +190,58 @@ def test_plain_filters_ignore_the_row_cap(alice, api, settings):
         {"name": "x" * 101},
         {"category": "nope"},
         {"category": ""},
+        # Not text: refused before any parser sees it.
+        {"amount_min": 5},
+        {"name": None},
+        {"category": ["a", "b"]},
+        {"notes": {"$ne": ""}},
     ],
 )
-def test_bad_values_are_400_not_500(alice, api, params):
-    assert api.get(URL, params).status_code == 400
+def test_bad_values_are_400_not_500(alice, api, filters):
+    assert search(api, **filters).status_code == 400
+
+
+@pytest.mark.parametrize("body", [["name", "a"], "name=a"])
+def test_a_body_that_is_not_an_object_is_400(alice, api, body):
+    assert search(api, body=body).status_code == 400
 
 
 def test_blank_search_boxes_are_no_search(alice, api):
     add(alice, "A")
-    assert api.get(URL, {"name": "  ", "amount_min": ""}).data["count"] == 1
+    assert search(api, name="  ", amount_min="").data["count"] == 1
+
+
+def test_unknown_keys_are_ignored(alice, api):
+    add(alice, "A")
+    assert search(api, colour="red").data["count"] == 1
+
+
+# --- the terms never travel in a URL --------------------------------------------
+
+
+@pytest.mark.parametrize("key", SEARCH_KEYS)
+def test_the_list_refuses_search_terms_in_the_url(alice, api, key):
+    add(alice, "A")
+    response = api.get(URL, {key: "1"})
+    assert response.status_code == 400
+    assert response.data["code"] == "use_search"
+
+
+def test_the_list_still_takes_plain_filters_in_the_url(alice, api):
+    food = alice.category_set.get(name="Food")
+    add(alice, "A", category=food, date=date(2026, 3, 5))
+    add(alice, "B", date=date(2026, 3, 5))
+    add(alice, "C", category=food, date=date(2025, 3, 5))
+    response = api.get(URL, {"category": str(food.pk), "from": "2026-01-01", "type": "debit"})
+    assert [row["name"] for row in response.data["results"]] == ["A"]
+
+
+def test_a_search_needs_a_signed_in_user():
+    assert APIClient().post(SEARCH_URL, {"name": "a"}, format="json").status_code == 401
+
+
+def test_get_is_not_a_search(alice, api):
+    assert api.get(SEARCH_URL).status_code == 405
 
 
 def test_searches_have_their_own_rate_limit(alice, api, settings):
@@ -197,8 +252,9 @@ def test_searches_have_their_own_rate_limit(alice, api, settings):
     rates["transaction_search"] = "1/hour"
     cache.clear()
     try:
-        assert api.get(URL, {"name": "a"}).status_code == 200
-        assert api.get(URL, {"name": "a"}).status_code == 429
-        assert api.get(URL).status_code == 200  # the plain list isn't limited by it
+        assert search(api, name="a").status_code == 200
+        assert search(api, name="a").status_code == 429
+        assert search(api).status_code == 200  # a search with no encrypted filter isn't limited
+        assert api.get(URL).status_code == 200  # nor is the plain list
     finally:
         rates["transaction_search"] = original

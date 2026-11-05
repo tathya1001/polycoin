@@ -10,6 +10,7 @@ const NO_REFRESH_PREFIXES = [
   `${API}/register/`,
   `${API}/refresh/`,
   `${API}/logout/`,
+  `${API}/recover/`,
 ];
 
 const SAFE_METHODS = ["GET", "HEAD", "OPTIONS"];

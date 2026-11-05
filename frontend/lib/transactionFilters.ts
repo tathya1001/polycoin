@@ -51,10 +51,13 @@ export function filtersFromUrl(params: { get: (key: string) => string | null }):
   };
 }
 
-export function filterParams(filters: TxnFilters, page: number): URLSearchParams {
-  const params = new URLSearchParams({ page: String(page) });
+// The body of POST /api/transactions/search/. Filters never go in the URL: hosts log URLs in plain
+// text, and these say what the user's money is (merchant names, notes, amounts). Only the page
+// number goes in the URL.
+export function filterBody(filters: TxnFilters): Record<string, string> {
+  const body: Record<string, string> = {};
   const set = (key: string, value: string) => {
-    if (value.trim()) params.set(key, value.trim());
+    if (value.trim()) body[key] = value.trim();
   };
   set("from", filters.from);
   set("to", filters.to);
@@ -67,7 +70,7 @@ export function filterParams(filters: TxnFilters, page: number): URLSearchParams
   set("balance_max", filters.balanceMax);
   set("category", filters.categories.join(","));
   set("data_source", filters.sources.join(","));
-  return params;
+  return body;
 }
 
 function range(low: string, high: string, show: (value: string) => string): string {

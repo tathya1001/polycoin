@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { activeFilters, filterParams, filtersFromUrl, NO_FILTERS } from "./transactionFilters";
+import { activeFilters, filterBody, filtersFromUrl, NO_FILTERS } from "./transactionFilters";
 import type { Category, DataSource } from "./types";
 
 const CATEGORIES = [{ id: "c-food", name: "Food" }, { id: "c-rent", name: "Rent" }] as Category[];
 const SOURCES = [{ id: "s-oak", name: "OakBank" }] as DataSource[];
 
 const url = (text: string) => filtersFromUrl(new URLSearchParams(text));
-const query = (filters: Partial<typeof NO_FILTERS>) => filterParams({ ...NO_FILTERS, ...filters }, 1).toString();
+const body = (filters: Partial<typeof NO_FILTERS>) => filterBody({ ...NO_FILTERS, ...filters });
 const chips = (filters: Partial<typeof NO_FILTERS>) =>
   activeFilters({ ...NO_FILTERS, ...filters }, CATEGORIES, SOURCES).map((chip) => chip.label);
 
@@ -31,18 +31,15 @@ describe("filtersFromUrl", () => {
   });
 });
 
-describe("filterParams", () => {
+describe("filterBody", () => {
   it("sends only what is set", () => {
-    expect(query({})).toBe("page=1");
+    expect(body({})).toEqual({});
   });
 
-  it("sends each filter under the API's name", () => {
-    const params = filterParams(
-      { ...NO_FILTERS, name: " cafe ", amountMin: "10", balanceMax: "0", categories: ["a", "b"], sources: ["s"] },
-      3,
-    );
-    expect(Object.fromEntries(params)).toEqual({
-      page: "3",
+  it("sends each filter under the API's name, as text", () => {
+    expect(
+      body({ name: " cafe ", amountMin: "10", balanceMax: "0", categories: ["a", "b"], sources: ["s"] }),
+    ).toEqual({
       name: "cafe",
       amount_min: "10",
       balance_max: "0",
@@ -52,7 +49,7 @@ describe("filterParams", () => {
   });
 
   it("leaves out a box holding only spaces", () => {
-    expect(query({ notes: "   " })).toBe("page=1");
+    expect(body({ notes: "   " })).toEqual({});
   });
 });
 

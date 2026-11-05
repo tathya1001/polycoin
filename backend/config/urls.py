@@ -1,4 +1,5 @@
 """Root URL configuration."""
+from django.conf import settings
 from django.contrib import admin
 from django.urls import include, path
 
@@ -11,10 +12,10 @@ from django.urls import include, path
 #   POST /api/accounts/login/     throttled
 #   POST /api/accounts/refresh/   needs the refresh cookie + CSRF, throttled
 #   POST /api/accounts/logout/    needs CSRF; revokes the refresh cookie if any
+#   POST /api/accounts/recover/   forgot password: needs the recovery key, throttled
 # core/tests.py fails if an endpoint is added to or removed from this list unnoticed.
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
     path('api/', include('core.urls')),
     path('api/accounts/', include('accounts.urls')),
     path('api/', include('categories.urls')),
@@ -24,3 +25,9 @@ urlpatterns = [
     path('api/', include('insights.urls')),
     path('api/', include('backups.urls')),
 ]
+
+# The Django admin is for local development only. In production it would be a login form on the
+# open internet with no throttle and no origin check, and an admin can reset any user's password,
+# then sign in as them. config/test_urls.py checks it stays out.
+if not settings.PRODUCTION:
+    urlpatterns.append(path('admin/', admin.site.urls))

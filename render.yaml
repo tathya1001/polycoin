@@ -19,7 +19,9 @@ services:
         sync: false
       - key: JWT_SIGNING_KEY
         sync: false
-      - key: FIELD_ENCRYPTION_KEYS  # back this up outside Render and Neon
+      # Legacy (Phase 12.1): only until every account has logged in once. Then delete it here and
+      # in the dashboard, and destroy every copy (dev-docs/phase-12.1-password-key-plan.md, D9).
+      - key: FIELD_ENCRYPTION_KEYS
         sync: false
       - key: DJANGO_ALLOWED_HOSTS
         sync: false
@@ -34,8 +36,6 @@ services:
         value: "TRUE"
       - key: AUTH_COOKIE_SECURE
         value: "TRUE"
-      - key: FIELD_ENCRYPTION_ACTIVE_KEY
-        value: v1
       - key: WEB_CONCURRENCY
         value: "2"
       - key: INSIGHTS_MAX_ROWS

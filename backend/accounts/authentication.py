@@ -4,6 +4,8 @@ from rest_framework import exceptions
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+from vault.services import unlock_session
+
 
 def enforce_csrf(request):
     """Run Django's CSRF check against a DRF request.
@@ -20,7 +22,13 @@ def enforce_csrf(request):
 
 
 class CookieJWTAuthentication(JWTAuthentication):
-    """Authenticate with the JWT access token stored in an httpOnly cookie."""
+    """Authenticate with the JWT access token stored in an httpOnly cookie, and open the user's
+    data key from this browser's vault session (the "vault" cookie) for this request.
+
+    A valid token without a vault session that opens is treated as anonymous (Phase 12.1, D6):
+    signed in means the data is unlocked. The browser then refreshes, which needs the vault
+    session too, and lands on the login page.
+    """
 
     def authenticate(self, request):
         raw_token = request.COOKIES.get(settings.AUTH_COOKIE_ACCESS)
@@ -35,5 +43,7 @@ class CookieJWTAuthentication(JWTAuthentication):
             # Otherwise a stale cookie would 401 even public endpoints (register, health).
             # Protected views still reject anonymous users via IsAuthenticated (401).
             return None
-        enforce_csrf(request)
+        enforce_csrf(request)  # before opening anything: a forged request gets nothing unlocked
+        if not unlock_session(user, request.COOKIES.get(settings.AUTH_COOKIE_VAULT)):
+            return None
         return user, validated_token

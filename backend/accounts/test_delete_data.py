@@ -173,11 +173,11 @@ def test_the_account_still_exists_and_can_still_log_in(alice):
 
 def test_preferences_and_the_encryption_key_are_kept(alice):
     fill(alice)
-    key_before = bytes(UserDataKey.objects.get(user=alice).wrapped_dek)
+    key_before = bytes(UserDataKey.objects.get(user=alice).password_wrapped_dek)
     erase(alice)
     prefs = UserPreferences.objects.get(user=alice)
     assert (prefs.font, prefs.chart_quality) == ("bitter", "performance")
-    assert bytes(UserDataKey.objects.get(user=alice).wrapped_dek) == key_before
+    assert bytes(UserDataKey.objects.get(user=alice).password_wrapped_dek) == key_before
 
 
 # --- other people's data ------------------------------------------------------

@@ -33,6 +33,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+    # Only adults may use MoneyAngle. The date of birth is asked once (at sign-up, or on the next
+    # visit for accounts made before) and checked to be 18+. It is personal data needed for that
+    # check alone, so it is encrypted with the user's key (context "user.birth_date"), never
+    # returned by the API and not in backups. NULL: not given yet, so accounts.permissions.
+    # AgeConfirmed lets the account do nothing but give it, log out or delete itself.
+    birth_date_enc = models.BinaryField(null=True, editable=False)
 
     objects = UserManager()
 

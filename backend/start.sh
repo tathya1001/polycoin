@@ -9,9 +9,12 @@ set -e
 # workers, which share that memory. Measured at Render's limits (0.1 CPU, 512 MB): first response
 # after 19 s instead of 51 s (each worker importing on its own share of 0.1 CPU), and 113 MB
 # instead of 194 MB. config/wsgi.py closes database connections before the fork.
+# --access-logformat: Render keeps these lines, so they hold the path (%(U)s) but never the query
+# string or the referrer, either of which could carry what a user searched for.
 exec gunicorn config.wsgi:application \
     --preload \
     --bind "0.0.0.0:${PORT:-8000}" \
     --workers "${WEB_CONCURRENCY:-2}" \
     --timeout 60 \
-    --access-logfile -
+    --access-logfile - \
+    --access-logformat '%(h)s %(t)s "%(m)s %(U)s %(H)s" %(s)s %(b)s %(L)s'

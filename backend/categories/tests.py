@@ -3,8 +3,10 @@ from rest_framework.test import APIClient
 
 from accounts.models import User
 from accounts.serializers import RegisterSerializer
+from accounts.testing import confirm_age
 from categories.models import MAX_KEYWORDS_PER_CATEGORY, Category, CategoryKeyword
 from categories.services import DEFAULT_KEYWORDS, SEED_CATEGORIES, seed_default_categories
+from vault.services import create_user_key
 
 pytestmark = pytest.mark.django_db
 
@@ -13,6 +15,8 @@ URL = "/api/categories/"
 
 def make_user(email):
     user = User.objects.create_user(email=email, password="x-Str0ng-pass!")
+    create_user_key(user, "x-Str0ng-pass!")
+    confirm_age(user)
     seed_default_categories(user)
     return user
 
@@ -34,7 +38,7 @@ def bob():
 
 
 def test_registration_seeds_defaults():
-    s = RegisterSerializer(data={"email": "new@example.com", "password": "S3cure-pass-998"})
+    s = RegisterSerializer(data={"email": "new@example.com", "password": "S3cure-pass-998", "birth_date": "1990-06-15"})
     s.is_valid(raise_exception=True)
     user = s.save()
     cats = Category.objects.filter(user=user)
@@ -135,7 +139,7 @@ def terms(category):
 
 
 def test_registration_seeds_the_starter_keywords_but_not_for_others():
-    s = RegisterSerializer(data={"email": "kw@example.com", "password": "S3cure-pass-998"})
+    s = RegisterSerializer(data={"email": "kw@example.com", "password": "S3cure-pass-998", "birth_date": "1990-06-15"})
     s.is_valid(raise_exception=True)
     user = s.save()
 

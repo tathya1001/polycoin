@@ -11,6 +11,7 @@ from django.db.models import F, ProtectedError
 from django.test import override_settings
 
 from accounts.services import delete_user_data
+from accounts.testing import confirm_age
 from categories.services import get_default_category, seed_default_categories
 from transactions.models import Transaction, TransferLink
 from transactions.services import create_transaction
@@ -30,7 +31,8 @@ THROWAWAY_KEYS = "v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 @pytest.fixture
 def alice(db):
     user = User.objects.create_user(email="alice@example.com", password="pw-for-tests-1")
-    create_user_key(user)
+    create_user_key(user, "pw-for-tests-1")
+    confirm_age(user)
     seed_default_categories(user)
     return user
 
@@ -56,7 +58,7 @@ def add_row(user, amount="100.00", day=date(2026, 1, 5), kind="debit", **extra):
 def test_registering_gives_the_user_one_source(client, db):
     response = client.post(
         "/api/accounts/register/",
-        {"email": "new@example.com", "password": "a-long-Passw0rd-here"},
+        {"email": "new@example.com", "password": "a-long-Passw0rd-here", "birth_date": "1990-06-15"},
         content_type="application/json",
     )
     assert response.status_code == 201

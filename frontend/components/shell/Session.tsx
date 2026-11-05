@@ -43,6 +43,11 @@ const preferencesStore = createLocalStore<Preferences>(
 
 type Session = {
   email: string | null;
+  // True for an account made before dates of birth were asked for: the app shows only the
+  // "confirm your date of birth" screen (components/auth/AgeGate.tsx) until it is given.
+  birthDateRequired: boolean;
+  // The date was accepted: the app opens.
+  birthDateConfirmed: () => void;
   preferences: Preferences;
   // The colour mode on screen: "Match device" already turned into Light or Dark.
   theme: ResolvedTheme;
@@ -81,6 +86,7 @@ function adoptPreferences(data: unknown) {
 // mode are right on the very first paint.
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [email, setEmail] = useState<string | null>(null);
+  const [birthDateRequired, setBirthDateRequired] = useState(false);
   const preferences = useSyncExternalStore(preferencesStore.subscribe, preferencesStore.get, preferencesStore.getServer);
   const prefersDark = useSyncExternalStore(subscribeToDeviceTheme, deviceIsDark, deviceIsDarkOnServer);
   const theme = resolveTheme(preferences.theme, prefersDark);
@@ -103,7 +109,12 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           apiFetch("/api/accounts/preferences/"),
         ]);
         if (cancelled) return;
-        if (me.ok) setEmail((await me.json()).email ?? null);
+        if (me.ok) {
+          const who = await me.json();
+          if (cancelled) return;
+          setEmail(who.email ?? null);
+          setBirthDateRequired(who.birth_date_required === true);
+        }
         if (prefs.ok) {
           const data = await prefs.json();
           if (!cancelled) adoptPreferences(data);
@@ -149,9 +160,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const birthDateConfirmed = useCallback(() => setBirthDateRequired(false), []);
+
   const value = useMemo(
-    () => ({ email, preferences, theme, updatePreferences, reloadPreferences }),
-    [email, preferences, theme, updatePreferences, reloadPreferences],
+    () => ({ email, birthDateRequired, birthDateConfirmed, preferences, theme, updatePreferences, reloadPreferences }),
+    [email, birthDateRequired, birthDateConfirmed, preferences, theme, updatePreferences, reloadPreferences],
   );
   return <SessionContext value={value}>{children}</SessionContext>;
 }

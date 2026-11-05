@@ -47,8 +47,6 @@ jobs:
       JWT_SIGNING_KEY: ci-only-jwt-Ns8Vb2Xm5Qw9Er3Ty6Ui1Op4As7Df0Gh2Jk5Lz8Xc1Vb4Nm7
       DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
       CSRF_TRUSTED_ORIGINS: http://localhost:3000
-      FIELD_ENCRYPTION_KEYS: v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-      FIELD_ENCRYPTION_ACTIVE_KEY: v1
       AUTH_COOKIE_SECURE: "FALSE"
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -158,8 +156,6 @@ jobs:
           JWT_SIGNING_KEY: release-step-only
           DJANGO_ALLOWED_HOSTS: localhost
           CSRF_TRUSTED_ORIGINS: http://localhost
-          FIELD_ENCRYPTION_KEYS: v1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
-          FIELD_ENCRYPTION_ACTIVE_KEY: v1
         run: |
           pip install -r requirements.txt
           python manage.py migrate --noinput

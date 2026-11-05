@@ -50,6 +50,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'core.middleware.VaultScopeMiddleware',  # unlocked data keys live for one request only
     'core.middleware.OriginSecretMiddleware',
     'core.middleware.NoStoreApiMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -141,6 +142,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
+        "accounts.permissions.AgeConfirmed",  # adults only: a date of birth must be on file
     ],
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.ScopedRateThrottle",
@@ -186,11 +188,26 @@ AUTH_COOKIE_REFRESH = "refresh"
 AUTH_COOKIE_SECURE = os.environ.get("AUTH_COOKIE_SECURE", "TRUE") == "TRUE"
 AUTH_COOKIE_SAMESITE = "Lax"
 AUTH_COOKIE_REFRESH_PATH = "/api/accounts/"
+# "<session id>.<secret>": the only copy of the secret that opens this browser's copy of the user's
+# data key (vault.models.VaultSession). Sent to the API only.
+AUTH_COOKIE_VAULT = "vault"
+AUTH_COOKIE_VAULT_PATH = "/api/"
 
 
 CSRF_TRUSTED_ORIGINS = os.environ["CSRF_TRUSTED_ORIGINS"].split(",")
-FIELD_ENCRYPTION_KEYS = os.environ["FIELD_ENCRYPTION_KEYS"]
-FIELD_ENCRYPTION_ACTIVE_KEY = os.environ["FIELD_ENCRYPTION_ACTIVE_KEY"]
+
+# Phase 12.1: each user's data key is locked with Argon2id(password). RFC 9106's second
+# recommended option: 3 passes over 64 MiB. Constants, not environment variables, so a changed
+# setting on the host can't quietly weaken new locks. Each lock stores the settings it was made
+# with; a login re-locks with these when they differ. vault/tests.py pins them.
+VAULT_KDF_TIME_COST = 3
+VAULT_KDF_MEMORY_KIB = 64 * 1024
+VAULT_KDF_PARALLELISM = 4
+
+# Legacy master key ("v1:<base64>"), needed only by accounts that haven't logged in since Phase
+# 12.1: their next login re-locks their key with their password. Once none is left, delete it here
+# and destroy every copy (dev-docs/phase-12.1-password-key-plan.md, D9).
+FIELD_ENCRYPTION_KEYS = os.environ.get("FIELD_ENCRYPTION_KEYS", "")
 
 
 # Production hardening (DJANGO_PRODUCTION=TRUE)
@@ -289,6 +306,14 @@ BACKUP_MAX_BYTES = int(os.environ.get("BACKUP_MAX_BYTES", str(4 * 1024 * 1024)))
 # The JSON inside, after decompression: a bound on what one small file can expand into.
 BACKUP_MAX_JSON_BYTES = int(os.environ.get("BACKUP_MAX_JSON_BYTES", str(100 * 1024 * 1024)))
 BACKUP_MAX_TRANSACTIONS = int(os.environ.get("BACKUP_MAX_TRANSACTIONS", "100000"))
+
+# Uploads (statements, backup files) stay in memory and never touch the disk. Django's default
+# writes anything over 2.5 MB to a temporary file, and a statement is the most sensitive thing the
+# app ever receives. With the memory handler alone, a body over the limit is not kept at all: the
+# file is simply missing and the view says so. The browser and the Vercel proxy both stop at
+# 4-4.5 MB, so a real upload is always under it; transactions/test_upload_memory.py checks this.
+FILE_UPLOAD_HANDLERS = ["django.core.files.uploadhandler.MemoryFileUploadHandler"]
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 # The agent's state is stored with LangGraph's serialiser. Strict mode refuses to rebuild any
 # object type that is not on its safe list, so a forged state cannot run code when it is loaded.

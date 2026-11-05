@@ -4,9 +4,11 @@ import pytest
 from rest_framework.test import APIClient
 
 from accounts.models import User
+from accounts.testing import confirm_age
 from categories.colors import CATEGORY_COLORS, OTHERS_COLOR, is_hex_color, next_color
 from categories.models import Category
 from categories.services import SEED_CATEGORIES, seed_default_categories
+from vault.services import create_user_key
 
 pytestmark = pytest.mark.django_db
 
@@ -15,6 +17,8 @@ URL = "/api/categories/"
 
 def make_user(email):
     user = User.objects.create_user(email=email, password="x-Str0ng-pass!")
+    create_user_key(user, "x-Str0ng-pass!")
+    confirm_age(user)
     seed_default_categories(user)
     return user
 

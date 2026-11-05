@@ -13,6 +13,7 @@ EXPECTED_OPEN_ENDPOINTS = {
     "api/accounts/login/",
     "api/accounts/refresh/",
     "api/accounts/logout/",
+    "api/accounts/recover/",
 }
 
 

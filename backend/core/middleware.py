@@ -4,9 +4,24 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.utils.cache import add_never_cache_headers
 
+from vault.services import request_scope
+
 # Probes that must work without the Vercel proxy: Render's health check, the external uptime
 # monitor (the keep-alive) and the deploy pipeline call these straight on the Render URL.
 ORIGIN_EXEMPT = {"/api/ping/", "/api/health/"}
+
+
+class VaultScopeMiddleware:
+    """Give each request its own registry of unlocked data keys, and empty it when the response
+    is ready (vault.services.request_scope). A user's key is opened by authentication, from their
+    browser's vault session, and is gone from memory once their request is answered."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        with request_scope():
+            return self.get_response(request)
 
 
 class OriginSecretMiddleware:

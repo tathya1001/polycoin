@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { LogoMark, Wordmark } from "@/components/shell/Logo";
+import { Wordmark } from "@/components/shell/Logo";
 import { WakeServer } from "./WakeServer";
 
 // Split screen: a bold ink panel on the left (hidden on phones), the form on the right.
@@ -20,7 +20,6 @@ export function AuthLayout({
       <WakeServer />
       <aside className="relative hidden flex-col justify-between overflow-hidden bg-fill p-12 text-on-fill lg:flex">
         <Link href="/" className="flex items-center gap-3">
-          <LogoMark size={36} className="text-on-fill" />
           <Wordmark className="text-xl" />
         </Link>
 
@@ -37,7 +36,6 @@ export function AuthLayout({
       <section className="flex flex-col justify-center px-6 py-12 sm:px-12">
         <div className="mx-auto w-full max-w-sm">
           <Link href="/" className="mb-10 flex items-center gap-2.5 lg:hidden">
-            <LogoMark size={28} />
             <Wordmark />
           </Link>
           <h1 className="text-[28px] font-semibold tracking-tight">{title}</h1>

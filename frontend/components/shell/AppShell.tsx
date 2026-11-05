@@ -5,8 +5,10 @@ import { useEffect, useState, useSyncExternalStore, type ReactNode } from "react
 import { Menu } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { createLocalStore } from "@/lib/localStore";
+import { AgeGate } from "@/components/auth/AgeGate";
 import { IconButton } from "@/components/ui/Button";
-import { LogoMark, Wordmark } from "@/components/shell/Logo";
+import { Wordmark } from "@/components/shell/Logo";
+import { useSession } from "@/components/shell/Session";
 import { Sidebar } from "@/components/shell/Sidebar";
 
 // Whether the desktop sidebar is folded to an icon rail: a per-device convenience.
@@ -14,6 +16,7 @@ const collapsedStore = createLocalStore("moneyangle.sidebar.collapsed", (raw) =>
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const { birthDateRequired } = useSession();
   const collapsed = useSyncExternalStore(collapsedStore.subscribe, collapsedStore.get, collapsedStore.getServer);
 
   // The mobile drawer is open for the page it was opened on, so navigating closes it.
@@ -39,7 +42,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen md:flex md:gap-3 md:p-3">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b-[1.5px] border-line bg-canvas px-3 md:hidden">
         <IconButton label="Open menu" icon={<Menu size={20} />} onClick={() => setOpenedOn(pathname)} />
-        <LogoMark size={26} />
         <Wordmark />
       </header>
 
@@ -49,7 +51,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} mobileOpen={mobileOpen} />
 
       <main className="min-w-0 flex-1 px-4 py-5 md:px-4 md:py-3">
-        <div className={cn("mx-auto flex w-full flex-col", wide ? "max-w-[1400px]" : "max-w-5xl")}>{children}</div>
+        {/* Until an older account gives its date of birth, no page can load anything (the server
+            refuses), so the gate takes the page's place. */}
+        {birthDateRequired ? (
+          <AgeGate />
+        ) : (
+          <div className={cn("mx-auto flex w-full flex-col", wide ? "max-w-[1400px]" : "max-w-5xl")}>{children}</div>
+        )}
       </main>
     </div>
   );

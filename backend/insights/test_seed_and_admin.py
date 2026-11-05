@@ -44,7 +44,9 @@ def debug(settings):
 
 
 def seed(user, **options):
-    call_command("seed_demo_transactions", user=user.email, **options)
+    call_command(
+        "seed_demo_transactions", user=user.email, password="x-Str0ng-pass!", **options
+    )
 
 
 def decrypted(user, field, context):
@@ -116,7 +118,7 @@ def test_refuses_to_run_without_debug(alice, settings):
 
 def test_refuses_an_unknown_user(debug):
     with pytest.raises(CommandError, match="No user"):
-        call_command("seed_demo_transactions", user="nobody@example.com")
+        call_command("seed_demo_transactions", user="nobody@example.com", password="x")
 
 
 def test_refuses_a_user_who_already_has_transactions(alice, debug):

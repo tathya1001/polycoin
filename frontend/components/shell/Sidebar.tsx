@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { apiFetch } from "@/lib/api";
 import { cn } from "@/lib/cn";
-import { LogoMark, Wordmark } from "@/components/shell/Logo";
+import { signOut } from "@/lib/signOut";
+import { Wordmark } from "@/components/shell/Logo";
 import { NAV_GROUPS, SETTINGS_ITEM, activeHref, type NavItem } from "@/components/shell/nav";
 
 type Props = {
@@ -19,7 +19,6 @@ type Props = {
 // you are on. Below 768px it becomes a slide-over drawer.
 export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const current = activeHref(pathname);
 
   const itemRefs = useRef(new Map<string, HTMLAnchorElement>());
@@ -36,11 +35,6 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [current, collapsed]);
-
-  async function logOut() {
-    await apiFetch("/api/accounts/logout/", { method: "POST" });
-    router.push("/login");
-  }
 
   const item = (nav: NavItem) => {
     const Icon = nav.icon;
@@ -77,12 +71,23 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
         mobileOpen ? "translate-x-0" : "-translate-x-[130%]",
       )}
     >
-      <div className="flex h-16 shrink-0 items-center gap-2.5 px-4">
-        <LogoMark size={30} />
+      {/* The name, and the button that folds the rail. Folded, the name is hidden and the button
+          that unfolds it takes the row (there is no logo mark to show until the owner sends one). */}
+      <div className="flex h-16 shrink-0 items-center px-4">
         <Label collapsed={collapsed}>
           <Wordmark />
         </Label>
-        {!collapsed && (
+        {collapsed ? (
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            aria-label="Expand sidebar"
+            title="Expand sidebar"
+            className="mx-auto hidden size-8 shrink-0 place-items-center rounded-sm text-ink-2 transition-colors hover:bg-wash hover:text-ink md:grid"
+          >
+            <PanelLeftOpen size={18} />
+          </button>
+        ) : (
           <button
             type="button"
             onClick={onToggleCollapsed}
@@ -94,18 +99,6 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
           </button>
         )}
       </div>
-
-      {collapsed && (
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
-          className="mx-auto mb-1 hidden size-8 place-items-center rounded-sm text-ink-2 transition-colors hover:bg-wash hover:text-ink md:grid"
-        >
-          <PanelLeftOpen size={18} />
-        </button>
-      )}
 
       <nav aria-label="Main" className="relative flex min-h-0 flex-1 flex-col overflow-x-clip overflow-y-auto px-3 pb-2">
         <div
@@ -139,7 +132,7 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
       <div className="shrink-0 border-t border-hairline p-3">
         <button
           type="button"
-          onClick={logOut}
+          onClick={signOut}
           title={collapsed ? "Log out" : undefined}
           aria-label="Log out"
           className="flex h-10 w-full items-center gap-3 rounded-md px-3.5 text-sm font-medium text-ink-2 transition-colors duration-200 hover:bg-wash hover:text-ink"
