@@ -57,6 +57,29 @@ describe("an expired access token", () => {
     expect(location.href).toBe("/login");
     expect(calls.filter((c) => c === REFRESH)).toHaveLength(1); // a rejection is final: no retries
   });
+
+  it("forgets what this browser kept for the account when the session is over", async () => {
+    const store: Record<string, string> = {
+      "moneyangle.dashboard.filters.d1": '{"merchant_contains":"tastybites"}',
+      "moneyangle.prefs": "{}",
+      "another-site.key": "kept",
+    };
+    // Only the stored values are enumerable, like localStorage's keys.
+    Object.defineProperty(store, "removeItem", { value: (key: string) => delete store[key] });
+    vi.stubGlobal("localStorage", store);
+    queues = { [ME]: [401], [REFRESH]: [401] };
+    await run();
+    expect(Object.keys(store)).toEqual(["another-site.key"]);
+  });
+
+  it("keeps it when the session is fine", async () => {
+    const store: Record<string, string> = { "moneyangle.prefs": "{}" };
+    Object.defineProperty(store, "removeItem", { value: (key: string) => delete store[key] });
+    vi.stubGlobal("localStorage", store);
+    queues = { [ME]: [401, 200], [REFRESH]: [200] };
+    await run();
+    expect(Object.keys(store)).toEqual(["moneyangle.prefs"]);
+  });
 });
 
 describe("a server that is waking up", () => {

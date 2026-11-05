@@ -1,6 +1,8 @@
 // Client-side fetch wrapper. Only call it from client components or event handlers,
 // because it reads document.cookie and uses window.location.
 
+import { forgetAll, STORAGE_PREFIX } from "./storage";
+
 const API = "/api/accounts";
 
 // 401 on these means "bad credentials / no session", not "access token expired",
@@ -96,6 +98,10 @@ function serverUnavailable(): Response {
 }
 
 function redirectToLogin() {
+  // The session is over: it expired, or was ended on another device (a password change or a
+  // recovery signs other browsers out). Forget this browser's copy of everything, as log-out does
+  // (lib/signOut.ts): a dashboard's filters can hold a merchant name the user typed (Phase 12.3).
+  forgetAll(STORAGE_PREFIX);
   const path = window.location.pathname;
   if (path !== "/login" && path !== "/register") {
     // Full page load on purpose: clears in-memory state once the session is gone.
