@@ -12,7 +12,7 @@ from ai.models import RagDocument
 from ai.rag.profiles import PROMPT_VERSION
 from ai.rag_views import AskView, IndexView, PendingView, StatusView, VectorsView
 from ai.test_rag_retriever import NEAR_GYM, VECTORS
-from categories.models import Category
+from categories.testing import category_named
 from transactions.tests import make_txn, make_user
 
 pytestmark = pytest.mark.django_db
@@ -39,8 +39,8 @@ def bob():
 
 
 def history(user):
-    health = Category.objects.get(user=user, name="Health")
-    food = Category.objects.get(user=user, name="Food")
+    health = category_named(user, "Health")
+    food = category_named(user, "Food")
     return {
         "gym": make_txn(user, name="Fitzone Gym", description="UPI/FITZONE/jan",
                         date=date(2026, 1, 5), category=health),

@@ -21,9 +21,8 @@ from ai.rag.retriever import (
     validate_ask_filters,
     vector_matches,
 )
-from categories.models import Category
+from categories.testing import category_named
 from datasources.services import create_source
-from transactions.models import Transaction
 from transactions.tests import make_txn, make_user
 from vault.services import UserCipher
 
@@ -175,7 +174,7 @@ NEAR_RENT = [0.0, 0.1, 0.9, 0.0]
 
 
 def category(user, name):
-    return Category.objects.get(user=user, name=name)
+    return category_named(user, name)
 
 
 def history(user):
@@ -313,7 +312,6 @@ def test_stats_hold_counts_and_timings_but_no_text(alice, rows):
     assert set(stats) == {"documents", "keyword", "vector", "matches", "ms", "cpu_ms"}
     assert set(stats["ms"]) == {
         "sql",
-        "counts",
         "decrypt",
         "unpack",
         "tokens",
@@ -362,9 +360,12 @@ def test_a_period_with_no_documents_is_an_empty_result_not_an_error(alice, rows)
     assert result.period["from"] == "2024-01-01"
 
 
-def test_the_data_source_filter_runs_in_sql(alice, rows):
+def test_the_data_source_filter_keeps_only_that_sources_rows(alice, rows):
     other = create_source(alice, UserCipher(alice), "RiverBank")
-    Transaction.objects.filter(pk=rows["salary"].pk).update(data_source=other)
+    salary = rows["salary"]
+    salary.refresh_from_db()
+    salary.data_source = other
+    salary.save()
 
     result = search(alice, "acme payroll", filters={"data_sources": [str(other.pk)]})
 

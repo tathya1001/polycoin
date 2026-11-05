@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 from rest_framework.test import APIClient
 
-from categories.models import Category
+from categories.testing import category_named
 from insights import services
 from insights.models import Dashboard
 from insights.spec import (
@@ -220,7 +220,7 @@ def test_a_value_that_does_not_fit_one_panel_is_that_panels_own_error():
 def alice(db):
     user = make_user("alice@example.com")
     for day, amount, name in ((5, "100", "Food"), (6, "30", "Bills"), (7, "20", "Health")):
-        category = Category.objects.get(user=user, name=name)
+        category = category_named(user, name)
         make_txn(
             user,
             date=date(2026, 3, day),

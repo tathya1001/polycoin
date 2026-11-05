@@ -17,11 +17,12 @@ from typing import Any
 from django.conf import settings
 from django.utils import timezone
 
-from categories.models import Category, CategoryKeyword
+from categories.models import Category, CategoryKeyword, sort_categories
 from datasources.services import sources_for
 from insights.formula import source_key
 from insights.services import first_transaction_date
 from insights.spec import MAX_MERCHANT_LENGTH
+from transactions.index import ids, newest_first, rows_of
 from transactions.models import Transaction
 from vault.services import UserCipher
 
@@ -157,14 +158,15 @@ def rag_available(user, model: str, digest: str) -> bool:
 def build_context(user, today: date | None = None, embed: dict | None = None) -> AgentContext:
     """Two small queries for categories and keywords, one for the first date. `embed` is the
     browser's embedding model ({"model", "digest"}); it is kept only if its index exists."""
+    # Names and terms are encrypted (Phase 12.2), so they are read through the models.
     categories = [
-        CategoryRef(str(pk), name)
-        for pk, name in Category.objects.filter(user=user).values_list("id", "name")
+        CategoryRef(str(category.pk), category.name)
+        for category in sort_categories(Category.objects.filter(user=user))
     ]
     keywords = [
-        (term, str(category_id))
-        for term, category_id in CategoryKeyword.objects.filter(category__user=user).values_list(
-            "term", "category_id"
+        (keyword.term, str(keyword.category_id))
+        for keyword in CategoryKeyword.objects.filter(category__user=user).select_related(
+            "category"
         )
     ]
     if embed and not rag_available(user, embed["model"], embed["digest"]):
@@ -188,11 +190,9 @@ def merchant_names(user, limit: int | None = None) -> list[str]:
     Names are encrypted, so finding one means decrypting them; the cap bounds that work. One
     cipher (one key load) serves every row."""
     limit = settings.AGENT_MERCHANT_SCAN if limit is None else limit
-    blobs = (
-        Transaction.objects.filter(user=user)
-        .order_by("-date", "-created_at")
-        .values_list("name_enc", flat=True)[:limit]
-    )
+    newest = ids(newest_first(rows_of(user))[:limit])  # dates are encrypted (Phase 12.2)
+    found = dict(Transaction.objects.filter(user=user, pk__in=newest).values_list("pk", "name_enc"))
+    blobs = [found[pk] for pk in newest if pk in found]
     cipher = UserCipher(user)
     names = (normal_merchant(cipher.decrypt(bytes(blob), "txn.name").decode()) for blob in blobs)
     return list(dict.fromkeys(name for name in names if name))

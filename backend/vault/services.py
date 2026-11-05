@@ -21,7 +21,6 @@ import os
 import uuid
 from contextlib import contextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
 
 from argon2.low_level import Type, hash_secret_raw
 from cryptography.exceptions import InvalidTag
@@ -29,7 +28,6 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
 from django.utils import timezone
 
 from .models import UserDataKey, VaultSession
@@ -48,10 +46,6 @@ class VaultLocked(Exception):
 
 class WrongSecret(Exception):
     """The password or recovery key does not open this user's data key."""
-
-
-class KeyUnavailable(Exception):
-    """A key from before Phase 12.1 needs the master key, which is not set or doesn't open it."""
 
 
 # --- locks ---------------------------------------------------------------------------------------
@@ -178,12 +172,6 @@ def forget_unlocked_keys() -> None:
 # --- creating and opening a user's key -----------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class Unlocked:
-    dek: bytes
-    recovery_key: str | None = None  # a new recovery key, to show the user once
-
-
 def _set_password_lock(record: UserDataKey, dek: bytes, password: str) -> None:
     params = _current_kdf()
     salt = os.urandom(SALT_SIZE)
@@ -211,40 +199,21 @@ def create_user_key(user, password: str) -> str:
     return recovery_key
 
 
-def unlock_with_password(user, password: str) -> Unlocked:
-    """Open the user's key with their password, for this request.
-
-    A key from before Phase 12.1 switches over here (D8), and the result then carries the new
-    recovery key. Raises WrongSecret (D11), or KeyUnavailable for an old key without its master key.
-    """
+def unlock_with_password(user, password: str) -> bytes:
+    """Open the user's key with their password, for this request, and return it.
+    Raises WrongSecret if the password doesn't open it (12.1, D11)."""
     record = UserDataKey.objects.get(user=user)
-    if record.password_wrapped_dek is None:
-        return _switch_over(user, record, password)
-
     params = _parse_kdf(record.kdf_params)
     key = _password_key(password, bytes(record.password_salt), params)
     try:
         dek = _open(key, record.password_wrapped_dek, _aad(user.pk, "password"))
     except InvalidTag:
         raise WrongSecret from None
-    if params != _current_kdf():  # D10: re-lock with the current settings
+    if params != _current_kdf():  # 12.1, D10: re-lock with the current settings
         _set_password_lock(record, dek, password)
         record.save(update_fields=["password_wrapped_dek", "password_salt", "kdf_params"])
     _remember(user, dek)
-    return Unlocked(dek)
-
-
-def _switch_over(user, record: UserDataKey, password: str) -> Unlocked:
-    """D8: open an old key with the master key, lock it with the password and a new recovery key,
-    and erase the master-locked copy, all in one save."""
-    dek = _open_with_master_key(user, record)
-    _set_password_lock(record, dek, password)
-    recovery_key = _set_recovery_lock(record, dek)
-    record.wrapped_dek = None
-    record.kek_version = ""
-    record.save()
-    _remember(user, dek)
-    return Unlocked(dek, recovery_key)
+    return dek
 
 
 def unlock_with_recovery_key(user, recovery_key: str) -> bytes:
@@ -304,7 +273,7 @@ def open_session(user, dek: bytes) -> str:
     """Lock `dek` to a new browser session. Returns the "vault" cookie's value, which holds the
     only copy of the session's secret."""
     now = timezone.now()
-    VaultSession.objects.filter(user=user, expires_at__lte=now).delete()  # this user's stale ones
+    VaultSession.objects.filter(expires_at__lte=now).delete()  # everyone's stale ones (12.2, D8)
     secret = os.urandom(SESSION_SECRET_BYTES)
     session = VaultSession(user=user, expires_at=now + _session_lifetime())
     session.wrapped_dek = _lock(secret, dek, _aad(user.pk, f"session:{session.pk}"))
@@ -419,40 +388,25 @@ def decrypt(user, blob: bytes, context: str) -> bytes:
     return UserCipher(user).decrypt(blob, context)
 
 
-# --- the old master key, for accounts that haven't switched over yet (D8, D9, D15) ---------------
+class _Owner:
+    """Just enough of a user for UserCipher: its id, which the key registry and the encryption
+    context use. Lets a row decrypt its own fields from its `user_id`, without loading the user."""
+
+    __slots__ = ("pk", "id")
+
+    def __init__(self, user_id):
+        self.pk = self.id = user_id
 
 
-def _load_keks() -> dict[str, bytes]:
-    """FIELD_ENCRYPTION_KEYS ("v1:b64,v2:b64") as {"v1": 32 bytes, ...}; {} when it isn't set."""
-    keks: dict[str, bytes] = {}
-    if not settings.FIELD_ENCRYPTION_KEYS:
-        return keks
-    for item in settings.FIELD_ENCRYPTION_KEYS.split(","):
-        version, _, b64 = item.strip().partition(":")
-        key = base64.b64decode(b64)
-        if not version or len(key) != 32:
-            raise ValueError("Each KEK must be 'version:base64' and decode to 32 bytes.")
-        keks[version] = key
-    return keks
-
-
-def check_keys() -> None:
-    """Refuse to start with a malformed master key. It is optional (D9): only accounts that
-    haven't logged in since Phase 12.1 need it. The message never contains key material."""
-    try:
-        _load_keks()
-    except ValueError:  # includes binascii.Error, i.e. text that isn't base64
-        raise ImproperlyConfigured(
-            "FIELD_ENCRYPTION_KEYS must be comma-separated 'version:base64' items, each decoding "
-            "to 32 bytes, e.g. v1:<44 base64 characters>. Leave it unset once no account needs it."
-        ) from None
-
-
-def _open_with_master_key(user, record: UserDataKey) -> bytes:
-    kek = _load_keks().get(record.kek_version)
-    if kek is None:
-        raise KeyUnavailable
-    try:
-        return _open(kek, record.wrapped_dek, f"dek:{user.pk}".encode())  # the pre-12.1 format
-    except InvalidTag:
-        raise KeyUnavailable from None
+def cipher_for(user_id) -> UserCipher:
+    """The user's cipher for this request, made once and reused. Model fields that decrypt
+    themselves (transactions, categories) use it, so a list of 1,000 rows derives the
+    blind-index key once, not 1,000 times. Raises VaultLocked like UserCipher."""
+    keys = _unlocked.get()
+    cached = keys.get(("cipher", user_id)) if keys is not None else None
+    if cached is not None:
+        return cached
+    cipher = UserCipher(_Owner(user_id))
+    if keys is not None:
+        keys[("cipher", user_id)] = cipher  # emptied with the keys when the request ends
+    return cipher

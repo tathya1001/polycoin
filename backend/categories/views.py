@@ -1,17 +1,24 @@
-from django.db.models import ProtectedError
+from django.db import transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 from core.mixins import OwnedQuerysetMixin
+from transactions.index import in_use
 
-from .models import Category
+from .models import Category, sort_categories
 from .serializers import CategorySerializer, KeywordSerializer
 
 
 class CategoryViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
     queryset = Category.objects.prefetch_related("keywords")  # one extra query, not one per row
     serializer_class = CategorySerializer
+
+    def list(self, request, *args, **kwargs):
+        # Names are encrypted (Phase 12.2, D13), so the database can't sort them: Others first,
+        # then A-Z, here.
+        categories = sort_categories(self.get_queryset())
+        return Response(self.get_serializer(categories, many=True).data)
 
     def destroy(self, request, *args, **kwargs):
         category = self.get_object()  # 404 for other users' rows, via the mixin
@@ -20,13 +27,16 @@ class CategoryViewSet(OwnedQuerysetMixin, viewsets.ModelViewSet):
                 {"detail": "The default category can't be deleted."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        try:
+        with transaction.atomic():
+            # The database can't see which transactions point here any more (Phase 12.2, D14), so
+            # the cores are read, with the category locked: a bulk move into it waits for this.
+            Category.objects.select_for_update().filter(pk=category.pk).exists()
+            if in_use(request.user, category_id=category.pk):
+                return Response(
+                    {"detail": "Move its transactions to another category first."},
+                    status=status.HTTP_409_CONFLICT,
+                )
             category.delete()
-        except ProtectedError:  # Transaction.category is on_delete=PROTECT
-            return Response(
-                {"detail": "Move its transactions to another category first."},
-                status=status.HTTP_409_CONFLICT,
-            )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     # Keywords belong to a category, so they live under it. get_object() does the ownership

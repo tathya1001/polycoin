@@ -120,7 +120,7 @@ export default function Register() {
             required
           />
         </Field>
-        <Field label="Password" error={errors.password} hint="At least 8 characters, not too common.">
+        <Field label="Password" error={errors.password} hint="At least 12 characters, not too common. A short sentence works well.">
           <Input
             type="password"
             autoComplete="new-password"

@@ -2,7 +2,6 @@ import uuid
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
 
 
 class UserDataKey(models.Model):
@@ -13,30 +12,17 @@ class UserDataKey(models.Model):
       settings in `kdf_params`;
     - with the user's recovery key, which they were shown once.
 
-    Accounts made before Phase 12.1 had it locked with a master key from the environment instead
-    (`wrapped_dek` + `kek_version`). Their next login re-locks it and erases that copy (D8).
+    There is no master key (Phase 12.2, D18): nothing on the server can open this alone.
     """
 
     user = models.OneToOneField(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="data_key"
     )
-    password_wrapped_dek = models.BinaryField(null=True)
-    password_salt = models.BinaryField(null=True)
-    kdf_params = models.CharField(max_length=64, blank=True)  # e.g. "argon2id:t=3,m=65536,p=4"
-    recovery_wrapped_dek = models.BinaryField(null=True)
-    # Legacy, before Phase 12.1: locked with FIELD_ENCRYPTION_KEYS[kek_version]. NULL once re-locked.
-    wrapped_dek = models.BinaryField(null=True)
-    kek_version = models.CharField(max_length=16, blank=True)
+    password_wrapped_dek = models.BinaryField()
+    password_salt = models.BinaryField()
+    kdf_params = models.CharField(max_length=64)  # e.g. "argon2id:t=3,m=65536,p=4"
+    recovery_wrapped_dek = models.BinaryField()
     created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        constraints = [
-            # A key that nothing can open would lose the user's data for good.
-            models.CheckConstraint(
-                condition=Q(password_wrapped_dek__isnull=False) | Q(wrapped_dek__isnull=False),
-                name="data_key_has_a_lock",
-            ),
-        ]
 
 
 class VaultSession(models.Model):
@@ -51,5 +37,5 @@ class VaultSession(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="vault_sessions"
     )
     wrapped_dek = models.BinaryField()
-    expires_at = models.DateTimeField()
+    expires_at = models.DateTimeField(db_index=True)  # every login purges the expired ones
     created_at = models.DateTimeField(auto_now_add=True)

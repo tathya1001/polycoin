@@ -20,7 +20,7 @@ from datasources.services import first_source
 from insights.engine import add_months
 from transactions.models import Transaction
 from transactions.services import create_transaction
-from vault.services import KeyUnavailable, UserCipher, WrongSecret, unlock_with_password
+from vault.services import UserCipher, WrongSecret, unlock_with_password
 
 OPENING_BALANCE = Decimal("50000.00")
 MAX_MONTHS = 60
@@ -125,7 +125,7 @@ class Command(BaseCommand):
         source = first_source(user)
         try:
             unlock_with_password(user, options["password"])
-        except (WrongSecret, KeyUnavailable):
+        except WrongSecret:
             raise CommandError("That password doesn't open this user's data.") from None
         cipher = UserCipher(user)
 

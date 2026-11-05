@@ -5,8 +5,9 @@ from .models import Transaction
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "date", "txn_type", "category", "ciphertext_preview")
-    list_select_related = ("user", "category")  # avoids one query per row
+    # Nothing about the money: date, type, category and source are encrypted too (Phase 12.2).
+    list_display = ("id", "user", "created_at", "ciphertext_preview")
+    list_select_related = ("user",)  # avoids one query per row
 
     # Every column is read-only, including the encrypted ones and the fingerprint.
     readonly_fields = [f.name for f in Transaction._meta.fields]

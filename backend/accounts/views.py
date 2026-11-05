@@ -6,6 +6,7 @@ from django.db.models import ProtectedError
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework import generics, status
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -17,7 +18,6 @@ from rest_framework_simplejwt.tokens import AccessToken, RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from vault.services import (
-    KeyUnavailable,
     WrongSecret,
     close_all_sessions,
     close_other_sessions,
@@ -32,6 +32,7 @@ from vault.services import (
 )
 
 from .authentication import enforce_csrf
+from .limits import account_is_locked, record_failure, too_many_failures
 from .models import User, UserPreferences
 from .serializers import (
     BirthDateSerializer,
@@ -109,6 +110,7 @@ class RegisterView(generics.CreateAPIView):
     throttle_scope = "auth"
 
     def create(self, request, *args, **kwargs):
+        enforce_csrf(request)  # Phase 12.2, D1: no sign-ups from another site's forms
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -121,22 +123,31 @@ class RegisterView(generics.CreateAPIView):
 
 class LoginView(TokenObtainPairView):
     """Check the password, open the user's data key with it, and lock a copy to this browser
-    (Phase 12.1, D4). An account from before Phase 12.1 switches over here (D8), and the answer
-    then carries its new recovery key."""
+    (Phase 12.1, D4).
+
+    Phase 12.2: the CSRF token and Origin are checked (D1), so another site's form can't sign a
+    visitor into an attacker's account; and failed logins are limited per account (D4)."""
 
     permission_classes = [AllowAny]
     throttle_scope = "auth"
 
     def post(self, request, *args, **kwargs):
+        enforce_csrf(request)
+        email = request.data.get("email")
+        if account_is_locked(email):
+            return too_many_failures()
         serializer = self.get_serializer(data=request.data)
         try:
             serializer.is_valid(raise_exception=True)
         except TokenError as e:
             raise InvalidToken(e.args[0]) from e
+        except AuthenticationFailed:
+            record_failure(email)
+            raise
         user = serializer.user
 
         try:
-            unlocked = unlock_with_password(user, request.data["password"])
+            dek = unlock_with_password(user, request.data["password"])
         except WrongSecret:
             # D11: the password was changed by a tool that doesn't know about the lock.
             return Response(
@@ -147,25 +158,13 @@ class LoginView(TokenObtainPairView):
                 },
                 status=status.HTTP_409_CONFLICT,
             )
-        except KeyUnavailable:
-            logger.error("login: an account from before Phase 12.1 can't be opened: no master key")
-            return Response(
-                {
-                    "code": "key_unavailable",
-                    "detail": "Your data can't be unlocked right now. Please try again later.",
-                },
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
 
-        body = {"detail": "Logged in."}  # the tokens never reach the JS-visible body
-        if unlocked.recovery_key:
-            body["recovery_key"] = unlocked.recovery_key  # D8: shown once
-        response = Response(body)
+        response = Response({"detail": "Logged in."})  # the tokens never reach the JS-visible body
         set_auth_cookies(
             response, serializer.validated_data["access"], serializer.validated_data["refresh"]
         )
         close_session(request.COOKIES.get(settings.AUTH_COOKIE_VAULT))  # a re-login replaces it
-        set_vault_cookie(response, open_session(user, unlocked.dek))
+        set_vault_cookie(response, open_session(user, dek))
         return response
 
 
@@ -368,15 +367,19 @@ class RecoverView(APIView):
     throttle_scope = "auth"
 
     def post(self, request):
+        enforce_csrf(request)  # Phase 12.2, D1
         serializer = RecoverSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        if account_is_locked(data["email"]):  # Phase 12.2, D4: shared with failed logins
+            return too_many_failures()
         user = User.objects.filter(email__iexact=User.objects.normalize_email(data["email"])).first()
         try:
             if user is None or not user.is_active:
                 raise WrongSecret
             dek = unlock_with_recovery_key(user, data["recovery_key"])
         except WrongSecret:
+            record_failure(data["email"])
             return Response(
                 {"code": "recovery_failed", "detail": "That email and recovery key don't match."},
                 status=status.HTTP_400_BAD_REQUEST,

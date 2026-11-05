@@ -15,6 +15,7 @@ from django.db.models import F, Q
 from ai.models import RagDocument
 from ai.scoring import prepare_text
 from ai.services import decrypt_fields
+from transactions.index import load_in_order, newest_first, rows_of
 from transactions.models import Transaction
 from vault.services import UserCipher
 
@@ -72,19 +73,24 @@ def pending(user, model: str, digest: str, limit: int) -> dict:
     once these items are stored.
     """
     prefix = profile_for(model).doc_prefix
-    candidates = (
+    stale = set(
         Transaction.objects.filter(user=user)
         .exclude(_fresh(model, digest))
+        .values_list("pk", flat=True)
+    )
+    # Newest first, from the decrypted cores: dates are encrypted (Phase 12.2).
+    order = [row.id for row in newest_first(rows_of(user)) if row.id in stale]
+    count = len(order)
+    candidates = (
+        Transaction.objects.filter(user=user)
         .select_related("rag_document")
         .defer("amount_enc", "balance_enc", "fingerprint", "rag_document__payload_enc")
-        .order_by("-date", "-created_at", "id")
     )
-    count = candidates.count()
     cipher = UserCipher(user)
     items, bumped = [], []
-    # Slices, not .iterator(): server-side cursors break behind a transaction-mode pooler.
+    # Chunks of ids, not .iterator(): server-side cursors break behind a transaction-mode pooler.
     for start in range(0, count, SCAN_CHUNK):
-        for txn in candidates[start : start + SCAN_CHUNK]:
+        for txn in load_in_order(candidates, order[start : start + SCAN_CHUNK]):
             if len(items) >= limit:
                 break
             text = document_text(cipher, txn)

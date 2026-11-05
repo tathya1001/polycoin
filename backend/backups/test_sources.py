@@ -1,3 +1,4 @@
+
 """Data sources and transfer links in a Data Backup File, and files from before they existed."""
 
 from decimal import Decimal
@@ -15,6 +16,7 @@ from insights.models import Panel
 from insights.services import decrypt_config
 from transactions.models import Transaction, TransferLink
 from transactions.services import remove_source
+from transactions.testing import rows_in
 from transactions.tests import make_txn, make_user
 from vault.services import UserCipher
 
@@ -34,7 +36,7 @@ def two_sources(user):
     credit = make_txn(
         user, data_source=river, description="in", amount=Decimal("50"), txn_type="credit"
     )
-    TransferLink.objects.create(user=user, debit=debit, credit=credit)
+    TransferLink.create_between(user, debit, credit)
     add_dashboard(
         user,
         "By source",
@@ -69,7 +71,7 @@ def test_sources_links_and_panel_filters_come_back(alice):
     new = next(s for s in sources_for(alice, UserCipher(alice)) if s.name == "River Bank")
     assert new.color == "#123456"
     link = TransferLink.objects.get(user=alice)
-    assert link.credit.data_source == new
+    assert link.debit_and_credit()[1].data_source == new
     panel = Panel.objects.get(dashboard__user=alice)
     config = decrypt_config(UserCipher(alice), panel.config_enc)
     assert config["filters"]["data_sources"] == [str(new.pk)]
@@ -129,14 +131,16 @@ def test_a_file_from_before_data_sources_goes_into_the_first_source(alice):
 
     assert counts["transactions"]["added"] == 3
     assert names_of(alice) == ["Main"]
-    assert Transaction.objects.filter(data_source=first_source(alice)).count() == 3
+    assert len(rows_in(first_source(alice))) == 3
 
 
 def test_a_row_moved_since_an_old_file_doesnt_come_back_as_a_copy(alice):
     history(alice)
     content = old_file(alice)
     river = create_source(alice, UserCipher(alice), "River Bank")
-    Transaction.objects.filter(user=alice).update(data_source=river)
+    for txn in Transaction.objects.filter(user=alice):
+        txn.data_source = river
+        txn.save()
 
     counts = restore_backup(alice, content)
 

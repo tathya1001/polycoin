@@ -222,3 +222,22 @@ def test_encrypted_xls_with_wrong_password(encrypted_xls):
 def test_encrypted_xls_with_right_password(encrypted_xls):
     rows = read(encrypted_xls, "statement.xls", password=FakeEncryptedOffice.password)
     assert rows[3][1] == "UPI/TASTYBITES"
+
+
+# --- Phase 12.2, D5: an encrypted file can't demand unbounded hashing -------------------------
+
+
+class _HeavyFile:
+    """Stands in for msoffcrypto's file object: only what _decrypt reads before the password."""
+
+    info = {"spinValue": 2_000_000_000}
+
+    def load_key(self, password):  # pragma: no cover - must never be reached
+        raise AssertionError("tried the password on a file asking for billions of hashes")
+
+
+def test_a_file_asking_for_billions_of_hashes_is_refused_before_trying_the_password():
+    from .readers import _decrypt
+
+    with pytest.raises(ImportFileError, match="unusually heavy"):
+        _decrypt(_HeavyFile(), "any password", unlocked=lambda buffer: True)

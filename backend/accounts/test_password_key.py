@@ -7,14 +7,13 @@ import base64
 import os
 
 import pytest
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
 from accounts.models import User
 from transactions.tests import make_txn, make_user
 from vault import services
-from vault.models import UserDataKey, VaultSession
+from vault.models import VaultSession
 from vault.services import forget_unlocked_keys, unlock_with_recovery_key
 
 pytestmark = pytest.mark.django_db
@@ -149,47 +148,7 @@ def test_a_refresh_without_the_vault_session_signs_the_browser_out():
     assert response.cookies["access"].value == "" and response.cookies["vault"].value == ""
 
 
-# --- accounts from before Phase 12.1 (D8, D9) ------------------------------------------------------
-
-
-def make_legacy(settings):
-    """alice as Phase 12 left her: her key locked with the master key only."""
-    user = with_data()
-    dek = services.unlock_with_password(user, PASSWORD).dek
-    forget_unlocked_keys()
-    master = os.urandom(32)
-    settings.FIELD_ENCRYPTION_KEYS = f"v1:{base64.b64encode(master).decode()}"
-    nonce = os.urandom(12)
-    wrapped = nonce + AESGCM(master).encrypt(nonce, dek, f"dek:{user.id}".encode())
-    UserDataKey.objects.filter(user=user).delete()
-    UserDataKey.objects.create(user=user, wrapped_dek=wrapped, kek_version="v1")
-    return user
-
-
-def test_an_old_account_switches_over_at_login_and_gets_its_recovery_key_once(settings):
-    user = make_legacy(settings)
-    client = APIClient()
-    first = login(client)
-    assert first.status_code == 200
-    recovery_key = first.data["recovery_key"]
-    assert UserDataKey.objects.get(user=user).wrapped_dek is None
-    assert names(client) == ["Tastybites"]
-
-    settings.FIELD_ENCRYPTION_KEYS = ""  # the master key is destroyed
-    second = signed_in()
-    assert "recovery_key" not in login(APIClient()).data
-    assert names(second) == ["Tastybites"]
-    unlock_with_recovery_key(user, recovery_key)  # and the key shown once really works
-
-
-def test_an_old_account_without_the_master_key_cannot_sign_in_and_is_not_changed(settings):
-    user = make_legacy(settings)
-    settings.FIELD_ENCRYPTION_KEYS = ""
-    response = login(APIClient())
-    assert response.status_code == 503
-    assert response.data["code"] == "key_unavailable"
-    assert "vault" not in response.cookies and "access" not in response.cookies
-    assert UserDataKey.objects.get(user=user).wrapped_dek is not None
+# --- a password changed outside the app (12.1, D11) -----------------------------------------------
 
 
 def test_a_password_set_outside_the_app_does_not_open_the_data():
@@ -213,7 +172,7 @@ def change(client, current=PASSWORD, new=NEW_PASSWORD):
 
 def test_changing_the_password_moves_the_lock():
     user = with_data()
-    recovery_key = services.replace_recovery_key(user, services.unlock_with_password(user, PASSWORD).dek)
+    recovery_key = services.replace_recovery_key(user, services.unlock_with_password(user, PASSWORD))
     forget_unlocked_keys()
     here, elsewhere = signed_in(), signed_in()
 
@@ -278,7 +237,7 @@ def test_the_recovery_key_sets_a_new_password_and_closes_every_session():
 
 def test_the_data_survives_a_recovery():
     user = with_data()
-    key = services.replace_recovery_key(user, services.unlock_with_password(user, PASSWORD).dek)
+    key = services.replace_recovery_key(user, services.unlock_with_password(user, PASSWORD))
     forget_unlocked_keys()
     assert recover("alice@example.com", key).status_code == 200
     assert names(signed_in(password=NEW_PASSWORD)) == ["Tastybites"]

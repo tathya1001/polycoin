@@ -7,6 +7,7 @@ from accounts.models import User, UserPreferences
 from accounts.services import delete_user_data
 from categories.models import Category, CategoryKeyword
 from categories.services import SEED_CATEGORIES
+from categories.testing import has_category
 from insights import services as insight_services
 from insights.models import Dashboard, Panel
 from insights.test_models import make_dashboard, make_panel
@@ -85,7 +86,7 @@ def test_a_wrong_password_is_rejected_and_nothing_is_deleted(alice):
     assert res.json() == {"password": ["Incorrect password."]}
     assert Transaction.objects.filter(user=alice).count() == 2
     assert Dashboard.objects.filter(user=alice).count() == 2
-    assert Category.objects.filter(user=alice, name="Pets").exists()
+    assert has_category(alice, "Pets")
 
 
 def test_the_password_is_not_trimmed_or_case_folded(alice):
@@ -118,8 +119,8 @@ def test_everything_the_user_stored_is_deleted(alice):
     assert not Transaction.objects.filter(user=alice).exists()
     assert not Dashboard.objects.filter(user=alice).exists()
     assert not Panel.objects.filter(dashboard__user=alice).exists()
-    assert not Category.objects.filter(user=alice, name="Pets").exists()
-    assert not CategoryKeyword.objects.filter(category__user=alice, term="vet").exists()
+    assert not has_category(alice, "Pets")
+    assert not any(k.term == "vet" for k in CategoryKeyword.objects.filter(category__user=alice))
 
 
 def test_the_response_counts_what_was_deleted(alice):
@@ -135,7 +136,7 @@ def test_the_response_counts_what_was_deleted(alice):
 def test_categories_are_reset_to_the_starter_set_with_a_default(alice):
     fill(alice)
     erase(alice)
-    names = sorted(Category.objects.filter(user=alice).values_list("name", flat=True))
+    names = sorted(category.name for category in Category.objects.filter(user=alice))
     assert names == sorted(SEED_CATEGORIES)
     assert Category.objects.filter(user=alice, is_default=True).count() == 1
     assert CategoryKeyword.objects.filter(category__user=alice).exists()  # starter keywords too
@@ -192,7 +193,7 @@ def test_another_users_data_is_never_touched(alice, bob):
     assert Dashboard.objects.filter(user=bob).count() == 2
     assert Panel.objects.filter(dashboard__user=bob).exists()
     assert sorted(Category.objects.filter(user=bob).values_list("id", flat=True)) == bobs_categories
-    assert Category.objects.filter(user=bob, name="Pets").exists()
+    assert has_category(bob, "Pets")
 
 
 # --- all or nothing -----------------------------------------------------------
@@ -210,7 +211,7 @@ def test_a_failure_part_way_through_deletes_nothing(alice, monkeypatch):
     # The whole thing rolled back: transactions, dashboards and the custom category survive.
     assert Transaction.objects.filter(user=alice).count() == 2
     assert Dashboard.objects.filter(user=alice).count() == 2
-    assert Category.objects.filter(user=alice, name="Pets").exists()
+    assert has_category(alice, "Pets")
 
 
 def test_a_protected_category_gives_409_and_deletes_nothing(alice, monkeypatch):

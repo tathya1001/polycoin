@@ -9,6 +9,7 @@ from decimal import Decimal
 import pytest
 
 from ai import services
+from categories.testing import category_named, keyword_index
 from transactions.models import Transaction
 from transactions.tests import make_txn, make_user
 from vault.services import UserCipher
@@ -27,7 +28,7 @@ def bob():
 
 
 def category(user, name):
-    return user.category_set.get(name=name)
+    return category_named(user, name)
 
 
 def text_of(run, index):
@@ -125,7 +126,7 @@ def test_deleted_keywords_leave_the_label_and_the_rest_stay(alice):
     make_txn(alice, name="a", description="1")
     shopping = category(alice, "Shopping")
     shopping.keywords.create(term="crunchy")
-    shopping.keywords.filter(term="clothes").delete()
+    shopping.keywords.filter(term_index=keyword_index(shopping, "clothes")).delete()
 
     label = label_of(services.prepare_run(alice), "Shopping")
 
@@ -228,7 +229,7 @@ def test_preparing_writes_nothing(alice):
     make_txn(alice, name="TASTYBITES", description="a")
 
     def snapshot():
-        return list(Transaction.objects.order_by("id").values_list("id", "category_id", "updated_at"))
+        return list(Transaction.objects.order_by("id").values_list("id", "core_enc", "updated_at"))
 
     before = snapshot()
     services.prepare_run(alice)

@@ -7,7 +7,7 @@ from decimal import Decimal
 import pytest
 from rest_framework.test import APIClient
 
-from categories.models import Category
+from categories.testing import category_named
 from insights import services
 from insights.spec import PARAMETER_DEFAULTS, SpecError, validate_selection
 from transactions.tests import make_txn, make_user
@@ -99,7 +99,7 @@ def alice():
             txn_type=kind,
             name=name,
             description=f"d{day}",
-            category=Category.objects.get(user=user, name=category),
+            category=category_named(user, category),
         )
     return user
 
@@ -200,7 +200,7 @@ def test_the_selection_also_applies_to_a_kpis_comparison_rows(alice):
         amount=D("40"),
         name="Tastybites",
         description="earlier",
-        category=Category.objects.get(user=alice, name="Food"),
+        category=category_named(alice, "Food"),
     )
     make_txn(
         alice,
@@ -208,7 +208,7 @@ def test_the_selection_also_applies_to_a_kpis_comparison_rows(alice):
         amount=D("999"),
         name="Powerco",
         description="earlier bills",
-        category=Category.objects.get(user=alice, name="Bills"),
+        category=category_named(alice, "Bills"),
     )
     kpi = {"chart": "kpi", "y": {"measure": "spend"}, "kpi": {"compare": "previous"}}
     results = batch(alice, [{"key": "k", "spec": kpi}], {"categories": ["Food"]})
@@ -219,7 +219,7 @@ def test_the_selection_also_applies_to_a_kpis_comparison_rows(alice):
 def test_a_panels_own_filters_still_apply_alongside_the_selection(alice):
     only_bills = {
         **BAR,
-        "filters": {"categories": [str(Category.objects.get(user=alice, name="Bills").id)]},
+        "filters": {"categories": [str(category_named(alice, "Bills").id)]},
     }
     results = batch(alice, [{"key": "b", "spec": only_bills}], {"categories": ["Food"]})
     assert results["b"]["rows"] == []  # Bills AND Food: nothing
@@ -303,7 +303,7 @@ def test_a_mark_outside_the_period_lists_nothing(alice):
 
 
 def test_the_dashboard_bar_filters_apply_to_the_list(alice):
-    filters = {**MARCH, "categories": [str(Category.objects.get(user=alice, name="Bills").id)]}
+    filters = {**MARCH, "categories": [str(category_named(alice, "Bills").id)]}
     body = services.list_rows(alice, filters, BAR, None, today=TODAY)
     assert [row["category"] for row in body["rows"]] == ["Bills"]
 
@@ -468,7 +468,7 @@ def test_a_bad_click_filter_on_the_list_is_refused(alice):
 
 def test_pages_never_repeat_or_skip_rows_that_tie_on_date_and_amount():
     user = make_user("carol@example.com")
-    food = Category.objects.get(user=user, name="Food")
+    food = category_named(user, "Food")
     for index in range(7):  # same day, same amount: only the id orders them
         make_txn(
             user,

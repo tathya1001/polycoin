@@ -9,7 +9,7 @@ from ai.rag.answer import Source, build_messages, build_sources, flatten, summar
 from ai.rag.profiles import PROMPT_VERSION
 from ai.rag.retriever import SearchResult
 from ai.test_rag_retriever import NEAR_GYM, history, search
-from categories.models import Category
+from categories.testing import category_named
 from transactions.tests import make_txn, make_user
 from vault.services import UserCipher
 
@@ -53,7 +53,7 @@ def alice(db):
 
 
 def test_sources_keep_the_retrievers_order_and_are_numbered_from_one(alice):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
     first = make_txn(
         alice, name="Tastybites", description="a", amount=Decimal("450.50"), category=food
     )

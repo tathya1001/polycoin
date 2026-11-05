@@ -31,6 +31,7 @@ _UTF16_BOMS = (codecs.BOM_UTF16_LE, codecs.BOM_UTF16_BE)
 _CSV_DELIMITERS = ",;\t|"
 
 SUPPORTED = "Only .xlsx, .xls, .csv and .pdf files are supported."
+MAX_SPIN_COUNT = 1_000_000  # ten times what Office writes
 
 
 # --- format detection ---------------------------------------------------------
@@ -117,6 +118,14 @@ def _decrypt(office, password: str | None, *, unlocked) -> io.BytesIO:
     `unlocked(buffer)` says whether the output is a real file, i.e. the password was right."""
     if not password:
         raise PasswordRequired("This file is password-protected.")
+    # The file itself says how many times its password is hashed. Office writes 100,000; a crafted
+    # file asking for billions would hold a server worker until it is killed (Phase 12.2, D5).
+    spins = (getattr(office, "info", None) or {}).get("spinValue", 0)
+    if spins > MAX_SPIN_COUNT:
+        raise ImportFileError(
+            "This file's password protection is unusually heavy. Open it in a spreadsheet "
+            "program and save it again."
+        )
 
     decrypted = io.BytesIO()
     try:

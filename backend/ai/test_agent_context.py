@@ -14,6 +14,7 @@ from ai.agent.context import (
 from ai.test_rag_retriever import DIGEST, MODEL, NEAR_GYM, NEAR_RENT
 from ai.test_rag_retriever import history as indexed_history
 from categories.models import Category
+from categories.testing import category_names
 from transactions.tests import make_txn, make_user
 
 TODAY = date(2026, 2, 15)
@@ -117,7 +118,7 @@ def test_build_context_loads_categories_keywords_and_first_date(alice):
     make_txn(alice, date=date(2026, 1, 1))
     ctx = build_context(alice, today=TODAY)
     assert set(ctx.categories.names) == set(
-        Category.objects.filter(user=alice).values_list("name", flat=True)
+        category_names(Category.objects.filter(user=alice))
     )
     assert ctx.categories.match("food delivery").category.name == "Food"  # a seeded keyword
     assert ctx.first_date == date(2025, 6, 1) and ctx.today == TODAY

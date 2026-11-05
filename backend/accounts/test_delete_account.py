@@ -37,7 +37,7 @@ def fill_everything(user):
     river = create_source(user, cipher, "River Bank")
     debit = make_txn(user, txn_type="debit", description="Transfer out")
     credit = make_txn(user, txn_type="credit", description="Transfer in", data_source=river)
-    TransferLink.objects.create(user=user, debit=debit, credit=credit)
+    TransferLink.create_between(user, debit, credit)
     RagDocument.objects.create(
         user=user,
         transaction=debit,

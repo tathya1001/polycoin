@@ -26,7 +26,6 @@ import numpy as np
 import psycopg
 from django.conf import settings
 from django.db import connection
-from django.db.models import Count, Min
 from django.utils import timezone
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
@@ -43,7 +42,7 @@ from insights.spec import (
     resolve_period,
     validate_date_filter,
 )
-from transactions.models import Transaction
+from transactions.index import keep, newest_first, rows_of
 from vault.services import UserCipher
 
 from . import codec
@@ -258,8 +257,6 @@ class _Stopwatch:
 # --- Database ------------------------------------------------------------------------------------
 
 _DOCS = RagDocument._meta.db_table
-_TXNS = Transaction._meta.db_table
-_CATEGORIES = Category._meta.db_table
 
 
 def _fetch_binary(sql: str, params: list) -> list[tuple]:
@@ -276,19 +273,24 @@ def _fetch_binary(sql: str, params: list) -> list[tuple]:
         return cursor.fetchall()
 
 
-def _where(user, model: str, digest: str, dims: int, start: date, end: date, txn_type, sources):
-    clauses = [
-        "d.user_id = %s", "t.user_id = %s", "d.model = %s", "d.model_digest = %s",
-        "d.dims = %s", "d.text_version = %s", "t.date BETWEEN %s AND %s",
-    ]  # fmt: skip
-    params = [user.id, user.id, model, digest, dims, TEXT_VERSION, start, end]
-    if txn_type:
-        clauses.append("t.txn_type = %s")
-        params.append(txn_type)
-    if sources:
-        clauses.append("t.data_source_id = ANY(%s)")
-        params.append(sources)
-    return " AND ".join(clauses), params
+def _indexed(user, model: str, digest: str, dims: int) -> set:
+    """The ids of the user's transactions that have a current document for this model."""
+    return set(
+        RagDocument.objects.filter(
+            user=user, model=model, model_digest=digest, dims=dims, text_version=TEXT_VERSION
+        ).values_list("transaction_id", flat=True)
+    )
+
+
+def _payloads(user, model: str, digest: str, dims: int, transaction_ids: list) -> dict:
+    """{transaction id: encrypted payload} for these documents only: payloads are the heavy part."""
+    rows = _fetch_binary(
+        f"SELECT d.transaction_id, d.payload_enc FROM {_DOCS} d "
+        "WHERE d.user_id = %s AND d.model = %s AND d.model_digest = %s AND d.dims = %s "
+        "AND d.text_version = %s AND d.transaction_id = ANY(%s)",
+        [user.id, model, digest, dims, TEXT_VERSION, transaction_ids],
+    )
+    return dict(rows)
 
 
 # --- The retriever -------------------------------------------------------------------------------
@@ -339,23 +341,35 @@ class EncryptedHybridRetriever(BaseRetriever):
         dims = len(query_vector)
         watch = _Stopwatch()
 
-        where, params = _where(
-            self.user, self.model, self.digest, dims, start, end, txn_type, sources
-        )
         with watch.stage("sql"):
-            rows = _fetch_binary(
-                f"SELECT d.transaction_id, d.payload_enc, c.name FROM {_DOCS} d "
-                f"JOIN {_TXNS} t ON t.id = d.transaction_id "
-                f"JOIN {_CATEGORIES} c ON c.id = t.category_id "
-                f"WHERE {where} ORDER BY t.date DESC, t.created_at DESC, t.id LIMIT %s",
-                [*params, settings.RAG_MAX_DOCS],
+            # Date, type, category and source are encrypted (Phase 12.2): the period and filters
+            # are applied to the decrypted cores, newest first, and only the documents that will
+            # be searched (at most RAG_MAX_DOCS) are fetched.
+            in_period = newest_first(
+                keep(
+                    rows_of(self.user),
+                    start=start,
+                    end=end,
+                    types=[txn_type] if txn_type else None,
+                    sources={uuid.UUID(str(source)) for source in sources} if sources else None,
+                )
             )
+            indexed = _indexed(self.user, self.model, self.digest, dims)
+            searchable = [row for row in in_period if row.id in indexed]
+            chosen = searchable[: settings.RAG_MAX_DOCS]
+            payloads = _payloads(self.user, self.model, self.digest, dims, [row.id for row in chosen])
+            names = {category.pk: category.name for category in Category.objects.filter(user=self.user)}
+            rows = [
+                (row.id, payloads[row.id], names.get(row.category_id, ""))
+                for row in chosen
+                if row.id in payloads
+            ]
         if not rows:
             self._explain_empty(dims)
-        with watch.stage("counts"):
-            coverage, first = self._coverage(
-                len(rows), where, params, start, end, txn_type, sources
-            )
+        # `searched < indexed` shows the cap (RAG_MAX_DOCS); `indexed < total` shows rows not
+        # embedded yet.
+        coverage = {"searched": len(rows), "indexed": len(searchable), "total": len(in_period)}
+        first = in_period[-1].date if in_period else None
         with watch.stage("decrypt"):
             cipher = UserCipher(self.user)
             payloads = [cipher.decrypt(blob, DOC_CONTEXT) for _, blob, _ in rows]
@@ -430,37 +444,3 @@ class EncryptedHybridRetriever(BaseRetriever):
                 f"The question vector has {dims} dimensions; the index has {stored}.",
             )
 
-    def _coverage(
-        self,
-        searched: int,
-        where: str,
-        params: list,
-        start: date,
-        end: date,
-        txn_type: str | None,
-        sources: list,
-    ) -> tuple[dict, date | None]:
-        """How much of the period was searched, and its first transaction's date.
-
-        `searched < indexed` shows the cap (RAG_MAX_DOCS); `indexed < total` shows rows not
-        embedded yet. The total and the first date come from one aggregate query, and the
-        indexed count needs a query only when the cap was hit.
-        """
-        if searched < settings.RAG_MAX_DOCS:
-            indexed = searched
-        else:
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    f"SELECT count(*) FROM {_DOCS} d JOIN {_TXNS} t ON t.id = d.transaction_id "
-                    f"WHERE {where}",
-                    params,
-                )
-                (indexed,) = cursor.fetchone()
-        in_period = Transaction.objects.filter(user=self.user, date__range=(start, end))
-        if txn_type:
-            in_period = in_period.filter(txn_type=txn_type)
-        if sources:
-            in_period = in_period.filter(data_source_id__in=sources)
-        totals = in_period.aggregate(total=Count("id"), first=Min("date"))
-        coverage = {"searched": searched, "indexed": indexed, "total": totals["total"]}
-        return coverage, totals["first"]

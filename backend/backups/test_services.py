@@ -12,6 +12,7 @@ from backups.errors import BackupError
 from backups.fileformat import FORMAT, open_file, seal
 from backups.services import build_backup, file_name, restore_backup
 from categories.models import MAX_KEYWORDS_PER_CATEGORY, Category, CategoryKeyword
+from categories.testing import category_named, has_category, keyword_index
 from datasources.services import first_source
 from insights.models import MAX_DASHBOARDS_PER_USER, Dashboard, Panel
 from insights.services import (
@@ -26,6 +27,7 @@ from insights.services import (
 )
 from transactions.models import Transaction
 from transactions.services import create_transaction
+from transactions.testing import txns
 from transactions.tests import make_txn, make_user
 from vault.services import UserCipher
 
@@ -43,7 +45,7 @@ def bob():
 
 
 def category(user, name):
-    return Category.objects.get(user=user, name=name)
+    return category_named(user, name)
 
 
 def add_dashboard(user, name, panels=(), parameters=None):
@@ -119,7 +121,7 @@ def snapshot(user) -> dict:
             text(t.notes_enc, "txn.notes"),
             bytes(t.fingerprint),
         )  # fmt: skip
-        for t in Transaction.objects.filter(user=user).select_related("category")
+        for t in Transaction.objects.filter(user=user)
     )
     dashboards = []
     for d in Dashboard.objects.filter(user=user):
@@ -199,7 +201,7 @@ def test_restored_rows_land_in_the_users_first_source(alice):
 
     source = first_source(alice)
     assert Transaction.objects.filter(user=alice).count() == 3
-    assert not Transaction.objects.filter(user=alice).exclude(data_source=source).exists()
+    assert all(txn.data_source_id == source.pk for txn in txns(alice))
 
 
 def test_panel_filters_point_at_the_new_category_ids(alice):
@@ -270,7 +272,7 @@ def test_merge_keeps_what_the_account_already_has(alice):
     pets = category(alice, "Pets")
     pets.color = "#ABCDEF"
     pets.save()
-    pets.keywords.filter(term="vet").delete()
+    pets.keywords.filter(term_index=keyword_index(pets, "vet")).delete()
     add_dashboard(alice, "Something else")
 
     counts = restore_backup(alice, content)
@@ -392,9 +394,7 @@ def test_a_damaged_row_restores_nothing(alice, bad):
     with pytest.raises(BackupError) as caught:
         restore(alice, data)
     assert caught.value.code == "damaged"
-    assert not Category.objects.filter(
-        user=alice, name="Hobbies"
-    ).exists()  # checked before writing
+    assert not has_category(alice, "Hobbies")  # checked before writing
     assert not Transaction.objects.filter(user=alice).exists()
 
 
@@ -469,5 +469,5 @@ def test_an_import_at_the_same_moment_rolls_the_whole_restore_back(alice, monkey
         restore_backup(alice, content)
     monkeypatch.undo()
     assert raced
-    assert not Category.objects.filter(user=alice, name="Pets").exists()  # nothing was kept
+    assert not has_category(alice, "Pets")  # nothing was kept
     assert Transaction.objects.filter(user=alice).count() == 0

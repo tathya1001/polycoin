@@ -1,3 +1,4 @@
+
 """Data sources in the transactions API: importing into one, moving rows, and transfer links."""
 
 from datetime import date
@@ -7,11 +8,13 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIClient
 
+from categories.testing import category_named
 from datasources.models import DataSource
 from datasources.services import SourceError, create_source, first_source
 from transactions.links import MAX_CANDIDATES, link_transactions, suggest_transfers
 from transactions.models import Transaction, TransferLink
 from transactions.services import remove_source
+from transactions.testing import rows_in
 from vault.services import UserCipher
 
 from .tests import make_txn, make_user
@@ -68,12 +71,12 @@ def add(user, source, amount="10.00", kind="debit", day=date(2026, 3, 5), name="
 
 def test_a_statement_goes_into_the_chosen_source(alice, api):
     assert upload(api, IMPORT, alice.river).data["imported"] == 2
-    assert Transaction.objects.filter(data_source=alice.river).count() == 2
+    assert len(rows_in(alice.river)) == 2
 
 
 def test_with_no_source_named_it_goes_to_the_first_one(alice, api):
     upload(api, IMPORT)
-    assert Transaction.objects.filter(data_source=alice.oak).count() == 2
+    assert len(rows_in(alice.oak)) == 2
 
 
 def test_another_users_source_is_refused(alice, api):
@@ -116,7 +119,7 @@ def test_rows_held_elsewhere_are_skipped_by_default(alice, api):
     upload(api, IMPORT, alice.oak)
     body = upload(api, IMPORT, alice.river).data
     assert (body["imported"], body["skipped"], body["moved"]) == (0, 2, 0)
-    assert not Transaction.objects.filter(data_source=alice.river).exists()
+    assert not rows_in(alice.river)
 
 
 def test_add_keeps_a_second_copy_in_the_new_source(alice, api):
@@ -127,9 +130,9 @@ def test_add_keeps_a_second_copy_in_the_new_source(alice, api):
 
 def test_move_carries_category_and_notes_with_the_row(alice, api):
     upload(api, IMPORT, alice.oak)
-    row = Transaction.objects.filter(data_source=alice.oak).first()
+    row = rows_in(alice.oak)[0]
     row.notes_enc = UserCipher(alice).encrypt(b"lunch", "txn.notes")
-    row.category = alice.category_set.get(name="Food")
+    row.category = category_named(alice, "Food")
     row.save()
     stamped = row.updated_at
 
@@ -208,7 +211,7 @@ def test_bulk_move_moves_mine_and_reports_the_rest(alice, api):
 def test_a_row_the_target_already_holds_stays_where_it_is(alice, api):
     upload(api, IMPORT, alice.oak)
     upload(api, IMPORT, alice.river, elsewhere="add")
-    ids = list(Transaction.objects.filter(data_source=alice.oak).values_list("pk", flat=True))
+    ids = [row.pk for row in rows_in(alice.oak)]
 
     body = api.post(
         f"{LIST}bulk-source/",
@@ -280,7 +283,7 @@ def test_two_rows_become_one_transfer_in_either_order(alice, api):
     response = post_link(api, credit, debit)
     assert response.status_code == 201
     link = TransferLink.objects.get()
-    assert (link.debit, link.credit, link.user) == (debit, credit, alice)
+    assert (*link.debit_and_credit(), link.user) == (debit, credit, alice)
 
 
 @pytest.mark.parametrize(

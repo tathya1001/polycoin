@@ -199,7 +199,7 @@ def test_usage_counts_what_a_delete_touches(alice, api):
     source = DataSource.objects.get(pk=pk)
     debit = make_txn(alice, data_source=source)
     credit = make_txn(alice, data_source=first_source(alice), txn_type="credit")
-    TransferLink.objects.create(user=alice, debit=debit, credit=credit)
+    TransferLink.create_between(alice, debit, credit)
     panel_with(alice, formula("oakbank.spend"))
     panel_with(alice, {"chart": "kpi", "y": {"measure": "spend"}, "filters": {"data_sources": [pk]}})
     panel_with(alice, formula("Main.spend"))

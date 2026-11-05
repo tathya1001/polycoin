@@ -141,7 +141,7 @@ def run_case(user, case: dict, answer: Answer) -> list[TurnResult]:
     """Drive one case through the real workflow. Embedding requests are skipped: the
     evaluation has no search index, so merchants are matched by name only."""
     names = {
-        str(pk): name for pk, name in Category.objects.filter(user=user).values_list("id", "name")
+        str(category.pk): category.name for category in Category.objects.filter(user=user)
     }
     token, results = None, []
     for index, turn in enumerate(case["turns"]):

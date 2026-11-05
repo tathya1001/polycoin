@@ -4,7 +4,7 @@ from datetime import date
 import pytest
 from rest_framework.test import APIClient
 
-from categories.models import Category
+from categories.testing import category_named
 from transactions.models import Transaction
 from transactions.serializers import MAX_BULK_TRANSACTIONS
 from transactions.tests import make_txn, make_user
@@ -36,7 +36,7 @@ def bob():
 
 
 def food(user):
-    return Category.objects.get(user=user, name="Food")
+    return category_named(user, "Food")
 
 
 def three(user):

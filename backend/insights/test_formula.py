@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from categories.models import Category
+from categories.testing import category_named
 from insights import services
 from insights.engine import run
 from insights.formula import (
@@ -436,7 +436,7 @@ def alice(db):
             txn_type=kind,
             name=f"n{day}",
             description=f"d{day}",
-            category=Category.objects.get(user=user, name=category),
+            category=category_named(user, category),
         )
     return user
 

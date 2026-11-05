@@ -69,13 +69,14 @@ def _within(value: Decimal, low: Decimal | None, high: Decimal | None) -> bool:
     return (low is None or value >= low) and (high is None or value <= high)
 
 
-def matching_ids(queryset, cipher, search: Search) -> list:
-    """The ids in `queryset` that pass `search`, in the queryset's order.
+def matching_ids(queryset, row_ids: list, cipher, search: Search) -> list:
+    """The ids in `row_ids` (rows of `queryset`, already filtered and sorted in Python, see
+    transactions/index.py) that pass `search`, in the same order.
 
     Each test runs only if the one before passed, numbers first: they are the cheapest to rule a
     row out with. Raises TooManyRows before anything is decrypted.
     """
-    if queryset.count() > settings.INSIGHTS_MAX_ROWS:
+    if len(row_ids) > settings.INSIGHTS_MAX_ROWS:
         raise TooManyRows
 
     def dec(blob, context) -> str:
@@ -87,8 +88,17 @@ def matching_ids(queryset, cipher, search: Search) -> list:
     columns += ["name_enc"] if search.name else []
     columns += ["notes_enc"] if search.notes else []
 
+    blobs_of = {}
+    for start in range(0, len(row_ids), 2000):
+        chunk = row_ids[start : start + 2000]
+        for pk, *blobs in queryset.filter(pk__in=chunk).values_list(*columns):
+            blobs_of[pk] = blobs
+
     found = []
-    for pk, *blobs in queryset.values_list(*columns):
+    for pk in row_ids:
+        if pk not in blobs_of:
+            continue
+        blobs = list(blobs_of[pk])
         if search.reads_amount:
             amount = Decimal(dec(blobs.pop(0), "txn.amount"))
             if not _within(amount, search.amount_min, search.amount_max):

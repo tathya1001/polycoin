@@ -6,6 +6,7 @@ from decimal import Decimal
 
 import pytest
 
+from categories.testing import category_named
 from datasources.services import create_source, first_source, rename_source
 from insights import services
 from insights.models import Dashboard, Panel
@@ -134,7 +135,7 @@ def add(user, amount, kind="debit", day=date(2026, 1, 5), source=None, category=
         txn_type=kind,
         date=day,
         data_source=source or user.oak,
-        category=user.category_set.get(name=category),
+        category=category_named(user, category),
         balance=None if balance is None else D(balance),
         description=f"{amount}/{kind}/{day}/{source}/{category}",
     )
@@ -228,7 +229,7 @@ def test_a_plain_measure_keeps_to_the_panels_sources_beside_a_named_one(alice):
 def test_transfers_cancel_for_plain_measures_beside_a_named_one(alice):
     debit =add(alice, "50.00", source=alice.oak)
     credit = add(alice, "50.00", "credit", source=alice.river)
-    TransferLink.objects.create(user=alice, debit=debit, credit=credit)
+    TransferLink.create_between(alice, debit, credit)
     rows = run(alice, chart(SPEND, formula("Main.spend")))["rows"]
     assert ["2026-01-01", 0, "0.00"] in rows
     assert ["2026-01-01", 1, "50.00"] in rows

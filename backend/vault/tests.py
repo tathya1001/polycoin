@@ -7,9 +7,6 @@ from datetime import timedelta
 
 import pytest
 from cryptography.exceptions import InvalidTag
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from django.apps import apps
-from django.core.exceptions import ImproperlyConfigured
 from django.db import IntegrityError
 from django.utils import timezone
 
@@ -18,11 +15,9 @@ from accounts.models import User
 from vault import services
 from vault.models import UserDataKey, VaultSession
 from vault.services import (
-    KeyUnavailable,
     UserCipher,
     VaultLocked,
     WrongSecret,
-    check_keys,
     close_session,
     create_user_key,
     decrypt,
@@ -123,20 +118,19 @@ def test_a_key_that_is_not_unlocked_cannot_be_used(alice):
         UserCipher(alice)
 
 
-def test_the_database_holds_no_copy_that_opens_on_its_own(alice, settings):
+def test_the_database_holds_no_copy_that_opens_on_its_own(alice):
     dek = unlocked_key(alice)
     record = record_of(alice)
-    assert record.wrapped_dek is None and record.kek_version == ""  # no master-key lock
+    # Every column of the key's row: nothing that opens it without the password or recovery key.
+    assert {field.name for field in UserDataKey._meta.fields} == {
+        "id", "user", "password_wrapped_dek", "password_salt", "kdf_params",
+        "recovery_wrapped_dek", "created_at",
+    }  # fmt: skip
     stored = b"".join(
         bytes(value)
         for value in (record.password_wrapped_dek, record.password_salt, record.recovery_wrapped_dek)
     )
     assert dek not in stored
-
-    # Even with a master key configured, there is nothing for it to open.
-    settings.FIELD_ENCRYPTION_KEYS = f"v1:{base64.b64encode(os.urandom(32)).decode()}"
-    with pytest.raises(KeyUnavailable):
-        services._open_with_master_key(alice, record)
 
 
 def test_a_key_with_no_lock_at_all_cannot_be_saved(alice):
@@ -150,8 +144,7 @@ def test_a_key_with_no_lock_at_all_cannot_be_saved(alice):
 def test_the_password_opens_the_same_key(alice):
     blob = encrypt(alice, b"coffee", "ctx")
     forget_unlocked_keys()
-    unlocked = unlock_with_password(alice, PASSWORD)
-    assert unlocked.recovery_key is None  # nothing new to show
+    assert unlock_with_password(alice, PASSWORD) == unlocked_key(alice)
     assert decrypt(alice, blob, "ctx") == b"coffee"
 
 
@@ -330,96 +323,3 @@ def test_keys_opened_outside_a_request_are_visible_inside_it(alice):
         UserCipher(alice)  # unlocked by create_user_key, outside any request
 
 
-# --- accounts from before Phase 12.1 (D8, D9) ----------------------------------------------------
-
-
-def master_key() -> tuple[str, bytes]:
-    raw = os.urandom(32)
-    return base64.b64encode(raw).decode(), raw
-
-
-def make_legacy(email, master: bytes):
-    """An account as Phase 12 left it: its data key locked with the master key only."""
-    user = User.objects.create_user(email=email, password=PASSWORD)
-    dek = os.urandom(32)
-    nonce = os.urandom(12)
-    wrapped = nonce + AESGCM(master).encrypt(nonce, dek, f"dek:{user.id}".encode())
-    UserDataKey.objects.create(user=user, wrapped_dek=wrapped, kek_version="v1")
-    services._remember(user, dek)
-    blob = encrypt(user, b"old data", "ctx")
-    forget_unlocked_keys()
-    return user, blob
-
-
-def test_an_old_account_switches_over_at_its_next_login(settings):
-    b64, raw = master_key()
-    settings.FIELD_ENCRYPTION_KEYS = f"v1:{b64}"
-    user, blob = make_legacy("old@example.com", raw)
-
-    unlocked = unlock_with_password(user, PASSWORD)
-
-    assert RECOVERY_FORMAT.match(unlocked.recovery_key)  # shown once
-    record = record_of(user)
-    assert record.wrapped_dek is None and record.kek_version == ""  # the master lock is erased
-    assert decrypt(user, blob, "ctx") == b"old data"
-
-    # The master key is no longer needed: delete it, and everything still opens.
-    settings.FIELD_ENCRYPTION_KEYS = ""
-    forget_unlocked_keys()
-    assert unlock_with_password(user, PASSWORD).recovery_key is None
-    assert decrypt(user, blob, "ctx") == b"old data"
-    forget_unlocked_keys()
-    unlock_with_recovery_key(user, unlocked.recovery_key)
-    assert decrypt(user, blob, "ctx") == b"old data"
-
-
-@pytest.mark.parametrize("configured", ["", "v1:{other}", "v2:{right}"])
-def test_an_old_account_without_its_master_key_stays_as_it_was(settings, configured):
-    b64, raw = master_key()
-    user, _ = make_legacy("old@example.com", raw)
-    before = bytes(record_of(user).wrapped_dek)
-    other = base64.b64encode(os.urandom(32)).decode()
-    settings.FIELD_ENCRYPTION_KEYS = configured.format(other=other, right=b64)
-
-    with pytest.raises(KeyUnavailable):
-        unlock_with_password(user, PASSWORD)
-    record = record_of(user)
-    assert bytes(record.wrapped_dek) == before and record.password_wrapped_dek is None
-
-
-# --- the master key setting (D9) ------------------------------------------------------------------
-
-
-def test_no_master_key_is_fine(settings):
-    settings.FIELD_ENCRYPTION_KEYS = ""
-    check_keys()
-
-
-def test_a_valid_master_key_is_fine(settings):
-    settings.FIELD_ENCRYPTION_KEYS = f"v1:{master_key()[0]}"
-    check_keys()
-
-
-@pytest.mark.parametrize(
-    "keys",
-    [
-        "{key}",  # the base64 without its "v1:" prefix
-        "v1:{key},",  # a trailing comma leaves an empty item
-        "v1:{short}",  # base64, but 16 bytes
-        "v1:not base64 at all!",
-        "v1:",
-    ],
-)
-def test_a_malformed_master_key_stops_the_app(settings, keys):
-    key, short = master_key()[0], base64.b64encode(os.urandom(16)).decode()
-    settings.FIELD_ENCRYPTION_KEYS = keys.format(key=key, short=short)
-    with pytest.raises(ImproperlyConfigured) as raised:
-        check_keys()
-    assert key not in str(raised.value)  # never echo key material into logs
-    assert raised.value.__cause__ is None
-
-
-def test_the_app_runs_the_check_when_django_starts(settings):
-    settings.FIELD_ENCRYPTION_KEYS = "missing-prefix"
-    with pytest.raises(ImproperlyConfigured):
-        apps.get_app_config("vault").ready()

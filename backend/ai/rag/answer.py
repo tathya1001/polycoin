@@ -21,6 +21,7 @@ from django.conf import settings
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 
+from categories.models import Category
 from transactions.models import Transaction
 from vault.services import UserCipher
 
@@ -105,12 +106,15 @@ def build_sources(cipher: UserCipher, user, documents: list[Document]) -> list[S
     continuous.
     """
     ids = [uuid.UUID(doc.metadata["transaction"]) for doc in documents]
-    rows = Transaction.objects.filter(user=user).select_related("category").in_bulk(ids)
+    rows = Transaction.objects.filter(user=user).in_bulk(ids)
+    # The category is in each row's encrypted core (Phase 12.2): one query for all of them.
+    categories = {category.pk: category for category in Category.objects.filter(user=user)}
     sources = []
     for txn_id, doc in zip(ids, documents):
         txn = rows.get(txn_id)
         if txn is None:
             continue
+        txn.attach(categories=categories)
         sources.append(
             Source(
                 n=len(sources) + 1,

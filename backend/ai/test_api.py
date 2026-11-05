@@ -7,6 +7,7 @@ import uuid
 import pytest
 from rest_framework.test import APIClient
 
+from categories.testing import category_named
 from transactions.tests import make_txn, make_user
 
 pytestmark = pytest.mark.django_db
@@ -37,7 +38,7 @@ def bob():
 
 
 def category(user, name):
-    return user.category_set.get(name=name)
+    return category_named(user, name)
 
 
 # --- auth ---------------------------------------------------------------------

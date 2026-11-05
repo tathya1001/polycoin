@@ -1,7 +1,8 @@
 """Transfer links: two rows that are one movement of the user's own money.
 
 The user approves every link. Amounts are encrypted, so finding a match decrypts them here, over a
-bounded date range: the same rule the charts follow.
+bounded date range: the same rule the charts follow. Since Phase 12.2 dates, types and sources are
+encrypted too, so the rows in range are found with transactions/index.py.
 """
 
 from bisect import bisect_left, bisect_right
@@ -13,6 +14,7 @@ from django.db import IntegrityError, transaction
 
 from datasources.services import sources_for
 
+from .index import Row, keep, rows_of
 from .models import Transaction, TransferLink
 
 MAX_CANDIDATES = 20  # shown for one transaction
@@ -21,6 +23,7 @@ SUGGESTION_DAYS = 3  # a transfer arrives within a few days of leaving
 SUGGESTION_RANGE_DAYS = 366  # the longest period one request looks through
 DEFAULT_CANDIDATE_DAYS = 7
 MAX_CANDIDATE_DAYS = 31
+CHUNK = 2000
 
 
 class LinkError(ValueError):
@@ -37,11 +40,24 @@ class TooManyRows(Exception):
 
 
 def _unlinked():
-    return Transaction.objects.filter(debit_link__isnull=True, credit_link__isnull=True)
+    return Transaction.objects.filter(link_as_first__isnull=True, link_as_second__isnull=True)
+
+
+def _unlinked_rows(user) -> list[Row]:
+    return rows_of(user, _unlinked().filter(user=user))
 
 
 def _text(cipher, blob, context: str) -> str:
     return cipher.decrypt(bytes(blob), context).decode()  # bytes(): Postgres gives memoryview
+
+
+def _columns(user, row_ids, column: str) -> dict:
+    """{id: that column's blob} for the user's rows with these ids."""
+    found, row_ids = {}, list(row_ids)
+    for start in range(0, len(row_ids), CHUNK):
+        rows = Transaction.objects.filter(user=user, pk__in=row_ids[start : start + CHUNK])
+        found.update(rows.order_by().values_list("pk", column))
+    return found
 
 
 def _check_pair(cipher, first: Transaction, second: Transaction) -> tuple:
@@ -58,15 +74,27 @@ def _check_pair(cipher, first: Transaction, second: Transaction) -> tuple:
 
 
 def link_transactions(user, cipher, first_id, second_id) -> TransferLink:
-    rows = {row.pk: row for row in Transaction.objects.filter(user=user, pk__in=[first_id, second_id])}
-    if first_id == second_id or len(rows) != 2:
-        raise LinkError("not_found", "Pick two of your transactions.")
-    debit, credit = _check_pair(cipher, rows[first_id], rows[second_id])
+    already = LinkError("already_linked", "One of these is already linked.")
     try:
-        with transaction.atomic():  # one-to-one: a row already linked breaks the constraint
-            return TransferLink.objects.create(user=user, debit=debit, credit=credit)
+        with transaction.atomic():
+            # Locked, so two requests can't each link one of these rows at the same time. A row
+            # may be on either side of a link (D15), which no single column constraint covers.
+            rows = {
+                row.pk: row
+                for row in Transaction.objects.select_for_update().filter(
+                    user=user, pk__in=[first_id, second_id]
+                )
+            }
+            if first_id == second_id or len(rows) != 2:
+                raise LinkError("not_found", "Pick two of your transactions.")
+            debit, credit = _check_pair(cipher, rows[first_id], rows[second_id])
+            if _unlinked().filter(pk__in=[first_id, second_id]).count() != 2:
+                raise already
+            link = TransferLink.between(user, debit, credit)
+            link.save()
+            return link
     except IntegrityError:
-        raise LinkError("already_linked", "One of these is already linked.") from None
+        raise already from None
 
 
 def link_many(user, cipher, pairs: list[dict]) -> dict:
@@ -82,12 +110,12 @@ def link_many(user, cipher, pairs: list[dict]) -> dict:
     return {"linked": linked, "failed": failed}
 
 
-def _describe(row, cipher, names: dict) -> dict:
+def _describe(row: Row, name_enc, cipher, names: dict) -> dict:
     return {
-        "id": str(row.pk),
+        "id": str(row.id),
         "date": row.date.isoformat(),
         "txn_type": row.txn_type,
-        "name": _text(cipher, row.name_enc, "txn.name"),
+        "name": _text(cipher, name_enc, "txn.name"),
         "data_source": str(row.data_source_id),
         "data_source_name": names[row.data_source_id],
     }
@@ -96,26 +124,29 @@ def _describe(row, cipher, names: dict) -> dict:
 def link_candidates(user, cipher, row: Transaction, days: int) -> list[dict]:
     """The rows `row` could be linked to, closest in date first."""
     wanted = _text(cipher, row.amount_enc, "txn.amount")
-    near = (
-        _unlinked()
-        .filter(
-            user=user,
-            date__range=(row.date - timedelta(days=days), row.date + timedelta(days=days)),
+    near = [
+        other
+        for other in keep(
+            _unlinked_rows(user),
+            start=row.date - timedelta(days=days),
+            end=row.date + timedelta(days=days),
         )
-        .exclude(txn_type=row.txn_type)
-        .exclude(data_source_id=row.data_source_id)
-    )
-    if near.count() > settings.INSIGHTS_MAX_ROWS:
-        raise TooManyRows
-    found = [
-        other for other in near.defer("description_enc", "balance_enc", "notes_enc")
-        if _text(cipher, other.amount_enc, "txn.amount") == wanted
+        if other.txn_type != row.txn_type and other.data_source_id != row.data_source_id
     ]
+    if len(near) > settings.INSIGHTS_MAX_ROWS:
+        raise TooManyRows
+    amounts = _columns(user, [other.id for other in near], "amount_enc")
+    found = [other for other in near if _text(cipher, amounts[other.id], "txn.amount") == wanted]
     found.sort(key=lambda other: (abs((other.date - row.date).days), other.date))
+    found = found[:MAX_CANDIDATES]
     names = {source.pk: source.name for source in sources_for(user, cipher)}
+    name_blobs = _columns(user, [other.id for other in found], "name_enc")
     return [
-        {**_describe(other, cipher, names), "days_apart": abs((other.date - row.date).days)}
-        for other in found[:MAX_CANDIDATES]
+        {
+            **_describe(other, name_blobs[other.id], cipher, names),
+            "days_apart": abs((other.date - row.date).days),
+        }
+        for other in found
     ]
 
 
@@ -126,12 +157,14 @@ class _Side:
     source: object
 
 
-def _split_by_amount(cipher, rows) -> dict:
-    """{amount: ([debits], [credits])}, from (pk, date, type, source, amount_enc) rows."""
+def _split_by_amount(cipher, rows: list[Row], amounts: dict) -> dict:
+    """{amount: ([debits], [credits])}."""
     sides: dict = {}
-    for pk, day, txn_type, source, amount_enc in rows:
-        debits, credits = sides.setdefault(_text(cipher, amount_enc, "txn.amount"), ([], []))
-        (debits if txn_type == "debit" else credits).append(_Side(pk, day, source))
+    for row in rows:
+        debits, credits = sides.setdefault(_text(cipher, amounts[row.id], "txn.amount"), ([], []))
+        (debits if row.txn_type == "debit" else credits).append(
+            _Side(row.id, row.date, row.data_source_id)
+        )
     return sides
 
 
@@ -162,30 +195,26 @@ def _likely_pairs(sides: dict) -> list[tuple]:
 
 def suggest_transfers(user, cipher, start: date, end: date) -> dict:
     """Likely transfers between the user's sources, newest first. Nothing is linked here."""
-    rows = _unlinked().filter(user=user, date__range=(start, end)).order_by()
-    if rows.count() > settings.INSIGHTS_MAX_ROWS:
+    rows = keep(_unlinked_rows(user), start=start, end=end)
+    if len(rows) > settings.INSIGHTS_MAX_ROWS:
         raise TooManyRows
 
-    pairs = _likely_pairs(
-        _split_by_amount(
-            cipher, rows.values_list("pk", "date", "txn_type", "data_source_id", "amount_enc")
-        )
-    )
+    amounts = _columns(user, [row.id for row in rows], "amount_enc")
+    pairs = _likely_pairs(_split_by_amount(cipher, rows, amounts))
     pairs.sort(key=lambda pair: pair[1], reverse=True)
     shown = pairs[:MAX_SUGGESTIONS]
 
-    ids = [side.pk for pair in shown for side in pair[3:]]
-    details = {row.pk: row for row in Transaction.objects.filter(pk__in=ids).order_by()}
+    by_id = {row.id: row for row in rows}
+    name_blobs = _columns(user, [side.pk for pair in shown for side in pair[3:]], "name_enc")
     names = {source.pk: source.name for source in sources_for(user, cipher)}
+
+    def describe(side):
+        return _describe(by_id[side.pk], name_blobs[side.pk], cipher, names)
+
     return {
         "total": len(pairs),
         "pairs": [
-            {
-                "amount": amount,
-                "days_apart": days_apart,
-                "debit": _describe(details[debit.pk], cipher, names),
-                "credit": _describe(details[credit.pk], cipher, names),
-            }
+            {"amount": amount, "days_apart": days_apart, "debit": describe(debit), "credit": describe(credit)}
             for days_apart, _, amount, debit, credit in shown
         ],
     }

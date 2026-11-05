@@ -160,6 +160,8 @@ jobs:
           pip install -r requirements.txt
           python manage.py migrate --noinput
           python manage.py createcachetable
+          # Expired refresh-token records are useless; keep the table small (Phase 12.2, D8).
+          python manage.py flushexpiredtokens
 
       - name: Deploy backend on Render (this exact commit)
         env:

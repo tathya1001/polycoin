@@ -6,6 +6,7 @@ from accounts.serializers import RegisterSerializer
 from accounts.testing import confirm_age
 from categories.models import MAX_KEYWORDS_PER_CATEGORY, Category, CategoryKeyword
 from categories.services import DEFAULT_KEYWORDS, SEED_CATEGORIES, seed_default_categories
+from categories.testing import category_named, category_names, keyword_named
 from vault.services import create_user_key
 
 pytestmark = pytest.mark.django_db
@@ -42,7 +43,7 @@ def test_registration_seeds_defaults():
     s.is_valid(raise_exception=True)
     user = s.save()
     cats = Category.objects.filter(user=user)
-    assert set(cats.values_list("name", flat=True)) == set(SEED_CATEGORIES)
+    assert set(category_names(cats)) == set(SEED_CATEGORIES)
     assert cats.filter(is_default=True).get().name == "Others"
 
 
@@ -75,7 +76,7 @@ def test_duplicate_name_is_rejected_case_insensitively(alice):
 
 
 def test_same_name_is_fine_for_a_different_user(alice, bob):
-    Category.objects.filter(user=bob, name="Food").delete()
+    category_named(bob, "Food").delete()
     assert client_for(bob).post(URL, {"name": "Food"}, format="json").status_code == 201
 
 
@@ -86,7 +87,7 @@ def test_client_cannot_set_is_default(alice):
 
 
 def test_rename(alice):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
     r = client_for(alice).patch(f"{URL}{food.id}/", {"name": "Eating out"}, format="json")
     assert r.status_code == 200
     food.refresh_from_db()
@@ -94,7 +95,7 @@ def test_rename(alice):
 
 
 def test_rename_to_existing_name_is_rejected(alice):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
     r = client_for(alice).patch(f"{URL}{food.id}/", {"name": "rent"}, format="json")
     assert r.status_code == 400
 
@@ -112,13 +113,13 @@ def test_default_cannot_be_deleted(alice):
 
 
 def test_unused_category_can_be_deleted(alice):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
     assert client_for(alice).delete(f"{URL}{food.id}/").status_code == 204
     assert not Category.objects.filter(id=food.id).exists()
 
 
 def test_other_users_category_is_404(alice, bob):
-    theirs = Category.objects.get(user=bob, name="Food")
+    theirs = category_named(bob, "Food")
     c = client_for(alice)
     assert c.get(f"{URL}{theirs.id}/").status_code == 404
     assert c.patch(f"{URL}{theirs.id}/", {"name": "x"}, format="json").status_code == 404
@@ -135,7 +136,7 @@ def kw_url(category, keyword=None):
 
 
 def terms(category):
-    return set(category.keywords.values_list("term", flat=True))
+    return {keyword.term for keyword in category.keywords.all()}
 
 
 def test_registration_seeds_the_starter_keywords_but_not_for_others():
@@ -144,7 +145,7 @@ def test_registration_seeds_the_starter_keywords_but_not_for_others():
     user = s.save()
 
     for name, expected in DEFAULT_KEYWORDS.items():
-        category = Category.objects.get(user=user, name__iexact=name)
+        category = category_named(user, name)
         assert terms(category) == set(expected)
     assert not Category.objects.get(user=user, is_default=True).keywords.exists()
 
@@ -186,7 +187,7 @@ def test_add_keyword(alice):
     ["", "   ", "x" * 61, "CAFE", "Cafe"],  # blank, too long, duplicate of a seeded term
 )
 def test_bad_keywords_are_rejected(alice, term):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
     before = terms(food)
 
     r = client_for(alice).post(kw_url(food), {"term": term}, format="json")
@@ -196,7 +197,7 @@ def test_bad_keywords_are_rejected(alice, term):
 
 
 def test_the_category_name_cannot_be_added_as_its_own_keyword(alice):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
     assert client_for(alice).post(kw_url(food), {"term": "food"}, format="json").status_code == 400
 
 
@@ -223,8 +224,8 @@ def test_the_same_term_may_live_on_two_categories(alice):
 
 
 def test_delete_keyword(alice):
-    food = Category.objects.get(user=alice, name="Food")
-    cafe = food.keywords.get(term="cafe")
+    food = category_named(alice, "Food")
+    cafe = keyword_named(food, "cafe")
 
     assert client_for(alice).delete(kw_url(food, cafe)).status_code == 204
 
@@ -232,17 +233,17 @@ def test_delete_keyword(alice):
 
 
 def test_deleting_a_keyword_through_the_wrong_category_is_404(alice):
-    food = Category.objects.get(user=alice, name="Food")
-    rent = Category.objects.get(user=alice, name="Rent")
-    cafe = food.keywords.get(term="cafe")
+    food = category_named(alice, "Food")
+    rent = category_named(alice, "Rent")
+    cafe = keyword_named(food, "cafe")
 
     assert client_for(alice).delete(kw_url(rent, cafe)).status_code == 404
     assert "cafe" in terms(food)
 
 
 def test_other_users_keywords_cannot_be_read_added_or_deleted(alice, bob):
-    theirs = Category.objects.get(user=bob, name="Food")
-    keyword = theirs.keywords.get(term="cafe")
+    theirs = category_named(bob, "Food")
+    keyword = keyword_named(theirs, "cafe")
     c = client_for(alice)
 
     assert c.post(kw_url(theirs), {"term": "hacked"}, format="json").status_code == 404
@@ -251,7 +252,7 @@ def test_other_users_keywords_cannot_be_read_added_or_deleted(alice, bob):
 
 
 def test_renaming_a_category_keeps_its_keywords(alice):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
 
     client_for(alice).patch(f"{URL}{food.id}/", {"name": "Eating out"}, format="json")
 
@@ -259,7 +260,7 @@ def test_renaming_a_category_keeps_its_keywords(alice):
 
 
 def test_deleting_a_category_deletes_its_keywords(alice):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
 
     client_for(alice).delete(f"{URL}{food.id}/")
 
@@ -267,5 +268,5 @@ def test_deleting_a_category_deletes_its_keywords(alice):
 
 
 def test_keyword_ids_in_urls_must_be_uuid_shaped(alice):
-    food = Category.objects.get(user=alice, name="Food")
+    food = category_named(alice, "Food")
     assert client_for(alice).delete(f"{URL}{food.id}/keywords/not-a-uuid/").status_code == 404

@@ -13,14 +13,10 @@ MAX_NOTES_LENGTH = 500
 
 def link_of(transaction: Transaction) -> dict | None:
     """The transfer this row is part of: the link, the other row and that row's data source."""
-    link = getattr(transaction, "debit_link", None)
-    if link is not None:
-        partner = link.credit
-    else:
-        link = getattr(transaction, "credit_link", None)
-        partner = link.debit if link is not None else None
+    link = transaction.link
     if link is None:
         return None
+    partner = transaction.partner
     return {
         "id": str(link.pk),
         "partner": str(partner.pk),
@@ -43,7 +39,12 @@ class TransactionSerializer(serializers.ModelSerializer):
     notes = serializers.CharField(
         max_length=MAX_NOTES_LENGTH, allow_blank=True, required=False, write_only=True
     )
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.none())
+    # Encrypted attributes, not columns (Phase 12.2, D11), so they are declared by hand. The
+    # answer has the same shape as before: ids as text, the date as YYYY-MM-DD.
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.none(), write_only=True)
+    data_source = serializers.UUIDField(source="data_source_id", read_only=True)
+    date = serializers.DateField()
+    txn_type = serializers.ChoiceField(choices=Transaction.Type.choices)
 
     class Meta:
         model = Transaction
@@ -91,6 +92,7 @@ class TransactionSerializer(serializers.ModelSerializer):
             dec(instance.balance_enc, "txn.balance") if instance.balance_enc is not None else None
         )
         data["notes"] = dec(instance.notes_enc, "txn.notes") if instance.notes_enc is not None else ""
+        data["category"] = str(instance.category_id)
         data["link"] = link_of(instance)
         return data
 
@@ -119,7 +121,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         if "category" in validated_data:
             instance.category = validated_data.pop("category")
 
-        # date / txn_type are plain columns, so the generic path handles them.
+        # date / txn_type: setting them changes the encrypted core, which save() seals again.
         for field, value in validated_data.items():
             setattr(instance, field, value)
         # instance.fingerprint is deliberately NOT recomputed: it identifies the row as it

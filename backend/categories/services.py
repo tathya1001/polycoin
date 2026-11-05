@@ -33,7 +33,7 @@ def seed_default_categories(user) -> None:
     """Idempotent: re-running (or racing) never duplicates or errors.
 
     Only meant for a new user. Re-running it would bring back starter keywords the user
-    has since deleted.
+    has since deleted. Names and terms are encrypted, so the user's key must be unlocked.
     """
     Category.objects.bulk_create(
         [
@@ -63,3 +63,9 @@ def seed_default_categories(user) -> None:
 def get_default_category(user) -> Category:
     """What every imported transaction starts as."""
     return Category.objects.get(user=user, is_default=True)
+
+
+def category_by_name(user, name: str) -> Category | None:
+    """The user's category with this name, ignoring case, through its keyed hash."""
+    index = Category.name.index_for(user.pk, name)
+    return Category.objects.filter(user=user, name_index=index).first()

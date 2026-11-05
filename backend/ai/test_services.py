@@ -10,7 +10,8 @@ import pytest
 
 from ai import services
 from categories.services import get_default_category
-from transactions.models import Transaction
+from categories.testing import category_named
+from transactions.index import rows_of
 from transactions.tests import make_txn, make_user  # shared factories
 
 pytestmark = pytest.mark.django_db
@@ -27,7 +28,7 @@ def bob():
 
 
 def category(user, name):
-    return user.category_set.get(name=name)
+    return category_named(user, name)
 
 
 # --- the credit/debit rule ---------------------------------------------------
@@ -67,7 +68,7 @@ def test_example_pool_is_capped_per_category_and_type_keeping_the_newest(alice, 
     for day in (1, 2, 3):
         make_txn(alice, name="x", description=f"d{day}", date=date(2026, 1, day), category=food)
 
-    groups = services._load_examples(alice, get_default_category(alice), {"debit"})
+    groups = services._load_examples(alice, get_default_category(alice), {"debit"}, rows_of(alice))
 
     assert {txn.date.day for txn in groups[(food.id, "debit")]} == {2, 3}
 
@@ -79,7 +80,7 @@ def test_example_pool_excludes_others_other_users_and_unwanted_types(alice, bob)
     make_txn(alice, name="credit", description="3", category=food, txn_type="credit")
     make_txn(bob, name="bobs", description="4", category=category(bob, "Food"))
 
-    groups = services._load_examples(alice, get_default_category(alice), {"debit"})
+    groups = services._load_examples(alice, get_default_category(alice), {"debit"}, rows_of(alice))
 
     assert [txn.id for rows in groups.values() for txn in rows] == [keep.id]
 
@@ -94,7 +95,7 @@ def test_label_text_is_the_name_plus_the_users_keywords_in_a_stable_order(alice)
     pets.keywords.create(term="vet")
     pets.keywords.create(term="Kibble")
 
-    assert services._label_text(alice.category_set.get(name="Pets")) == "Pets: Kibble, vet"
+    assert services._label_text(category_named(alice, "Pets")) == "Pets: Kibble, vet"
 
 
 # --- apply_decisions ---------------------------------------------------------
@@ -146,7 +147,9 @@ def test_apply_never_touches_another_users_transaction(alice, bob):
 def test_apply_never_overwrites_a_row_the_user_has_since_categorised(alice):
     txn = make_txn(alice)
     groceries = category(alice, "Groceries")
-    Transaction.objects.filter(pk=txn.pk).update(category=groceries)  # a human got there first
+    txn.refresh_from_db()
+    txn.category = groceries  # a human got there first
+    txn.save()
 
     result = services.apply_decisions(alice, [decision(txn, category(alice, "Food"))])
 

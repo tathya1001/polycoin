@@ -9,6 +9,7 @@ builder for starter templates.
 """
 
 import json
+import uuid
 from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
@@ -16,11 +17,11 @@ from functools import partial
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import CharField, Max, Min
-from django.db.models.functions import Cast
 from django.utils import timezone
 
+from categories.models import Category
 from datasources.services import sources_for
+from transactions.index import keep, rows_of
 from transactions.models import Transaction, TransferLink
 from vault.services import UserCipher
 
@@ -64,15 +65,28 @@ def source_labels(user, cipher) -> dict:
     }
 
 
-def _link_partners(user) -> dict:
-    """{transaction id: the data source of the transaction it is linked to}."""
+def _link_partners(user, source_of: dict) -> dict:
+    """{transaction id: the data source of the transaction it is linked to}. `source_of` is
+    {transaction id: its source id}, from the decrypted cores."""
     partners = {}
-    for debit, debit_source, credit, credit_source in TransferLink.objects.filter(
-        user=user
-    ).values_list("debit_id", "debit__data_source_id", "credit_id", "credit__data_source_id"):
-        partners[debit] = str(credit_source)
-        partners[credit] = str(debit_source)
+    for first, second in TransferLink.objects.filter(user=user).values_list("first_id", "second_id"):
+        partners[first] = str(source_of[second])
+        partners[second] = str(source_of[first])
     return partners
+
+
+def _as_uuids(values) -> set | None:
+    return {uuid.UUID(str(value)) for value in values} if values else None
+
+
+def _blobs(user, row_ids: list, columns: list[str]) -> dict:
+    """{id: (blob, ...)} for those columns of the user's rows with these ids."""
+    found = {}
+    for start in range(0, len(row_ids), 2000):
+        chunk = Transaction.objects.filter(user=user, pk__in=row_ids[start : start + 2000])
+        for pk, *blobs in chunk.order_by().values_list("pk", *columns):
+            found[pk] = blobs
+    return found
 
 
 def load_rows(
@@ -95,50 +109,48 @@ def load_rows(
     rows in the order they were stored, which settles a balance. `cipher` and `labels` save a
     load when the caller has them.
     """
-    queryset = Transaction.objects.filter(user=user, date__range=(start, end))
-    if types:
-        queryset = queryset.filter(txn_type__in=types)
-    if category_ids:
-        queryset = queryset.filter(category_id__in=category_ids)
-    if source_ids:
-        queryset = queryset.filter(data_source_id__in=source_ids)
-
-    # Count BEFORE fetching or decrypting anything, so a huge range costs one cheap query.
-    if queryset.count() > settings.INSIGHTS_MAX_ROWS:
-        raise TooManyRows(f"More than {settings.INSIGHTS_MAX_ROWS} transactions in the period.")
-
     cipher = cipher or UserCipher(user)  # one DEK load for every row
+    # Date, type, category and source are encrypted (Phase 12.2, D10): every core is decrypted,
+    # and the period and filters are applied here, before any amount is.
+    every_row = rows_of(user)
+    selected = keep(
+        every_row,
+        start=start,
+        end=end,
+        types=types or None,
+        categories=_as_uuids(category_ids),
+        sources=_as_uuids(source_ids),
+    )
+    if len(selected) > settings.INSIGHTS_MAX_ROWS:
+        raise TooManyRows(f"More than {settings.INSIGHTS_MAX_ROWS} transactions in the period.")
+    if "stored_order" in need:
+        selected.sort(key=lambda row: row.created_at)  # the order that settles a balance
+
     labels = source_labels(user, cipher) if labels is None else labels
-    partners = _link_partners(user)
+    partners = _link_partners(user, {row.id: row.data_source_id for row in every_row})
+    category_names = {category.pk: category.name for category in Category.objects.filter(user=user)}
 
     def dec(blob, context):
         return cipher.decrypt(bytes(blob), context).decode()  # bytes(): Postgres gives memoryview
 
     want_name, want_balance = "name" in need, "balance" in need
     want_id = "id" in need or bool(partners)
-    # Plain tuples, not model objects: building a Transaction per row was most of the time at
-    # 20k rows on a slow CPU. No ORDER BY either, unless asked: the engine sorts by date itself.
-    # The database does that sort, because turning 20k timestamps into Python ones is slower.
-    # The source comes back as text for the same reason: a UUID object per row is not free.
-    by_text = {label.id: label for label in labels.values()}
-    queryset = queryset.annotate(source_text=Cast("data_source_id", CharField()))
-    columns = ["date", "txn_type", "category_id", "category__name", "source_text", "amount_enc"]
+    columns = ["amount_enc"]
     columns += ["name_enc"] if want_name else []
     columns += ["balance_enc"] if want_balance else []
-    columns += ["id"] if want_id else []
-    ordering = ("created_at",) if "stored_order" in need else ()
+    blobs = _blobs(user, [row.id for row in selected], columns)
 
     rows = []
-    for values in queryset.order_by(*ordering).values_list(*columns):
-        day, txn_type, category_id, category_name, source_id, amount_enc, *optional = values
+    for core in selected:
+        amount_enc, *optional = blobs[core.id]
         name_enc = optional.pop(0) if want_name else None
         balance_enc = optional.pop(0) if want_balance else None
         row = {
-            "date": day,
-            "txn_type": txn_type,
-            "category_id": str(category_id),  # for each panel's own category filter
-            "category_name": category_name,
-            "source": by_text[source_id],
+            "date": core.date,
+            "txn_type": core.txn_type,
+            "category_id": str(core.category_id),  # for each panel's own category filter
+            "category_name": category_names.get(core.category_id, ""),
+            "source": labels[core.data_source_id],
             "link_source": None,  # the data source of the other side of a transfer
             "amount": Decimal(dec(amount_enc, "txn.amount")),
             "name": dec(name_enc, "txn.name") if want_name else "",
@@ -147,41 +159,44 @@ def load_rows(
             ),
         }
         if want_id:
-            row["id"] = optional.pop(0)
-            row["link_source"] = partners.get(row["id"])
+            row["id"] = core.id
+            row["link_source"] = partners.get(core.id)
         rows.append(row)
     return rows
 
 
 def first_transaction_date(user) -> date | None:
     """The date of the user's oldest transaction, or None if they have none."""
-    return Transaction.objects.filter(user=user).aggregate(first=Min("date"))["first"]
+    return min((row.date for row in rows_of(user)), default=None)
 
 
 def opening_balances(user, cipher, before: date, labels: dict) -> dict[str, Decimal]:
     """Each source's balance at the end of its last day with one before `before`.
 
-    {source key: balance}. One small query per source, and only when a panel reads a balance.
+    {source key: balance}. Only when a panel reads a balance. The days come from the decrypted
+    cores; then, from the latest day back, the first day with a balance on the statement wins.
     """
+    days_of: dict = {}
+    for row in rows_of(user):
+        if row.date < before:
+            days_of.setdefault(row.data_source_id, {}).setdefault(row.date, []).append(row)
     balances = {}
     for source_id, label in labels.items():
-        known = Transaction.objects.filter(
-            data_source_id=source_id, date__lt=before, balance_enc__isnull=False
-        ).order_by()
-        day = known.aggregate(day=Max("date"))["day"]
-        if day is None:
-            continue
-        rows = [
-            {
-                "txn_type": txn_type,
-                "amount": Decimal(cipher.decrypt(bytes(amount), "txn.amount").decode()),
-                "balance": Decimal(cipher.decrypt(bytes(balance), "txn.balance").decode()),
-            }
-            for txn_type, amount, balance in known.filter(date=day)
-            .order_by("created_at")
-            .values_list("txn_type", "amount_enc", "balance_enc")
-        ]
-        balances[label.key] = closing_row(rows)["balance"]
+        for day in sorted(days_of.get(source_id, {}), reverse=True):
+            on_day = sorted(days_of[source_id][day], key=lambda row: row.created_at)
+            blobs = _blobs(user, [row.id for row in on_day], ["amount_enc", "balance_enc"])
+            rows = [
+                {
+                    "txn_type": row.txn_type,
+                    "amount": Decimal(cipher.decrypt(bytes(blobs[row.id][0]), "txn.amount").decode()),
+                    "balance": Decimal(cipher.decrypt(bytes(blobs[row.id][1]), "txn.balance").decode()),
+                }
+                for row in on_day
+                if blobs[row.id][1] is not None
+            ]
+            if rows:
+                balances[label.key] = closing_row(rows)["balance"]
+                break
     return balances
 
 

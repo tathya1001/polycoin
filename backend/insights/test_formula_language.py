@@ -7,7 +7,7 @@ from decimal import Decimal
 
 import pytest
 
-from categories.models import Category
+from categories.testing import category_named
 from insights import engine, services
 from insights.engine import group_days, run
 from insights.formula import (
@@ -378,7 +378,7 @@ def carol(db):
             name=name,
             description="d",
             balance=D("100.00"),
-            category=Category.objects.get(user=user, name=category),
+            category=category_named(user, category),
         )
     return user
 
@@ -476,7 +476,7 @@ def test_a_formula_only_ever_sees_its_own_accounts_transactions(carol):
         txn_type="debit",
         name="Elsewhere Store",
         description="d",
-        category=Category.objects.get(user=other, name="Food"),
+        category=category_named(other, "Food"),
     )
     results = services.run_queries(
         carol,

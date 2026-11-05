@@ -29,10 +29,13 @@ from django.utils import timezone
 from accounts.models import UserPreferences
 from categories.colors import is_hex_color
 from categories.models import (
+    MAX_CATEGORY_NAME,
     MAX_KEYWORD_LENGTH,
     MAX_KEYWORDS_PER_CATEGORY,
     Category,
     CategoryKeyword,
+    sort_categories,
+    sort_keywords,
 )
 from datasources.models import MAX_SOURCES_PER_USER, DataSource
 from datasources.services import (
@@ -64,7 +67,15 @@ from insights.services import (
     encrypt_text,
 )
 from insights.spec import SpecError
-from transactions.models import Transaction, TransferLink
+from transactions.index import in_use, oldest_first, rows_of
+from transactions.models import (
+    CORE_CONTEXT,
+    Transaction,
+    TransferLink,
+    decode_core,
+    encode_core,
+    slot_of,
+)
 from transactions.serializers import MAX_NOTES_LENGTH
 from vault.services import UserCipher
 
@@ -73,14 +84,12 @@ from .fileformat import FORMAT, open_file, seal
 
 logger = logging.getLogger(__name__)
 
-MAX_CATEGORY_NAME = Category._meta.get_field("name").max_length
 MAX_TEXT = 10_000  # a transaction's name or narration; real ones are far shorter
 FINGERPRINT_BYTES = 32
 # The columns COPY writes, in order; backups/test_services.py checks they are every column.
 COPY_COLUMNS = (
-    "id", "user_id", "data_source_id", "date", "txn_type", "category_id", "name_enc",
-    "description_enc", "amount_enc", "balance_enc", "notes_enc", "fingerprint", "created_at",
-    "updated_at",
+    "id", "user_id", "core_enc", "name_enc", "description_enc", "amount_enc", "balance_enc",
+    "notes_enc", "fingerprint", "slot", "created_at", "updated_at",
 )  # fmt: skip
 
 
@@ -102,9 +111,11 @@ def _categories(user) -> list[dict]:
             "name": category.name,
             "color": category.color,
             "is_default": category.is_default,
-            "keywords": [keyword.term for keyword in category.keywords.all()],
+            "keywords": [keyword.term for keyword in sort_keywords(category.keywords.all())],
         }
-        for category in Category.objects.filter(user=user).prefetch_related("keywords")
+        for category in sort_categories(
+            Category.objects.filter(user=user).prefetch_related("keywords")
+        )
     ]
 
 
@@ -115,68 +126,67 @@ def _data_sources(user, cipher: UserCipher) -> list[dict]:
     ]
 
 
-def _links(user) -> list[dict]:
+def _decrypted_index(user, cipher: UserCipher) -> dict:
+    """{row id: (source id, fingerprint, type)}, from the decrypted cores (Phase 12.2)."""
+    found = {}
+    rows = Transaction.objects.filter(user=user).order_by()
+    for pk, blob, fingerprint in rows.values_list("pk", "core_enc", "fingerprint").iterator(2000):
+        _, txn_type, _, source_id = decode_core(cipher.decrypt(blob, CORE_CONTEXT))
+        found[pk] = (source_id, bytes(fingerprint), txn_type)
+    return found
+
+
+def _links(user, cipher: UserCipher) -> list[dict]:
     """A link by what stays true after a restore: each row's source and fingerprint."""
-    rows = TransferLink.objects.filter(user=user).values_list(
-        "debit__data_source_id", "debit__fingerprint", "credit__data_source_id", "credit__fingerprint"
-    )
-    return [
-        {
-            "debit_source": str(debit_source),
-            "debit": _b64(debit),
-            "credit_source": str(credit_source),
-            "credit": _b64(credit),
-        }
-        for debit_source, debit, credit_source, credit in rows
-    ]
+    rows = _decrypted_index(user, cipher)
+    links = []
+    for first, second in TransferLink.objects.filter(user=user).values_list("first_id", "second_id"):
+        debit, credit = (first, second) if rows[first][2] == "debit" else (second, first)
+        links.append(
+            {
+                "debit_source": str(rows[debit][0]),
+                "debit": _b64(rows[debit][1]),
+                "credit_source": str(rows[credit][0]),
+                "credit": _b64(rows[credit][1]),
+            }
+        )
+    return links
 
 
 def _transactions(user, cipher: UserCipher) -> list[dict]:
     def text(blob, context):
         return cipher.decrypt(bytes(blob), context).decode()
 
-    rows = (
-        Transaction.objects.filter(user=user)
-        .order_by("date", "created_at", "id")
-        .values_list(
-            "data_source_id",
-            "date",
-            "txn_type",
-            "category_id",
-            "name_enc",
-            "description_enc",
-            "amount_enc",
-            "balance_enc",
-            "notes_enc",
-            "fingerprint",
-        )  # fmt: skip
-    )
-    return [
-        {
-            "data_source": str(source_id),
-            "date": day.isoformat(),
-            "txn_type": txn_type,
-            "category": str(category_id),
-            "name": text(name, "txn.name"),
-            "description": text(description, "txn.description"),
-            "amount": text(amount, "txn.amount"),
-            "balance": text(balance, "txn.balance") if balance is not None else None,
-            "notes": text(notes, "txn.notes") if notes is not None else None,
-            "fingerprint": _b64(fingerprint),
-        }
-        for (
-            source_id,
-            day,
-            txn_type,
-            category_id,
-            name,
-            description,
-            amount,
-            balance,
-            notes,
-            fingerprint,
-        ) in rows
-    ]
+    # Oldest first, from the decrypted cores (dates are encrypted since Phase 12.2).
+    order = oldest_first(rows_of(user))
+    blobs = {}
+    for start in range(0, len(order), 2000):
+        chunk = [row.id for row in order[start : start + 2000]]
+        for pk, *values in (
+            Transaction.objects.filter(user=user, pk__in=chunk).values_list(
+                "pk", "name_enc", "description_enc", "amount_enc", "balance_enc", "notes_enc",
+                "fingerprint",
+            )  # fmt: skip
+        ):
+            blobs[pk] = values
+    exported = []
+    for row in order:
+        name, description, amount, balance, notes, fingerprint = blobs[row.id]
+        exported.append(
+            {
+                "data_source": str(row.data_source_id),
+                "date": row.date.isoformat(),
+                "txn_type": row.txn_type,
+                "category": str(row.category_id),
+                "name": text(name, "txn.name"),
+                "description": text(description, "txn.description"),
+                "amount": text(amount, "txn.amount"),
+                "balance": text(balance, "txn.balance") if balance is not None else None,
+                "notes": text(notes, "txn.notes") if notes is not None else None,
+                "fingerprint": _b64(fingerprint),
+            }
+        )
+    return exported
 
 
 def _dashboards(user, cipher: UserCipher) -> list[dict]:
@@ -227,7 +237,7 @@ def build_backup(user) -> bytes:
         "data_sources": _data_sources(user, cipher),
         "categories": _categories(user),
         "transactions": _transactions(user, cipher),
-        "links": _links(user),
+        "links": _links(user, cipher),
         "dashboards": _dashboards(user, cipher),
         "preferences": _preferences(user),
     }
@@ -477,7 +487,7 @@ def _restore_sources(user, cipher: UserCipher, items: list[dict]) -> tuple[dict,
         existing[0]
         if len(existing) == 1
         and source_key(existing[0].name) not in wanted
-        and not Transaction.objects.filter(data_source=existing[0]).exists()
+        and not in_use(user, data_source_id=existing[0].pk)
         else None
     )
     mapping, added = {}, 0
@@ -516,11 +526,9 @@ def _restore_transactions(
     restore back as an IntegrityError.
     """
     have, anywhere = set(), set()
-    for source_id, fingerprint in Transaction.objects.filter(user=user).values_list(
-        "data_source_id", "fingerprint"
-    ):
-        have.add((source_id, bytes(fingerprint)))
-        anywhere.add(bytes(fingerprint))
+    for source_id, fingerprint, _ in _decrypted_index(user, cipher).values():
+        have.add((source_id, fingerprint))
+        anywhere.add(fingerprint)
     default = Category.objects.get(user=user, is_default=True)  # for a category not in the file
     now = timezone.now()
 
@@ -536,20 +544,23 @@ def _restore_transactions(
             continue
         have.add((target.pk, row["fingerprint"]))  # the same row twice in one file counts once
         anywhere.add(row["fingerprint"])
+        # COPY writes raw columns, so the encrypted core and the slot are made here, exactly as
+        # Transaction.seal() makes them (Phase 12.2, D9, D12).
+        core = encode_core(
+            row["date"], row["txn_type"], mapping.get(row["category"], default).pk, target.pk
+        )
         new.append(
             (
                 uuid.uuid4(),
                 user.pk,
-                target.pk,
-                row["date"],
-                row["txn_type"],
-                mapping.get(row["category"], default).pk,
+                cipher.encrypt(core, CORE_CONTEXT),
                 encrypted(row["name"], "txn.name"),
                 encrypted(row["description"], "txn.description"),
                 encrypted(row["amount"], "txn.amount"),
                 encrypted(row["balance"], "txn.balance"),
                 encrypted(row["notes"], "txn.notes"),
                 row["fingerprint"],
+                slot_of(cipher, target.pk, row["fingerprint"]),
                 now,
                 now,
             )
@@ -565,18 +576,16 @@ def _restore_transactions(
     return len(new)
 
 
-def _restore_links(user, links: list[dict], sources: dict) -> int:
+def _restore_links(user, cipher: UserCipher, links: list[dict], sources: dict) -> int:
     """The transfer links between rows the account now holds. Returns how many were added."""
     if not links:
         return 0
     rows = {
-        (source_id, bytes(fingerprint)): pk
-        for pk, source_id, fingerprint in Transaction.objects.filter(user=user).values_list(
-            "pk", "data_source_id", "fingerprint"
-        )
+        (source_id, fingerprint): pk
+        for pk, (source_id, fingerprint, _) in _decrypted_index(user, cipher).items()
     }
     linked = set()
-    for pair in TransferLink.objects.filter(user=user).values_list("debit_id", "credit_id"):
+    for pair in TransferLink.objects.filter(user=user).values_list("first_id", "second_id"):
         linked.update(pair)
     new = []
     for link in links:
@@ -589,7 +598,8 @@ def _restore_links(user, links: list[dict], sources: dict) -> int:
         # A row linked already keeps its link: a transaction has one partner at most.
         if debit and credit and not {debit, credit} & linked:
             linked |= {debit, credit}
-            new.append(TransferLink(user=user, debit_id=debit, credit_id=credit))
+            first, second = sorted((debit, credit), key=str)  # id order (Phase 12.2, D15)
+            new.append(TransferLink(user=user, first_id=first, second_id=second))
     TransferLink.objects.bulk_create(new)
     return len(new)
 
@@ -687,7 +697,7 @@ def restore_backup(user, content: bytes) -> dict:
         sources, held, sources_added = _restore_sources(user, cipher, data["data_sources"])
         mapping, categories_added, keywords_added = _restore_categories(user, data["categories"])
         transactions_added = _restore_transactions(user, cipher, rows, mapping, sources, held[0])
-        links_added = _restore_links(user, data["links"], sources)
+        links_added = _restore_links(user, cipher, data["links"], sources)
         dashboards_added, dashboards_skipped, panels_skipped = _restore_dashboards(
             user, cipher, data["dashboards"], mapping, sources
         )

@@ -94,7 +94,7 @@ export function ChangePasswordDialog({ open, onClose }: { open: boolean; onClose
             required
           />
         </Field>
-        <Field label="New password" error={errors.new_password} hint="At least 8 characters, not too common.">
+        <Field label="New password" error={errors.new_password} hint="At least 12 characters, not too common. A short sentence works well.">
           <Input
             type="password"
             autoComplete="new-password"

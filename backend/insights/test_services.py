@@ -5,6 +5,7 @@ import pytest
 
 from categories.models import Category
 from categories.services import get_default_category
+from categories.testing import category_named
 from insights import services
 from insights.spec import SpecError
 from transactions.tests import make_txn, make_user
@@ -264,7 +265,7 @@ def test_invalid_dashboard_filters_raise(alice):
 
 
 def category_ids(user, *names):
-    return [str(Category.objects.get(user=user, name=name).id) for name in names]
+    return [str(category_named(user, name).id) for name in names]
 
 
 @pytest.fixture
@@ -282,7 +283,7 @@ def month(alice):
             date=date(2026, 5, day),
             txn_type=kind,
             amount=Decimal(amount),
-            category=Category.objects.get(user=alice, name=name),
+            category=category_named(alice, name),
         )
     return alice
 
@@ -402,7 +403,7 @@ def test_a_kpi_compares_with_the_panels_own_categories_too(month):
             month,
             date=date(2026, 4, 20),
             amount=Decimal(amount),
-            category=Category.objects.get(user=month, name=name),
+            category=category_named(month, name),
         )
     spec = panel(
         kpi={"compare": "previous"},

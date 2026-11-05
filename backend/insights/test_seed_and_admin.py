@@ -1,3 +1,4 @@
+
 """The dev-only demo-data command and the admin pages for dashboards and panels."""
 
 import random
@@ -10,7 +11,7 @@ from django.test import Client
 from django.utils import timezone
 
 from accounts.models import User
-from categories.models import Category
+from categories.testing import category_named
 from insights import services
 from insights.engine import add_months
 from insights.management.commands.seed_demo_transactions import (
@@ -22,6 +23,7 @@ from insights.management.commands.seed_demo_transactions import (
 from insights.templates import TEMPLATES
 from insights.test_models import CONFIG, NAME, TITLE, make_dashboard, make_panel
 from transactions.models import Transaction
+from transactions.testing import txns
 from transactions.tests import make_txn, make_user
 from vault.services import UserCipher
 
@@ -146,15 +148,15 @@ def test_seeds_the_rows_build_rows_describes(alice, debug):
 
 def test_one_salary_credit_per_month_in_the_salary_category(alice, debug):
     seed(alice, months=4, seed=1)
-    salaries = Transaction.objects.filter(user=alice, txn_type="credit")
-    assert salaries.count() == 4
+    salaries = txns(alice, txn_type="credit")
+    assert len(salaries) == 4
     assert {txn.category.name for txn in salaries} == {"Salary"}
 
 
 def test_dates_stay_inside_the_requested_months(alice, debug):
     seed(alice, months=3, seed=2)
     today = timezone.localdate()
-    dates = Transaction.objects.filter(user=alice).values_list("date", flat=True)
+    dates = [txn.date for txn in txns(alice)]
     assert min(dates) >= add_months(today.replace(day=1), -2)
     assert max(dates) <= today
 
@@ -166,15 +168,15 @@ def test_only_fictional_merchant_names_are_written(alice, debug):
 
 def test_rows_land_in_their_seed_categories(alice, debug):
     seed(alice, months=2, seed=4)
-    used = set(Transaction.objects.filter(user=alice).values_list("category__name", flat=True))
+    used = {txn.category.name for txn in txns(alice)}
     assert {"Food", "Groceries", "Rent", "Salary"} <= used
     assert "Others" not in used
 
 
 def test_a_missing_category_falls_back_to_the_default(alice, debug):
-    Category.objects.filter(user=alice, name="Health").delete()  # no transactions use it yet
+    category_named(alice, "Health").delete()  # no transactions use it yet
     seed(alice, months=2, seed=5)
-    assert Transaction.objects.filter(user=alice, category__name="Others").exists()
+    assert any(txn.category.name == "Others" for txn in txns(alice))
 
 
 def test_the_final_balance_matches_the_row_totals(alice, debug):

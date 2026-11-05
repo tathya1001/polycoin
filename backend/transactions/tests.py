@@ -4,15 +4,16 @@ from decimal import Decimal
 import pytest
 from cryptography.exceptions import InvalidTag
 from django.db import IntegrityError, connection, transaction
-from django.db.models import ProtectedError
 from django.test import Client
 
 from accounts.models import User
 from accounts.testing import confirm_age
-from categories.models import Category
 from categories.services import get_default_category, seed_default_categories
+from categories.testing import category_named
+from transactions.index import in_use
 from transactions.models import Transaction
 from transactions.services import create_transaction
+from transactions.testing import txns
 from vault.services import UserCipher, create_user_key
 
 pytestmark = pytest.mark.django_db
@@ -136,10 +137,11 @@ def test_two_users_can_hold_the_same_transaction(alice, bob):
 
 # --- category protection ------------------------------------------------------
 
-def test_category_in_use_cannot_be_deleted(alice):
+def test_category_in_use_is_seen_as_in_use(alice):
+    """The database no longer protects it (Phase 12.2, D14); the API refuses with 409, which
+    categories/tests.py checks."""
     txn = make_txn(alice)
-    with pytest.raises(ProtectedError):
-        txn.category.delete()
+    assert in_use(alice, category_id=txn.category_id) == 1
 
 
 # --- API ----------------------------------------------------------------------
@@ -216,7 +218,7 @@ def test_patch_name_round_trips_and_is_re_encrypted(alice):
 
 def test_patch_own_category_works(alice):
     txn = make_txn(alice)
-    food = alice.category_set.get(name="Food")
+    food = category_named(alice, "Food")
 
     response = client_for(alice).patch(f"{URL}{txn.id}/", {"category": str(food.id)}, format="json")
 
@@ -389,7 +391,7 @@ def test_owner_can_delete(alice):
 
 
 def test_filters(alice):
-    food = alice.category_set.get(name="Food")
+    food = category_named(alice, "Food")
     make_txn(alice, date=date(2026, 1, 5), txn_type="debit", description="a")
     make_txn(alice, date=date(2026, 2, 10), txn_type="credit", description="b", category=food)
     client = client_for(alice)
@@ -484,10 +486,10 @@ def test_import_saves_encrypted_rows_as_others(alice):
     assert response.status_code == 200
     assert response.json()["imported"] == 3
     assert response.json()["duplicates"] == 0
-    txns = Transaction.objects.filter(user=alice).order_by("date")
-    assert [t.txn_type for t in txns] == ["debit", "credit", "debit"]
-    assert all(t.category == get_default_category(alice) for t in txns)
-    assert UserCipher(alice).decrypt(bytes(txns[0].amount_enc), "txn.amount").decode() == "250.00"
+    rows = txns(alice)
+    assert [t.txn_type for t in rows] == ["debit", "credit", "debit"]
+    assert all(t.category == get_default_category(alice) for t in rows)
+    assert UserCipher(alice).decrypt(bytes(rows[0].amount_enc), "txn.amount").decode() == "250.00"
 
 
 def test_importing_the_same_file_twice_gives_all_duplicates(alice):
@@ -697,8 +699,8 @@ def test_xls_imports(alice):
 
     assert response.status_code == 200, response.content
     assert response.json()["imported"] == 2
-    txns = Transaction.objects.filter(user=alice).order_by("date")
-    assert [t.date for t in txns] == [date(2026, 4, 1), date(2026, 4, 2)]
+    rows = txns(alice)
+    assert [t.date for t in rows] == [date(2026, 4, 1), date(2026, 4, 2)]
 
 
 def test_csv_bad_row_reports_its_file_row_number(alice):
@@ -723,8 +725,8 @@ def test_preview_has_its_own_rate_limit(alice, monkeypatch):
 
 def test_a_deleted_transaction_comes_back_fresh_on_reimport(alice):
     post_import(alice)
-    coffee = Transaction.objects.get(user=alice, date=date(2026, 4, 1))
-    food = Category.objects.get(user=alice, name="Food")
+    (coffee,) = txns(alice, day=date(2026, 4, 1))
+    food = category_named(alice, "Food")
     coffee.category = food
     coffee.save()
 
@@ -732,7 +734,7 @@ def test_a_deleted_transaction_comes_back_fresh_on_reimport(alice):
     again = post_import(alice).json()
 
     assert (again["imported"], again["duplicates"]) == (1, 2)
-    back = Transaction.objects.get(user=alice, date=date(2026, 4, 1))
+    (back,) = txns(alice, day=date(2026, 4, 1))
     assert back.id != coffee.id
     assert back.category == get_default_category(alice)  # fresh, in "Others"
 

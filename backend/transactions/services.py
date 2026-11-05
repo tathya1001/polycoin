@@ -2,11 +2,12 @@ from datetime import date as date_type
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import F
 
 from datasources.services import SourceError, first_source
+from vault.services import cipher_for
 
-from .models import Transaction, TransferLink
+from .index import ids, keep, rows_of
+from .models import CORE_CONTEXT, Transaction, TransferLink, decode_core
 
 CHUNK = 500  # ids or fingerprints in one IN (...): a statement can hold thousands
 
@@ -66,6 +67,7 @@ def create_transaction(
 
     return Transaction.objects.create(
         user=user,
+        # These four are encrypted together into core_enc on save (Phase 12.2, D9).
         data_source=data_source or first_source(user),
         date=date,
         txn_type=txn_type,
@@ -98,12 +100,34 @@ def _chunks(items: list):
 
 def where_held(user, fingerprints: set[bytes]) -> dict[bytes, set]:
     """{fingerprint: the ids of the user's data sources that hold a row with it}."""
+    cipher = cipher_for(user.pk)
     held: dict[bytes, set] = {}
     for chunk in _chunks(list(fingerprints)):
         rows = Transaction.objects.filter(user=user, fingerprint__in=chunk).order_by()
-        for fingerprint, source_id in rows.values_list("fingerprint", "data_source_id"):
+        for fingerprint, blob in rows.values_list("fingerprint", "core_enc"):
+            source_id = decode_core(cipher.decrypt(blob, CORE_CONTEXT))[3]
             held.setdefault(bytes(fingerprint), set()).add(source_id)
     return held
+
+
+def _sources_and_fingerprints(user) -> tuple[dict, dict]:
+    """({row id: its source id}, {row id: its fingerprint}) for all the user's rows."""
+    cipher = cipher_for(user.pk)
+    source_of, fingerprint_of_row = {}, {}
+    rows = Transaction.objects.filter(user=user).order_by()
+    for pk, fingerprint, blob in rows.values_list("pk", "fingerprint", "core_enc").iterator(2000):
+        source_of[pk] = decode_core(cipher.decrypt(blob, CORE_CONTEXT))[3]
+        fingerprint_of_row[pk] = bytes(fingerprint)
+    return source_of, fingerprint_of_row
+
+
+def delete_rows(user, row_ids) -> int:
+    """Delete the user's rows with these ids, in chunks. Returns how many went."""
+    deleted = 0
+    for chunk in _chunks(list(row_ids)):
+        _, per_model = Transaction.objects.filter(user=user, pk__in=chunk).delete()
+        deleted += per_model.get(Transaction._meta.label, 0)
+    return deleted
 
 
 @transaction.atomic
@@ -114,26 +138,36 @@ def move_transactions(user, rows, target) -> tuple[int, int]:
     Category, notes and everything else stay as they are, and so does updated_at: a row's source
     is not part of its Ask document, so nothing needs embedding again. A link is removed if both
     its rows end up in one source, because a transfer needs two.
+
+    The source is inside each row's encrypted core (Phase 12.2), so the moved rows are decrypted,
+    changed and encrypted again, rather than changed by one UPDATE.
     """
-    taken = {
-        bytes(fingerprint)
-        for fingerprint in Transaction.objects.filter(data_source=target)
-        .order_by()
-        .values_list("fingerprint", flat=True)
-    }
+    source_of, fingerprint_of_row = _sources_and_fingerprints(user)
+    taken = {fingerprint_of_row[pk] for pk, source in source_of.items() if source == target.pk}
     moving, stayed = [], 0
-    for pk, fingerprint in rows.exclude(data_source=target).order_by().values_list(
-        "pk", "fingerprint"
-    ):
-        fingerprint = bytes(fingerprint)
-        if fingerprint in taken:
+    for pk in sorted(rows.order_by().values_list("pk", flat=True), key=str):
+        if pk not in source_of or source_of[pk] == target.pk:
+            continue
+        if fingerprint_of_row[pk] in taken:
             stayed += 1
         else:
-            taken.add(fingerprint)
+            taken.add(fingerprint_of_row[pk])
             moving.append(pk)
     for chunk in _chunks(moving):
-        Transaction.objects.filter(user=user, pk__in=chunk).update(data_source=target)
-    TransferLink.objects.filter(user=user, debit__data_source=F("credit__data_source")).delete()
+        changed = list(Transaction.objects.filter(user=user, pk__in=chunk))
+        for row in changed:
+            row.data_source_id = target.pk
+            row.seal()
+            source_of[row.pk] = target.pk
+        Transaction.objects.bulk_update(changed, ["core_enc", "slot"])
+    same_source = [
+        pk
+        for pk, first, second in TransferLink.objects.filter(user=user).values_list(
+            "pk", "first_id", "second_id"
+        )
+        if source_of.get(first) == source_of.get(second)
+    ]
+    TransferLink.objects.filter(pk__in=same_source).delete()
     return len(moving), stayed
 
 
@@ -146,10 +180,10 @@ def remove_source(user, source, move_to=None) -> dict:
     """
     if user.datasource_set.count() < 2:
         raise SourceError("last_source", "You need at least one data source.")
-    held = Transaction.objects.filter(data_source=source)
     moved = 0
     if move_to is not None:
-        moved, _ = move_transactions(user, held, move_to)
-    _, per_model = held.delete()
+        held = ids(keep(rows_of(user), sources=[source.pk]))
+        moved, _ = move_transactions(user, Transaction.objects.filter(user=user, pk__in=held), move_to)
+    deleted = delete_rows(user, ids(keep(rows_of(user), sources=[source.pk])))
     source.delete()
-    return {"moved": moved, "deleted": per_model.get(Transaction._meta.label, 0)}
+    return {"moved": moved, "deleted": deleted}

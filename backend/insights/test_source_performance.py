@@ -1,3 +1,4 @@
+
 """Opt-in timing check for data sources: 20,000 rows split across five sources.
 
 Skipped unless asked for, like test_performance.py, and run the same way:
@@ -21,6 +22,7 @@ from insights import services
 from insights.test_performance import BUDGET_SECONDS, THROTTLED_BUDGET_SECONDS, _cpu_limit
 from transactions.links import suggest_transfers
 from transactions.models import Transaction, TransferLink
+from transactions.testing import txns
 from transactions.tests import make_user
 from vault.services import UserCipher
 
@@ -57,8 +59,8 @@ def split_into_sources(user) -> None:
     for index, source in enumerate(sources):
         Transaction.objects.filter(pk__in=ids[index::SOURCES]).update(data_source=source)
 
-    debits = Transaction.objects.filter(data_source=sources[0], txn_type="debit")[:LINKS]
-    credits = Transaction.objects.filter(data_source=sources[1], txn_type="credit")[:LINKS]
+    debits = txns(sources[0].user, data_source=sources[0], txn_type="debit")[:LINKS]
+    credits = txns(sources[1].user, data_source=sources[1], txn_type="credit")[:LINKS]
     TransferLink.objects.bulk_create(
         TransferLink(user=user, debit=debit, credit=credit)
         for debit, credit in zip(debits, credits, strict=False)

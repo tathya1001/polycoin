@@ -10,6 +10,7 @@ import pytest
 from django.core.cache import cache
 from rest_framework.test import APIClient
 
+from categories.testing import category_named
 from datasources.services import create_source, first_source
 from vault.services import UserCipher
 
@@ -104,7 +105,7 @@ def test_a_row_with_no_balance_never_matches_a_balance_filter(alice, api):
 
 
 def test_filters_combine(alice, api):
-    food = alice.category_set.get(name="Food")
+    food = category_named(alice, "Food")
     add(alice, "Tastybites Lunch", "10.00", category=food, date=date(2026, 3, 5))
     add(alice, "Tastybites Dinner", "90.00", category=food, date=date(2026, 3, 6))
     add(alice, "Tastybites Rent", "90.00", date=date(2026, 3, 6))
@@ -114,8 +115,8 @@ def test_filters_combine(alice, api):
 
 
 def test_several_categories_can_be_chosen(alice, api):
-    food = alice.category_set.get(name="Food")
-    rent = alice.category_set.get(name="Rent")
+    food = category_named(alice, "Food")
+    rent = category_named(alice, "Rent")
     add(alice, "A", category=food)
     add(alice, "B", category=rent)
     add(alice, "C")
@@ -123,7 +124,7 @@ def test_several_categories_can_be_chosen(alice, api):
 
 
 def test_one_category_still_works_for_a_link_from_a_chart(alice, api):
-    food = alice.category_set.get(name="Food")
+    food = category_named(alice, "Food")
     add(alice, "A", category=food)
     assert names(api, category=str(food.pk)) == ["A"]
 
@@ -228,7 +229,7 @@ def test_the_list_refuses_search_terms_in_the_url(alice, api, key):
 
 
 def test_the_list_still_takes_plain_filters_in_the_url(alice, api):
-    food = alice.category_set.get(name="Food")
+    food = category_named(alice, "Food")
     add(alice, "A", category=food, date=date(2026, 3, 5))
     add(alice, "B", date=date(2026, 3, 5))
     add(alice, "C", category=food, date=date(2025, 3, 5))

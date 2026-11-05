@@ -14,6 +14,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from categories.models import Category
 from categories.services import get_default_category
 from core.mixins import OwnedQuerysetMixin
 from datasources.services import first_source, get_source, sources_for
@@ -26,6 +27,7 @@ from .importer import (
     detect_header,
     parse_rows,
 )
+from .index import ids, keep, load_in_order, newest_first, rows_of
 from .links import (
     DEFAULT_CANDIDATE_DAYS,
     MAX_CANDIDATE_DAYS,
@@ -94,9 +96,8 @@ class TransactionViewSet(
     A delete is a real delete (the row, its fingerprint and its Ask document go). So importing
     the same statement again brings a deleted transaction back, as a new row in "Others"."""
 
-    queryset = Transaction.objects.select_related(
-        "category", "debit_link__credit", "credit_link__debit"
-    )
+    # The link and its other row come along: a row shows which transfer it is part of.
+    queryset = Transaction.objects.select_related("link_as_first__second", "link_as_second__first")
     serializer_class = TransactionSerializer
     pagination_class = TransactionPagination
     # No PUT. POST only reaches search and the bulk actions: there is no create.
@@ -114,33 +115,40 @@ class TransactionViewSet(
             return _body_filters(self.request.data)
         return self.request.query_params
 
-    def get_queryset(self):
-        qs = super().get_queryset()  # already scoped to request.user
+    def filtered_ids(self) -> list:
+        """The ids of the user's rows that pass the plain filters, newest first.
+
+        Date, type, category and source are encrypted (Phase 12.2, D10), so the filtering and
+        the ordering happen in Python, on the decrypted cores (transactions/index.py)."""
         params = self.filter_params()
-
-        for param, lookup in (("from", "date__gte"), ("to", "date__lte")):
+        found = {}
+        for param in ("from", "to"):
             if param in params:
-                parsed = parse_date(params[param])
-                if parsed is None:
+                found[param] = parse_date(params[param])
+                if found[param] is None:
                     raise ValidationError({param: "Use YYYY-MM-DD."})
-                qs = qs.filter(**{lookup: parsed})
 
-        if "type" in params:
-            if params["type"] not in Transaction.Type.values:
-                raise ValidationError({"type": "Must be 'credit' or 'debit'."})
-            qs = qs.filter(txn_type=params["type"])
+        if "type" in params and params["type"] not in Transaction.Type.values:
+            raise ValidationError({"type": "Must be 'credit' or 'debit'."})
 
-        for param, lookup in (("category", "category_id__in"), ("data_source", "data_source_id__in")):
+        for param in ("category", "data_source"):
             if param in params:  # one id, or several separated by commas
                 try:
-                    ids = [uuid.UUID(part) for part in params[param].split(",")]
+                    found[param] = [uuid.UUID(part) for part in params[param].split(",")]
                 except ValueError:
                     raise ValidationError({param: "Not a valid id."})
-                qs = qs.filter(**{lookup: ids})
 
+        rows = keep(
+            rows_of(self.request.user),
+            start=found.get("from"),
+            end=found.get("to"),
+            types=[params["type"]] if "type" in params else None,
+            categories=found.get("category"),
+            sources=found.get("data_source"),
+        )
         # Newest first. Date alone leaves same-day rows in no fixed order, so a row could repeat
         # or go missing between one page and the next.
-        return qs.order_by("-date", "-created_at", "id")
+        return ids(newest_first(rows))
 
     def get_throttles(self):
         if self.action in ("list", "search") and parse_search(self.filter_params()):
@@ -160,17 +168,16 @@ class TransactionViewSet(
 
     def _filtered_list(self):
         search = parse_search(self.filter_params())
-        if search is None:
-            return super().list(self.request)
-        queryset = self.filter_queryset(self.get_queryset())
-        cipher = self.get_serializer_context()["cipher"]
-        try:
-            ids = matching_ids(queryset, cipher, search)
-        except TooManyRows:
-            return _too_many_rows()
-        page = self.paginate_queryset(ids)
-        rows = {row.pk: row for row in queryset.filter(pk__in=page)}
-        serializer = self.get_serializer([rows[pk] for pk in page], many=True)
+        queryset = self.get_queryset()  # scoped to the user
+        row_ids = self.filtered_ids()
+        context = self.get_serializer_context()
+        if search is not None:
+            try:
+                row_ids = matching_ids(queryset, row_ids, context["cipher"], search)
+            except TooManyRows:
+                return _too_many_rows()
+        page = self.paginate_queryset(row_ids)
+        serializer = self.get_serializer(load_in_order(queryset, page), many=True)
         return self.get_paginated_response(serializer.data)
 
     @action(detail=False, methods=["post"], url_path="bulk-source")
@@ -206,22 +213,32 @@ class TransactionViewSet(
 
     @action(detail=False, methods=["post"], url_path="bulk-category")
     def bulk_category(self, request):
-        """Put many transactions into one category in a single request and one SQL UPDATE.
+        """Put many transactions into one category in a single request.
 
         Ids that aren't the caller's (or don't exist) are reported back as "missing", never
         updated, and never distinguished from each other, so nothing leaks about other users.
+
+        The category is inside each row's encrypted core (Phase 12.2), so each row is encrypted
+        again and written back in one bulk update. The category row is locked meanwhile, so it
+        can't be deleted half-way (D14).
         """
         serializer = BulkCategorySerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
-        ids = set(serializer.validated_data["transactions"])
+        wanted = set(serializer.validated_data["transactions"])
         category = serializer.validated_data["category"]
 
-        mine = Transaction.objects.filter(user=request.user, id__in=ids)
-        found = set(mine.values_list("id", flat=True))
-        # .update() skips auto_now, so set updated_at by hand.
-        updated = mine.update(category=category, updated_at=timezone.now())
+        with transaction.atomic():
+            Category.objects.select_for_update().filter(pk=category.pk).exists()
+            rows = list(Transaction.objects.filter(user=request.user, id__in=wanted))
+            now = timezone.now()  # bulk_update skips auto_now, so set updated_at by hand
+            for row in rows:
+                row.category = category
+                row.updated_at = now
+                row.seal()
+            Transaction.objects.bulk_update(rows, ["core_enc", "slot", "updated_at"])
+        found = {row.pk for row in rows}
         return Response(
-            {"updated": updated, "missing": sorted(str(i) for i in ids - found)},
+            {"updated": len(rows), "missing": sorted(str(i) for i in wanted - found)},
             status=status.HTTP_200_OK,
         )
 
@@ -456,8 +473,9 @@ class LinkView(APIView):
             return Response(
                 {"code": error.code, "detail": error.detail}, status=status.HTTP_400_BAD_REQUEST
             )
+        debit, credit = link.debit_and_credit()  # from the decrypted types (Phase 12.2, D15)
         return Response(
-            {"id": str(link.pk), "debit": str(link.debit_id), "credit": str(link.credit_id)},
+            {"id": str(link.pk), "debit": str(debit.pk), "credit": str(credit.pk)},
             status=status.HTTP_201_CREATED,
         )
 

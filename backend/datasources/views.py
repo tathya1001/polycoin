@@ -1,7 +1,6 @@
 from datetime import date
 
 from django.db import transaction
-from django.db.models import Count, Max, Min
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -13,7 +12,8 @@ from insights.services import (
     rename_source_in_panels,
     source_labels,
 )
-from transactions.models import Transaction, TransferLink
+from transactions.index import rows_of
+from transactions.models import TransferLink
 from transactions.services import remove_source
 from vault.services import UserCipher
 
@@ -59,13 +59,14 @@ class DataSourceViewSet(OwnedQuerysetMixin, viewsets.GenericViewSet):
     def list(self, request):
         cipher = UserCipher(request.user)
         sources = sources_for(request.user, cipher)
-        facts = {
-            row["data_source"]: row
-            for row in Transaction.objects.filter(user=request.user)
-            .order_by()
-            .values("data_source")
-            .annotate(count=Count("pk"), first=Min("date"), last=Max("date"))
-        }
+        # Each source's row count and first and last date, from the decrypted cores (Phase 12.2).
+        facts: dict = {}
+        for row in rows_of(request.user):
+            fact = facts.setdefault(
+                row.data_source_id, {"count": 0, "first": row.date, "last": row.date}
+            )
+            fact["count"] += 1
+            fact["first"], fact["last"] = min(fact["first"], row.date), max(fact["last"], row.date)
         labels = source_labels(request.user, cipher)
         balances = opening_balances(request.user, cipher, date.max, labels)
         return Response(
@@ -113,15 +114,12 @@ class DataSourceViewSet(OwnedQuerysetMixin, viewsets.GenericViewSet):
         source = self.get_object()
         cipher = UserCipher(request.user)
         name = next(s.name for s in sources_for(request.user, cipher) if s.pk == source.pk)
+        held = {row.id for row in rows_of(request.user) if row.data_source_id == source.pk}
+        links = TransferLink.objects.filter(user=request.user).values_list("first_id", "second_id")
         return Response(
             {
-                "transactions": Transaction.objects.filter(data_source=source).count(),
-                "links": TransferLink.objects.filter(
-                    user=request.user, debit__data_source=source
-                ).count()
-                + TransferLink.objects.filter(
-                    user=request.user, credit__data_source=source
-                ).count(),
+                "transactions": len(held),
+                "links": sum(1 for first, second in links if first in held or second in held),
                 "panels": panels_using_source(request.user, cipher, str(source.pk), name),
             }
         )

@@ -19,10 +19,6 @@ services:
         sync: false
       - key: JWT_SIGNING_KEY
         sync: false
-      # Legacy (Phase 12.1): only until every account has logged in once. Then delete it here and
-      # in the dashboard, and destroy every copy (dev-docs/phase-12.1-password-key-plan.md, D9).
-      - key: FIELD_ENCRYPTION_KEYS
-        sync: false
       - key: DJANGO_ALLOWED_HOSTS
         sync: false
       - key: CSRF_TRUSTED_ORIGINS
@@ -40,5 +36,5 @@ services:
         value: "2"
       - key: INSIGHTS_MAX_ROWS
         value: "20000"
-      - key: SECURE_HSTS_SECONDS
-        value: "3600"
+      - key: SECURE_HSTS_SECONDS  # a year (Phase 12.2, D7)
+        value: "31536000"

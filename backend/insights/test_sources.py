@@ -224,7 +224,7 @@ def add(user, source, amount="10.00", kind="debit", day=date(2026, 3, 5), balanc
 
 
 def link(user, debit, credit):
-    return TransferLink.objects.create(user=user, debit=debit, credit=credit)
+    return TransferLink.create_between(user, debit, credit)
 
 
 def with_sources(spec: dict, *sources) -> dict:

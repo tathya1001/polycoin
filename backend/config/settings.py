@@ -109,7 +109,10 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
     {
+        # Since Phase 12.1 a password is an encryption key, open to offline guessing by anyone
+        # with a copy of the database, so it must be long (Phase 12.2, D3).
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'OPTIONS': {'min_length': 12},
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
@@ -137,6 +140,9 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 REST_FRAMEWORK = {
+    # JSON only, unless a view declares otherwise (the statement import and the backup restore take
+    # files). A cross-site HTML form can only send form or multipart bodies (Phase 12.2, D2).
+    "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "accounts.authentication.CookieJWTAuthentication",
     ],
@@ -203,11 +209,6 @@ CSRF_TRUSTED_ORIGINS = os.environ["CSRF_TRUSTED_ORIGINS"].split(",")
 VAULT_KDF_TIME_COST = 3
 VAULT_KDF_MEMORY_KIB = 64 * 1024
 VAULT_KDF_PARALLELISM = 4
-
-# Legacy master key ("v1:<base64>"), needed only by accounts that haven't logged in since Phase
-# 12.1: their next login re-locks their key with their password. Once none is left, delete it here
-# and destroy every copy (dev-docs/phase-12.1-password-key-plan.md, D9).
-FIELD_ENCRYPTION_KEYS = os.environ.get("FIELD_ENCRYPTION_KEYS", "")
 
 
 # Production hardening (DJANGO_PRODUCTION=TRUE)
