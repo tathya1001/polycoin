@@ -2,6 +2,7 @@ import uuid
 from datetime import date as date_type
 
 from django.apps import apps
+from django.conf import settings
 from django.db import models
 from django.db.models import F, Q
 
@@ -202,3 +203,18 @@ class TransferLink(OwnedModel):
     def debit_and_credit(self):
         """(debit row, credit row), from the decrypted types."""
         return (self.first, self.second) if self.first.txn_type == "debit" else (self.second, self.first)
+
+
+class CoreIndex(models.Model):
+    """Every core of one user's transactions in one encrypted blob (transactions/index.py), so a
+    read decrypts once instead of once per row. A cache, never the source of truth: it is rebuilt
+    from the rows whenever `built_generation` differs from `generation`, which a database trigger
+    raises on every insert, update and delete of the user's transactions (migration 0010)."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, primary_key=True, on_delete=models.CASCADE, related_name="+"
+    )
+    generation = models.BigIntegerField(default=0)  # raised by the trigger only
+    built_generation = models.BigIntegerField(null=True)  # the generation `blob` was built at
+    row_count = models.IntegerField(default=0)  # a second guard: compared with COUNT(*)
+    blob = models.BinaryField(null=True)  # encrypted with the user's key (index.INDEX_CONTEXT)

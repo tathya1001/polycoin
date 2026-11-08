@@ -22,6 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .rag import index, service
+from .rag.answer import ANSWER_FORMATS
 from .rag.errors import RagError
 
 MAX_QUESTION = 300  # characters
@@ -101,6 +102,7 @@ class AskSerializer(ModelSerializer):
     vector = VectorField()
     filters = serializers.DictField(required=False, allow_null=True)
     use_question_period = serializers.BooleanField(default=True)
+    answer_format = serializers.ChoiceField(choices=ANSWER_FORMATS, default="text")
 
 
 class RagView(APIView):
@@ -174,6 +176,7 @@ class AskView(RagView):
                 digest=data["digest"],
                 filters=data.get("filters"),
                 use_question_period=data["use_question_period"],
+                answer_format=data["answer_format"],
             )
         )
 

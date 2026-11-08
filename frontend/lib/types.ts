@@ -239,6 +239,8 @@ export type AskResponse = {
   in_prompt: number; // sources 1..in_prompt are in the prompt; higher citations are invalid
   messages: ChatMessage[] | null;
   options: Record<string, number>;
+  // For a structured answer, the JSON schema to send with the messages; null for free text.
+  format: object | null;
 };
 
 // --- AI panel builder (/api/ai/agent/) ---

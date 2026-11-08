@@ -1,0 +1,763 @@
+[
+ {
+  "id": "rent",
+  "type": "exact",
+  "question": "How much rent did I pay?",
+  "relevant": [
+   "h003",
+   "h028",
+   "h044",
+   "h064",
+   "h084",
+   "h106",
+   "h125",
+   "h150",
+   "h168",
+   "h189",
+   "h210",
+   "h228"
+  ]
+ },
+ {
+  "id": "salary",
+  "type": "exact",
+  "question": "Salary credits",
+  "relevant": [
+   "h001",
+   "h024",
+   "h041",
+   "h059",
+   "h079",
+   "h103",
+   "h122",
+   "h147",
+   "h165",
+   "h186",
+   "h207",
+   "h225"
+  ]
+ },
+ {
+  "id": "power",
+  "type": "exact",
+  "question": "Power bill payments",
+  "relevant": [
+   "h011",
+   "h031",
+   "h047",
+   "h068",
+   "h089",
+   "h111",
+   "h131",
+   "h155",
+   "h173",
+   "h194",
+   "h213",
+   "h231"
+  ]
+ },
+ {
+  "id": "yoga",
+  "type": "exact",
+  "question": "Yoga studio fees",
+  "relevant": [
+   "h002",
+   "h027",
+   "h043",
+   "h062",
+   "h082",
+   "h105",
+   "h124",
+   "h149",
+   "h166",
+   "h187",
+   "h209",
+   "h227"
+  ]
+ },
+ {
+  "id": "insurance",
+  "type": "exact",
+  "question": "Health insurance renewal",
+  "relevant": [
+   "h013",
+   "h134"
+  ]
+ },
+ {
+  "id": "car-loan",
+  "type": "exact",
+  "question": "Car loan EMI",
+  "relevant": [
+   "h006",
+   "h029",
+   "h045",
+   "h065",
+   "h085",
+   "h107",
+   "h126",
+   "h152",
+   "h169",
+   "h190",
+   "h211",
+   "h229"
+  ]
+ },
+ {
+  "id": "pizza",
+  "type": "exact",
+  "question": "Pizza orders",
+  "relevant": [
+   "h036",
+   "h050",
+   "h060",
+   "h081",
+   "h110",
+   "h188"
+  ]
+ },
+ {
+  "id": "supermarket",
+  "type": "exact",
+  "question": "Supermarket shopping",
+  "relevant": [
+   "h015",
+   "h073",
+   "h119",
+   "h144",
+   "h151",
+   "h184",
+   "h200",
+   "h217",
+   "h232"
+  ]
+ },
+ {
+  "id": "fuel",
+  "type": "exact",
+  "question": "Highway Fuels payments",
+  "relevant": [
+   "h053",
+   "h063",
+   "h083",
+   "h112",
+   "h133",
+   "h148",
+   "h180",
+   "h208",
+   "h233"
+  ]
+ },
+ {
+  "id": "cinema",
+  "type": "exact",
+  "question": "Cinema tickets",
+  "relevant": [
+   "h052",
+   "h086",
+   "h178",
+   "h205"
+  ]
+ },
+ {
+  "id": "dentist",
+  "type": "exact",
+  "question": "Dental visits",
+  "relevant": [
+   "h096",
+   "h121"
+  ]
+ },
+ {
+  "id": "concert",
+  "type": "exact",
+  "question": "Concert tickets",
+  "relevant": [
+   "h185",
+   "h223"
+  ]
+ },
+ {
+  "id": "juice",
+  "type": "exact",
+  "question": "Juice bar",
+  "relevant": [
+   "h025",
+   "h061",
+   "h090",
+   "h113",
+   "h176"
+  ]
+ },
+ {
+  "id": "landlord",
+  "type": "paraphrase",
+  "question": "Payments to my landlord",
+  "relevant": [
+   "h003",
+   "h028",
+   "h044",
+   "h064",
+   "h084",
+   "h106",
+   "h125",
+   "h150",
+   "h168",
+   "h189",
+   "h210",
+   "h228"
+  ]
+ },
+ {
+  "id": "paycheck",
+  "type": "paraphrase",
+  "question": "Paychecks from work",
+  "relevant": [
+   "h001",
+   "h024",
+   "h041",
+   "h059",
+   "h079",
+   "h103",
+   "h122",
+   "h147",
+   "h165",
+   "h186",
+   "h207",
+   "h225"
+  ]
+ },
+ {
+  "id": "wifi",
+  "type": "paraphrase",
+  "question": "Wi-Fi connection",
+  "relevant": [
+   "h017",
+   "h072",
+   "h138",
+   "h198"
+  ]
+ },
+ {
+  "id": "cellphone",
+  "type": "paraphrase",
+  "question": "Cellphone top-ups",
+  "relevant": [
+   "h016",
+   "h032",
+   "h051",
+   "h070",
+   "h092",
+   "h116",
+   "h136",
+   "h158",
+   "h175",
+   "h196",
+   "h216",
+   "h235"
+  ]
+ },
+ {
+  "id": "workout",
+  "type": "paraphrase",
+  "question": "Working out",
+  "relevant": [
+   "h008",
+   "h030",
+   "h046",
+   "h066",
+   "h087",
+   "h108",
+   "h127",
+   "h153",
+   "h170",
+   "h191",
+   "h212",
+   "h230"
+  ]
+ },
+ {
+  "id": "meditation",
+  "type": "paraphrase",
+  "question": "Meditation and stretching sessions",
+  "relevant": [
+   "h002",
+   "h027",
+   "h043",
+   "h062",
+   "h082",
+   "h105",
+   "h124",
+   "h149",
+   "h166",
+   "h187",
+   "h209",
+   "h227"
+  ]
+ },
+ {
+  "id": "shows",
+  "type": "paraphrase",
+  "question": "TV shows and series",
+  "relevant": [
+   "h018",
+   "h034",
+   "h054",
+   "h075",
+   "h094",
+   "h117",
+   "h140",
+   "h159",
+   "h179",
+   "h199",
+   "h218"
+  ]
+ },
+ {
+  "id": "schooling",
+  "type": "paraphrase",
+  "question": "Kids' schooling",
+  "relevant": [
+   "h010",
+   "h067",
+   "h129",
+   "h192"
+  ]
+ },
+ {
+  "id": "pills",
+  "type": "paraphrase",
+  "question": "Pills and prescriptions",
+  "relevant": [
+   "h021",
+   "h049",
+   "h095",
+   "h171",
+   "h221"
+  ]
+ },
+ {
+  "id": "three-wheeler",
+  "type": "paraphrase",
+  "question": "Three-wheeler trips",
+  "relevant": [
+   "h005",
+   "h035",
+   "h057",
+   "h058",
+   "h128",
+   "h182",
+   "h204",
+   "h222",
+   "h234"
+  ]
+ },
+ {
+  "id": "holiday",
+  "type": "paraphrase",
+  "question": "Beach holiday stay",
+  "relevant": [
+   "h100"
+  ]
+ },
+ {
+  "id": "pet",
+  "type": "paraphrase",
+  "question": "Pet doctor",
+  "relevant": [
+   "h022",
+   "h193"
+  ]
+ },
+ {
+  "id": "typo-yoga",
+  "type": "typo",
+  "question": "yoga studoi",
+  "relevant": [
+   "h002",
+   "h027",
+   "h043",
+   "h062",
+   "h082",
+   "h105",
+   "h124",
+   "h149",
+   "h166",
+   "h187",
+   "h209",
+   "h227"
+  ]
+ },
+ {
+  "id": "typo-electricity",
+  "type": "typo",
+  "question": "electrcity bill",
+  "relevant": [
+   "h011",
+   "h031",
+   "h047",
+   "h068",
+   "h089",
+   "h111",
+   "h131",
+   "h155",
+   "h173",
+   "h194",
+   "h213",
+   "h231"
+  ]
+ },
+ {
+  "id": "typo-supermarket",
+  "type": "typo",
+  "question": "supermaket",
+  "relevant": [
+   "h015",
+   "h073",
+   "h119",
+   "h144",
+   "h151",
+   "h184",
+   "h200",
+   "h217",
+   "h232"
+  ]
+ },
+ {
+  "id": "typo-insurance",
+  "type": "typo",
+  "question": "insurace renewal",
+  "relevant": [
+   "h013",
+   "h134"
+  ]
+ },
+ {
+  "id": "typo-pizza",
+  "type": "typo",
+  "question": "pizaa orders",
+  "relevant": [
+   "h036",
+   "h050",
+   "h060",
+   "h081",
+   "h110",
+   "h188"
+  ]
+ },
+ {
+  "id": "typo-concert",
+  "type": "typo",
+  "question": "concret tickets",
+  "relevant": [
+   "h185",
+   "h223"
+  ]
+ },
+ {
+  "id": "subscriptions",
+  "type": "multi",
+  "question": "Streaming and music subscriptions",
+  "relevant": [
+   "h018",
+   "h020",
+   "h034",
+   "h038",
+   "h054",
+   "h056",
+   "h075",
+   "h076",
+   "h094",
+   "h099",
+   "h117",
+   "h120",
+   "h140",
+   "h143",
+   "h159",
+   "h161",
+   "h179",
+   "h183",
+   "h199",
+   "h201",
+   "h218",
+   "h220"
+  ]
+ },
+ {
+  "id": "fitness",
+  "type": "multi",
+  "question": "Gym and yoga",
+  "relevant": [
+   "h002",
+   "h008",
+   "h027",
+   "h030",
+   "h043",
+   "h046",
+   "h062",
+   "h066",
+   "h082",
+   "h087",
+   "h105",
+   "h108",
+   "h124",
+   "h127",
+   "h149",
+   "h153",
+   "h166",
+   "h170",
+   "h187",
+   "h191",
+   "h209",
+   "h212",
+   "h227",
+   "h230"
+  ]
+ },
+ {
+  "id": "utilities",
+  "type": "multi",
+  "question": "Utility bills",
+  "relevant": [
+   "h011",
+   "h012",
+   "h019",
+   "h031",
+   "h047",
+   "h048",
+   "h055",
+   "h068",
+   "h089",
+   "h091",
+   "h098",
+   "h111",
+   "h131",
+   "h132",
+   "h142",
+   "h155",
+   "h173",
+   "h174",
+   "h181",
+   "h194",
+   "h213",
+   "h214",
+   "h219",
+   "h231"
+  ]
+ },
+ {
+  "id": "food",
+  "type": "multi",
+  "question": "Food spending",
+  "relevant": [
+   "h014",
+   "h025",
+   "h033",
+   "h036",
+   "h040",
+   "h050",
+   "h060",
+   "h061",
+   "h069",
+   "h071",
+   "h081",
+   "h088",
+   "h090",
+   "h097",
+   "h102",
+   "h109",
+   "h110",
+   "h113",
+   "h114",
+   "h123",
+   "h135",
+   "h154",
+   "h162",
+   "h163",
+   "h176",
+   "h177",
+   "h188",
+   "h195",
+   "h202",
+   "h224"
+  ]
+ },
+ {
+  "id": "travel",
+  "type": "multi",
+  "question": "Trains and flights",
+  "relevant": [
+   "h004",
+   "h074",
+   "h093",
+   "h146",
+   "h215"
+  ]
+ },
+ {
+  "id": "health",
+  "type": "multi",
+  "question": "Health spending",
+  "relevant": [
+   "h002",
+   "h008",
+   "h013",
+   "h021",
+   "h027",
+   "h030",
+   "h043",
+   "h046",
+   "h049",
+   "h062",
+   "h066",
+   "h082",
+   "h087",
+   "h095",
+   "h096",
+   "h105",
+   "h108",
+   "h121",
+   "h124",
+   "h127",
+   "h134",
+   "h149",
+   "h153",
+   "h166",
+   "h170",
+   "h171",
+   "h187",
+   "h191",
+   "h209",
+   "h212",
+   "h221",
+   "h227",
+   "h230"
+  ]
+ },
+ {
+  "id": "rent-last-month",
+  "type": "dated",
+  "question": "Rent last month",
+  "relevant": [
+   "h210"
+  ]
+ },
+ {
+  "id": "salary-march",
+  "type": "dated",
+  "question": "Salary in March 2026",
+  "relevant": [
+   "h079"
+  ]
+ },
+ {
+  "id": "yoga-this-year",
+  "type": "dated",
+  "question": "Yoga this year",
+  "relevant": [
+   "h043",
+   "h062",
+   "h082",
+   "h105",
+   "h124",
+   "h149",
+   "h166",
+   "h187",
+   "h209",
+   "h227"
+  ]
+ },
+ {
+  "id": "mobile-3-months",
+  "type": "dated",
+  "question": "Mobile pack in the last 3 months",
+  "relevant": [
+   "h196",
+   "h216",
+   "h235"
+  ]
+ },
+ {
+  "id": "emi-2025",
+  "type": "dated",
+  "question": "Car loan EMI in 2025",
+  "relevant": [
+   "h006",
+   "h029"
+  ]
+ },
+ {
+  "id": "gym-this-month",
+  "type": "dated",
+  "question": "Gym fee this month",
+  "relevant": [
+   "h230"
+  ]
+ },
+ {
+  "id": "car-insurance",
+  "type": "near-miss",
+  "question": "Car insurance",
+  "relevant": []
+ },
+ {
+  "id": "pizza-oven",
+  "type": "near-miss",
+  "question": "Pizza oven",
+  "relevant": []
+ },
+ {
+  "id": "yoga-mat",
+  "type": "near-miss",
+  "question": "Yoga mat purchase",
+  "relevant": []
+ },
+ {
+  "id": "power-deposit",
+  "type": "near-miss",
+  "question": "Electricity deposit refund",
+  "relevant": []
+ },
+ {
+  "id": "school-bus",
+  "type": "near-miss",
+  "question": "School bus fees",
+  "relevant": []
+ },
+ {
+  "id": "concert-refund",
+  "type": "near-miss",
+  "question": "Concert refund",
+  "relevant": []
+ },
+ {
+  "id": "skydiving",
+  "type": "no-answer",
+  "question": "Skydiving",
+  "relevant": []
+ },
+ {
+  "id": "tattoo",
+  "type": "no-answer",
+  "question": "Tattoo parlour",
+  "relevant": []
+ },
+ {
+  "id": "guitar",
+  "type": "no-answer",
+  "question": "Guitar strings",
+  "relevant": []
+ },
+ {
+  "id": "lottery",
+  "type": "no-answer",
+  "question": "Lottery tickets",
+  "relevant": []
+ },
+ {
+  "id": "knitting",
+  "type": "no-answer",
+  "question": "Knitting wool",
+  "relevant": []
+ }
+]

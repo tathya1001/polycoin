@@ -1,3 +1,4 @@
+import dataclasses
 import logging
 from datetime import date
 
@@ -5,7 +6,7 @@ import numpy as np
 import pytest
 
 from ai.models import RagDocument
-from ai.rag import codec, index
+from ai.rag import codec, index, profiles
 from ai.rag.errors import RagError
 from ai.scoring import prepare_text
 from categories.models import Category
@@ -129,8 +130,23 @@ def test_another_model_or_digest_makes_every_row_pending_again(alice, model, dig
 def test_a_new_text_version_makes_every_row_pending_again(alice, monkeypatch):
     txns(alice, 2)
     index_all(alice)
-    monkeypatch.setattr(index, "TEXT_VERSION", 2)
+    monkeypatch.setattr(profiles, "TEXT_VERSION", 2)
     assert len(index.pending(alice, MODEL, DIGEST, 10)["items"]) == 2
+
+
+def test_a_new_profile_revision_makes_only_that_models_rows_pending_again(alice, monkeypatch):
+    txns(alice, 2)
+    index_all(alice)
+    other = "other-embedder:latest"
+    index_all(alice, other)
+    assert index.pending(alice, other, DIGEST, 10)["items"] == []
+
+    revised = dataclasses.replace(profiles.profile_for(MODEL), doc_prefix="new: ", revision=9)
+    name = profiles.base_name(MODEL)
+    monkeypatch.setitem(profiles.PROFILES, name, revised)
+    items = index.pending(alice, MODEL, DIGEST, 10)["items"]
+    assert len(items) == 2 and all(item["text"].startswith("new: ") for item in items)
+    assert index.pending(alice, other, DIGEST, 10)["items"] == []  # untouched
 
 
 def test_a_changed_text_is_pending_again(alice):
@@ -169,7 +185,7 @@ def test_store_keeps_a_unit_vector_and_the_servers_own_text(alice):
     assert vec.tolist() == pytest.approx([0.6, 0.0, 0.8, 0.0], abs=1e-3)
     assert text == "Shop0 x"  # no prefix: the prefix is for the embedding model only
     assert (doc.user, doc.model, doc.model_digest, doc.dims) == (alice, MODEL, DIGEST, 4)
-    assert doc.text_version == index.TEXT_VERSION
+    assert doc.text_version == profiles.text_version_for(MODEL)
     assert doc.source_updated_at == txn.updated_at
     assert bytes(doc.text_hash) == UserCipher(alice).blind_index(text.encode(), "rag.text")
     assert b"Shop0" not in bytes(doc.payload_enc)

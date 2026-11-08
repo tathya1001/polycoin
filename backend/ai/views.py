@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 
 from . import services
 
+MAX_MODEL_NAME = 100  # as long as a stored model name may be (RagDocument.model)
+
 # The server never talks to Ollama: the browser embeds a prepared run with the user's own
 # Ollama and scores it itself (frontend/lib/ollama.ts, lib/scoring.ts), then applies here.
 
@@ -24,7 +26,10 @@ class PrepareView(APIView):
     throttle_scope = "ai"  # decrypts the most rows of any AI endpoint, so the tight budget
 
     def get(self, request):
-        return Response(services.prepare_run(request.user))
+        # The embedding model the browser will use picks its tuned thresholds; it is only ever
+        # looked up in a table, so an unknown name just gets the defaults.
+        model = request.query_params.get("model", "")[:MAX_MODEL_NAME]
+        return Response(services.prepare_run(request.user, model))
 
 
 class ApplyView(APIView):

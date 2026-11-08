@@ -25,6 +25,9 @@ from ..agent.errors import AgentError
 from ..agent.schema import parse_intent
 
 CASES_FILE = Path(__file__).with_name("agent_cases.json")
+# Cases that the guard and the prompts are never tuned on: they show whether a fix made for the
+# main set's misses also works on requests worded differently.
+HELD_OUT_FILE = Path(__file__).with_name("agent_cases_heldout.json")
 FIELDS = (
     "kind", "chart", "measure", "also_measures", "agg", "x", "granularity", "color", "rows", "period",
     "categories", "merchant", "txn_type", "limit", "sort", "compare", "calc",
@@ -42,8 +45,8 @@ SPENDING = [
 SALARY = ("Acme Payroll", "Salary", (6, 36, 66, 96, 371))
 
 
-def load_cases() -> list[dict]:
-    return json.loads(CASES_FILE.read_text())
+def load_cases(held_out: bool = False) -> list[dict]:
+    return json.loads((HELD_OUT_FILE if held_out else CASES_FILE).read_text())
 
 
 def seed(user, today: date) -> None:

@@ -66,7 +66,11 @@ export type AskRequest = {
   vector: number[];
   filters: AskFilters;
   use_question_period: boolean;
+  answer_format?: AnswerFormat;
 };
+
+// "text" streams free text; "json" asks for {answer, citations}, shown once complete.
+export type AnswerFormat = "text" | "json";
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw await problemFrom(res);
@@ -164,7 +168,36 @@ export type ChatStreamer = (
   options: Record<string, number>,
   onToken: (text: string) => void,
   signal?: AbortSignal,
+  extra?: { format?: object },
 ) => Promise<string>;
+
+/**
+ * A structured answer as the text the page renders: the answer, with every listed citation that
+ * the text doesn't already carry appended as "[n]", so parseCitations shows it (and drops any
+ * that the prompt didn't hold). The model's output is untrusted: anything off-shape is refused.
+ */
+export function readStructured(raw: string): string {
+  let body: unknown;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    body = null;
+  }
+  const { answer, citations } = (body ?? {}) as { answer?: unknown; citations?: unknown };
+  const numbers = Array.isArray(citations) ? citations : null;
+  if (typeof answer !== "string" || !numbers || !numbers.every((n) => Number.isInteger(n) && n > 0)) {
+    throw new RagProblem(
+      "bad_answer",
+      "The model's structured answer couldn't be read. Ask again, or turn structured answers off.",
+      0,
+    );
+  }
+  const shown = new Set(
+    [...answer.matchAll(CITATION)].flatMap((match) => match[1].split(",").map((n) => Number(n.trim()))),
+  );
+  const missing = [...new Set(numbers as number[])].filter((n) => !shown.has(n));
+  return missing.length ? `${answer.trim()} ${missing.map((n) => `[${n}]`).join("")}` : answer.trim();
+}
 
 /**
  * One question end to end: embed it (with the model's query prefix), let the server search and
@@ -181,6 +214,7 @@ export async function ask({
   question,
   filters,
   useQuestionPeriod,
+  answerFormat = "text",
   onResponse,
   onToken,
   signal,
@@ -194,6 +228,7 @@ export async function ask({
   question: string;
   filters: AskFilters;
   useQuestionPeriod: boolean;
+  answerFormat?: AnswerFormat;
   onResponse?: (response: AskResponse) => void; // the sources show before the answer streams
   onToken?: (text: string) => void;
   signal?: AbortSignal;
@@ -207,9 +242,15 @@ export async function ask({
     vector: roundVector(vector),
     filters,
     use_question_period: useQuestionPeriod,
+    answer_format: answerFormat,
   });
   onResponse?.(response);
   if (!response.messages) return { response, answer: null };
+  if (response.format) {
+    // Half a JSON object can't be shown, so a structured answer arrives whole.
+    const raw = await chat(response.messages, response.options, () => {}, signal, { format: response.format });
+    return { response, answer: readStructured(raw) };
+  }
   const answer = await chat(response.messages, response.options, (text) => onToken?.(text), signal);
   return { response, answer };
 }

@@ -3,9 +3,11 @@ import {
   ask,
   batchSize,
   parseCitations,
+  readStructured,
   roundVector,
   syncIndex,
   type AnswerSegment,
+  type ChatStreamer,
   type RagApi,
 } from "./rag";
 import type { AskResponse, PendingItem, RagSource } from "./types";
@@ -197,6 +199,7 @@ function response(messages: AskResponse["messages"]): AskResponse {
     in_prompt: 3,
     messages,
     options: { temperature: 0.1, num_ctx: 4096 },
+    format: null,
   };
 }
 
@@ -235,11 +238,42 @@ describe("ask", () => {
       vector: [0.12346, 0.5],
       filters,
       use_question_period: true,
+      answer_format: "text",
     });
     expect(chat.mock.calls[0][0]).toEqual(messages);
     expect(chat.mock.calls[0][1]).toEqual({ temperature: 0.1, num_ctx: 4096 });
     expect(tokens.join("")).toBe("You paid [1].");
     expect(result.answer).toBe("You paid [1].");
+  });
+
+  it("asks for a structured answer whole, with the server's schema, and returns its text", async () => {
+    const messages = [{ role: "user" as const, content: "prompt" }];
+    const schema = { type: "object" };
+    const api = { ...fakeApi(0).api, ask: vi.fn(async () => ({ ...response(messages), format: schema })) };
+    const chat = vi.fn<ChatStreamer>(async (_messages, _options, onToken) => {
+      onToken('{"answer"'); // partial JSON must never reach the page
+      return JSON.stringify({ answer: "You paid ₹1500.00 [1].", citations: [1, 2] });
+    });
+    const tokens: string[] = [];
+
+    const result = await ask({
+      api,
+      embed: async () => [[0.5]],
+      chat,
+      model: "m",
+      digest: "d",
+      queryPrefix: "",
+      question: "gym?",
+      filters,
+      useQuestionPeriod: true,
+      answerFormat: "json",
+      onToken: (t) => tokens.push(t),
+    });
+
+    expect(api.ask.mock.calls[0]).toEqual([expect.objectContaining({ answer_format: "json" })]);
+    expect(chat.mock.calls[0][4]).toEqual({ format: schema });
+    expect(tokens).toEqual([]);
+    expect(result.answer).toBe("You paid ₹1500.00 [1]. [2]");
   });
 
   it("never calls the model when nothing matched", async () => {
@@ -260,5 +294,24 @@ describe("ask", () => {
 
     expect(chat).not.toHaveBeenCalled();
     expect(result.answer).toBeNull();
+  });
+});
+
+describe("readStructured", () => {
+  it("keeps the answer and adds only the citations its text doesn't already show", () => {
+    expect(readStructured('{"answer": "Rent was paid [1, 2].", "citations": [2, 1, 3, 3]}')).toBe("Rent was paid [1, 2]. [3]");
+    expect(readStructured('{"answer": " Done. ", "citations": []}')).toBe("Done.");
+  });
+
+  it.each([
+    "not json",
+    '{"answer": 5, "citations": []}',
+    '{"answer": "x"}',
+    '{"answer": "x", "citations": ["1"]}',
+    '{"answer": "x", "citations": [0]}',
+    '{"answer": "x", "citations": [1.5]}',
+    "null",
+  ])("refuses an answer of the wrong shape: %s", (raw) => {
+    expect(() => readStructured(raw)).toThrow(/couldn't be read/);
   });
 });

@@ -32,11 +32,12 @@ from insights.spec import SpecError
 from .compile import Grounding, compile_intent, describe, ground, resolve_by_meaning, run_preview
 from .context import AgentContext, merchant_by_meaning
 from .errors import AgentError
+from .guard import EMPTY_REPLY, READ_AS_PANEL, overrule_refusal, rein_in, says_nothing
 from .schema import PanelIntent, parse_intent
 
 # Part of every token's encryption context: raise it whenever the state's shape or the graph
 # changes, and older tokens expire instead of resuming into a graph they don't fit.
-GRAPH_VERSION = "agent-3"
+GRAPH_VERSION = "agent-5"
 RECURSION_LIMIT = 25  # LangGraph's own cap on steps in one run; the counters below stop first
 
 
@@ -54,7 +55,8 @@ class AgentState(TypedDict, total=False):
     spec: dict | None
     title: str | None
     # This turn's work.
-    draft: dict | None  # the model's latest parsed intent
+    draft: dict | None  # the model's latest parsed intent, reined in to the request's words
+    guard_notes: list  # what reining in changed, shown with the panel
     grounding: dict | None
     candidate: dict | None  # a compiled panel waiting for its preview
     last_error: str | None  # why the last reply was refused, for the repair prompt
@@ -88,6 +90,7 @@ def begin(state: AgentState) -> dict:
         "steps": 0,
         "repairs": 0,
         "draft": None,
+        "guard_notes": [],
         "grounding": None,
         "candidate": None,
         "last_error": None,
@@ -110,10 +113,23 @@ def understand(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
         intent = parse_intent(reply)
     except AgentError as problem:
         return {"steps": steps, "draft": None, "last_error": problem.detail}
+    overruled = []
     if intent.kind == "not_a_panel":
-        _emit(runtime, {"kind": "not_a_panel", "reason": intent.reason or "That is not a chart."})
-        return {"steps": steps, "last_error": None, "outcome": "not_a_panel"}
-    return {"steps": steps, "draft": intent.model_dump(), "last_error": None}
+        panel = overrule_refusal(state["message"])
+        if panel is None:
+            reason = intent.reason or "That is not a chart."
+            _emit(runtime, {"kind": "not_a_panel", "reason": reason})
+            return {"steps": steps, "last_error": None, "outcome": "not_a_panel"}
+        intent, overruled = panel, [READ_AS_PANEL]
+    if says_nothing(intent):
+        return {"steps": steps, "draft": None, "last_error": EMPTY_REPLY}
+    intent, notes = rein_in(intent, state["message"], state.get("intent"))
+    return {
+        "steps": steps,
+        "draft": intent.model_dump(),
+        "guard_notes": overruled + notes,
+        "last_error": None,
+    }
 
 
 def retry(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
@@ -160,6 +176,7 @@ def compile_panel(state: AgentState, runtime: Runtime[AgentContext]) -> dict:
             runtime.context,
             message=state["message"],
             dashboard_date=state["dashboard"]["filters"]["date"],
+            notes=state.get("guard_notes"),
         )
     except SpecError as problem:
         return {"last_error": problem.detail}

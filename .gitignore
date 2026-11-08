@@ -12,6 +12,11 @@ db.sqlite3
 # Production static files built by collectstatic
 staticfiles/
 
+# Saved AI evaluation runs: local history, kept private
+backend/ai/eval/results/
+# Other embedding models' evaluation vectors, for the model benchmark: rebuilt on demand
+backend/ai/eval/.cache/
+
 # Node / Next.js
 node_modules/
 .next/
@@ -20,3 +25,6 @@ node_modules/
 dev-docs/
 .claude/
 .vibe-wise/
+
+# Categorisation evaluation input for models other than the suggested one: rebuilt on demand
+frontend/.eval-cache/

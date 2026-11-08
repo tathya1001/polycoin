@@ -257,6 +257,7 @@ SILENCED_SYSTEM_CHECKS = ["security.W005", "security.W021"]
 
 AI_MAX_RUN = int(os.environ.get("AI_MAX_RUN", "200"))  # transactions scored per run
 AI_MAX_EXAMPLES_PER_CATEGORY = int(os.environ.get("AI_MAX_EXAMPLES_PER_CATEGORY", "20"))
+# The defaults for an embedding model without tuned thresholds (ai/services.py TUNED_THRESHOLDS).
 # Tuned on 22 realistic bank-statement narrations with nomic-embed-text: nonsense scores about
 # 0.35-0.45 and real matches 0.47+, while AI_MIN_MARGIN is what rejects ambiguous rows.
 AI_MIN_SCORE = float(os.environ.get("AI_MIN_SCORE", "0.45"))  # best cosine score to propose
@@ -278,6 +279,9 @@ RAG_INDEX_BATCH = int(os.environ.get("RAG_INDEX_BATCH", "100"))  # rows per embe
 RAG_MAX_DOCS = int(os.environ.get("RAG_MAX_DOCS", "8000"))
 RAG_MAX_MATCHES = int(os.environ.get("RAG_MAX_MATCHES", "50"))  # kept per ranking and after fusion
 RAG_RRF_K = int(os.environ.get("RAG_RRF_K", "60"))  # reciprocal rank fusion constant
+# A keyword match needs at least this share of the question's words ("minimum should match"), so
+# "gas deposit refund" doesn't match every refund. Words no row contains, usually typos, don't count.
+RAG_KEYWORD_MIN_SHARE = float(os.environ.get("RAG_KEYWORD_MIN_SHARE", str(2 / 3)))
 # An untuned model's vector matches: rows within this much of the best cosine score.
 RAG_RELATIVE_MARGIN = float(os.environ.get("RAG_RELATIVE_MARGIN", "0.05"))
 # The prompt lists the closest RAG_TOP_K matches (the summary still covers all of them), about

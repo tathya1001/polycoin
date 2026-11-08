@@ -40,6 +40,7 @@ from ai.agent.context import merchant_names
 from ai.test_rag_performance import RENDER_CPUS, _cgroup, _cpu_limit, _median, _p95
 from categories.models import Category
 from categories.services import get_default_category
+from datasources.services import first_source
 from insights.management.commands.seed_demo_transactions import EVERYDAY, build_rows
 from transactions.models import Transaction
 from transactions.tests import make_user
@@ -99,23 +100,26 @@ def _seed(user, count: int) -> None:
     categories = {c.name.lower(): c for c in Category.objects.filter(user=user)}
     fallback = get_default_category(user)
     cipher = UserCipher(user)
+    source = first_source(user)
     for start in range(0, len(rows), BATCH):
-        Transaction.objects.bulk_create(
-            [
-                Transaction(
-                    user=user,
-                    date=row["date"],
-                    txn_type=row["txn_type"],
-                    category=categories.get(row["category"].lower(), fallback),
-                    name_enc=cipher.encrypt(row["name"].encode(), "txn.name"),
-                    description_enc=cipher.encrypt(row["description"].encode(), "txn.description"),
-                    amount_enc=cipher.encrypt(_money(row["amount"]), "txn.amount"),
-                    balance_enc=cipher.encrypt(_money(row["balance"]), "txn.balance"),
-                    fingerprint=cipher.blind_index(f"agent-perf|{start + i}".encode(), "txn.fp"),
-                )
-                for i, row in enumerate(rows[start : start + BATCH])
-            ]
-        )
+        txns = [
+            Transaction(
+                user=user,
+                date=row["date"],
+                txn_type=row["txn_type"],
+                category=categories.get(row["category"].lower(), fallback),
+                data_source=source,
+                name_enc=cipher.encrypt(row["name"].encode(), "txn.name"),
+                description_enc=cipher.encrypt(row["description"].encode(), "txn.description"),
+                amount_enc=cipher.encrypt(_money(row["amount"]), "txn.amount"),
+                balance_enc=cipher.encrypt(_money(row["balance"]), "txn.balance"),
+                fingerprint=cipher.blind_index(f"agent-perf|{start + i}".encode(), "txn.fp"),
+            )
+            for i, row in enumerate(rows[start : start + BATCH])
+        ]
+        for txn in txns:  # bulk_create skips save(), which encrypts the core
+            txn.seal()
+        Transaction.objects.bulk_create(txns)
 
 
 def _timed(call) -> tuple[dict, float, float]:

@@ -12,12 +12,32 @@
  {
   "date": "2025-11-02",
   "txn_type": "debit",
+  "amount": "975.77",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/736044539247/MOONBEAM DAIRY/FKBK0573171/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t002"
+ },
+ {
+  "date": "2025-11-02",
+  "txn_type": "debit",
   "amount": "185.85",
   "category": "Food",
   "name": "3740XXXXXX0240 DAILY DOSA",
   "description": "POS 3740XXXXXX0240 DAILY DOSA",
   "notes": "",
-  "id": "t002"
+  "id": "t003"
+ },
+ {
+  "date": "2025-11-02",
+  "txn_type": "debit",
+  "amount": "142.78",
+  "category": "Food",
+  "name": "LEAFYCUP TEA HOUSE",
+  "description": "UPI/DR/017706609512/LEAFYCUP TEA HOUSE/FKBK0525626/leafycupteahouse@fkbank/UPI",
+  "notes": "",
+  "id": "t004"
  },
  {
   "date": "2025-11-03",
@@ -27,7 +47,7 @@
   "name": "CITYRIDE CABS",
   "description": "UPI/DR/586070448149/CITYRIDE CABS/FKBK0980835/cityridecabs@fkbank/UPI",
   "notes": "",
-  "id": "t003"
+  "id": "t005"
  },
  {
   "date": "2025-11-03",
@@ -37,7 +57,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/158813998698/MAPLE STREET HOMES/RENT NOV",
   "notes": "",
-  "id": "t004"
+  "id": "t006"
  },
  {
   "date": "2025-11-05",
@@ -47,7 +67,7 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/114635110203/FITZONE GYM/FKBK0830040/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t005"
+  "id": "t007"
  },
  {
   "date": "2025-11-05",
@@ -57,7 +77,27 @@
   "name": "P2A",
   "description": "IMPS/P2A/410333521447/R SAMPLE/SHARE",
   "notes": "",
-  "id": "t006"
+  "id": "t008"
+ },
+ {
+  "date": "2025-11-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/743693048422/TIDYNEST HOME SERVICES/FKBK0320592/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t009"
+ },
+ {
+  "date": "2025-11-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/310046993119/SIP",
+  "notes": "",
+  "id": "t010"
  },
  {
   "date": "2025-11-07",
@@ -67,7 +107,7 @@
   "name": "BRAINY TUTORS",
   "description": "NEFT/DR/546205548958/BRAINY TUTORS/TUITION FEES NOV",
   "notes": "",
-  "id": "t007"
+  "id": "t011"
  },
  {
   "date": "2025-11-08",
@@ -77,7 +117,7 @@
   "name": "CINESTAR SCREENS",
   "description": "UPI/DR/140396123296/CINESTAR SCREENS/FKBK0533984/cinestarscreens@fkbank/UPI",
   "notes": "",
-  "id": "t008"
+  "id": "t012"
  },
  {
   "date": "2025-11-08",
@@ -87,7 +127,17 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/916979780252/ELECTRICITY BILL",
   "notes": "",
-  "id": "t009"
+  "id": "t013"
+ },
+ {
+  "date": "2025-11-09",
+  "txn_type": "debit",
+  "amount": "861.97",
+  "category": "Bills",
+  "name": "BLUEFLAME GAS AGENCY",
+  "description": "UPI/DR/817635551419/BLUEFLAME GAS AGENCY/FKBK0244642/blueflamegasagency@fkbank/LPG REFILL",
+  "notes": "",
+  "id": "t014"
  },
  {
   "date": "2025-11-10",
@@ -97,7 +147,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/451435115937/HOME LOAN EMI",
   "notes": "",
-  "id": "t010"
+  "id": "t015"
  },
  {
   "date": "2025-11-12",
@@ -107,7 +157,7 @@
   "name": "BREWBEAN COFFEE",
   "description": "UPI/DR/724637673785/BREWBEAN COFFEE/FKBK0304277/brewbeancoffee@fkbank/UPI",
   "notes": "",
-  "id": "t011"
+  "id": "t016"
  },
  {
   "date": "2025-11-12",
@@ -117,7 +167,17 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/943982864089/SKYLINE MOBILE/FKBK0487464/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t012"
+  "id": "t017"
+ },
+ {
+  "date": "2025-11-14",
+  "txn_type": "debit",
+  "amount": "3100.00",
+  "category": "Others",
+  "name": "LIFELINE ASSURANCE",
+  "description": "ACH/LIFELINE ASSURANCE/690994706205/LIFE COVER PREMIUM",
+  "notes": "",
+  "id": "t018"
  },
  {
   "date": "2025-11-15",
@@ -127,7 +187,7 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/929844278206/SUBSCRIPTION",
   "notes": "",
-  "id": "t013"
+  "id": "t019"
  },
  {
   "date": "2025-11-18",
@@ -137,7 +197,7 @@
   "name": "FIBRELINK BROADBAND",
   "description": "UPI/DR/666971697316/FIBRELINK BROADBAND/FKBK0489198/fibrelinkbroadband@fkbank/FIBRE PLAN",
   "notes": "",
-  "id": "t014"
+  "id": "t020"
  },
  {
   "date": "2025-11-18",
@@ -147,7 +207,27 @@
   "name": "0060XXXXXX2652 WELLCARE PHARMACY",
   "description": "POS 0060XXXXXX2652 WELLCARE PHARMACY",
   "notes": "",
-  "id": "t015"
+  "id": "t021"
+ },
+ {
+  "date": "2025-11-20",
+  "txn_type": "debit",
+  "amount": "1589.77",
+  "category": "Others",
+  "name": "HELPING HANDS TRUST",
+  "description": "NEFT/DR/115716928668/HELPING HANDS TRUST/DONATION NOV",
+  "notes": "",
+  "id": "t022"
+ },
+ {
+  "date": "2025-11-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/519914043096/STARBEAM DTH/FKBK0183987/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t023"
  },
  {
   "date": "2025-11-20",
@@ -157,7 +237,17 @@
   "name": "AQUAFLOW WATER BOARD",
   "description": "ACH/AQUAFLOW WATER BOARD/443376001212/WATER CHARGES",
   "notes": "",
-  "id": "t016"
+  "id": "t024"
+ },
+ {
+  "date": "2025-11-22",
+  "txn_type": "debit",
+  "amount": "8566.62",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/890719314081/ORBIT BANK CARD/CREDIT CARD BILL NOV",
+  "notes": "",
+  "id": "t025"
  },
  {
   "date": "2025-11-22",
@@ -167,7 +257,7 @@
   "name": "TUNEWAVE MUSIC",
   "description": "UPI/DR/567995179464/TUNEWAVE MUSIC/FKBK0321077/tunewavemusic@fkbank/SUBSCRIPTION",
   "notes": "",
-  "id": "t017"
+  "id": "t026"
  },
  {
   "date": "2025-11-23",
@@ -177,7 +267,7 @@
   "name": "METRO CARD TOPUP",
   "description": "UPI/DR/197931996079/METRO CARD TOPUP/FKBK0417562/metrocardtopup@fkbank/UPI",
   "notes": "",
-  "id": "t018"
+  "id": "t027"
  },
  {
   "date": "2025-11-25",
@@ -187,7 +277,17 @@
   "name": "SAFEGUARD INSURANCE",
   "description": "ACH/SAFEGUARD INSURANCE/834098394394/PREMIUM",
   "notes": "",
-  "id": "t019"
+  "id": "t028"
+ },
+ {
+  "date": "2025-11-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/515490333557/SUBSCRIPTION",
+  "notes": "",
+  "id": "t029"
  },
  {
   "date": "2025-11-27",
@@ -197,7 +297,7 @@
   "name": "4906XXXXXX8179 FUELSTOP PETROL",
   "description": "POS 4906XXXXXX8179 FUELSTOP PETROL",
   "notes": "",
-  "id": "t020"
+  "id": "t030"
  },
  {
   "date": "2025-11-29",
@@ -207,7 +307,7 @@
   "name": "7839XXXXXX4256 GREENLEAF GROCERS",
   "description": "POS 7839XXXXXX4256 GREENLEAF GROCERS",
   "notes": "",
-  "id": "t021"
+  "id": "t031"
  },
  {
   "date": "2025-11-29",
@@ -217,7 +317,7 @@
   "name": "BRIGHTMART",
   "description": "UPI/CR/776057669467/BRIGHTMART/FKBK0533157/brightmart@fkbank/REFUND",
   "notes": "",
-  "id": "t022"
+  "id": "t032"
  },
  {
   "date": "2025-11-29",
@@ -227,7 +327,7 @@
   "name": "SPICE ROUTE KITCHEN",
   "description": "UPI/DR/735720710136/SPICE ROUTE KITCHEN/FKBK0270304/spiceroutekitchen@fkbank/UPI",
   "notes": "",
-  "id": "t023"
+  "id": "t033"
  },
  {
   "date": "2025-11-30",
@@ -237,7 +337,7 @@
   "name": "BRIGHTMART",
   "description": "UPI/DR/879614204627/BRIGHTMART/FKBK0124439/brightmart@fkbank/UPI",
   "notes": "",
-  "id": "t024"
+  "id": "t034"
  },
  {
   "date": "2025-11-30",
@@ -247,7 +347,7 @@
   "name": "BY INTEREST CREDIT",
   "description": "BY INTEREST CREDIT/042046879011",
   "notes": "",
-  "id": "t025"
+  "id": "t035"
  },
  {
   "date": "2025-11-30",
@@ -257,7 +357,7 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/599718164733/TASTYBITES CAFE/FKBK0086943/tastybitescafe@fkbank/UPI",
   "notes": "lunch with team",
-  "id": "t026"
+  "id": "t036"
  },
  {
   "date": "2025-12-01",
@@ -267,7 +367,17 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN76582802/ACME CORP PAYROLL/SAL DEC",
   "notes": "",
-  "id": "t027"
+  "id": "t037"
+ },
+ {
+  "date": "2025-12-01",
+  "txn_type": "debit",
+  "amount": "712.29",
+  "category": "Others",
+  "name": "SNIPSHAPE SALON",
+  "description": "UPI/DR/890722197353/SNIPSHAPE SALON/FKBK0800332/snipshapesalon@fkbank/UPI",
+  "notes": "",
+  "id": "t038"
  },
  {
   "date": "2025-12-02",
@@ -277,7 +387,27 @@
   "name": "ATM",
   "description": "ATM WDL/116134461198/MG ROAD BRANCH",
   "notes": "",
-  "id": "t028"
+  "id": "t039"
+ },
+ {
+  "date": "2025-12-02",
+  "txn_type": "debit",
+  "amount": "1219.78",
+  "category": "Transport",
+  "name": "INTERCITY BUSLINES",
+  "description": "UPI/DR/479786833881/INTERCITY BUSLINES/FKBK0618398/intercitybuslines@fkbank/UPI",
+  "notes": "",
+  "id": "t040"
+ },
+ {
+  "date": "2025-12-02",
+  "txn_type": "debit",
+  "amount": "986.74",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/743537451551/MOONBEAM DAIRY/FKBK0022619/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t041"
  },
  {
   "date": "2025-12-02",
@@ -287,7 +417,7 @@
   "name": "0613XXXXXX2076 FUELSTOP PETROL",
   "description": "POS 0613XXXXXX2076 FUELSTOP PETROL",
   "notes": "",
-  "id": "t029"
+  "id": "t042"
  },
  {
   "date": "2025-12-03",
@@ -297,7 +427,7 @@
   "name": "FRESHBASKET MART",
   "description": "UPI/DR/001258348851/FRESHBASKET MART/FKBK0085629/freshbasketmart@fkbank/UPI",
   "notes": "",
-  "id": "t030"
+  "id": "t043"
  },
  {
   "date": "2025-12-03",
@@ -307,7 +437,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/188447294055/MAPLE STREET HOMES/RENT DEC",
   "notes": "",
-  "id": "t031"
+  "id": "t044"
  },
  {
   "date": "2025-12-04",
@@ -317,7 +447,7 @@
   "name": "CITYRIDE CABS",
   "description": "UPI/DR/362740738663/CITYRIDE CABS/FKBK0462401/cityridecabs@fkbank/UPI",
   "notes": "",
-  "id": "t032"
+  "id": "t045"
  },
  {
   "date": "2025-12-05",
@@ -327,7 +457,17 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/126708129770/FITZONE GYM/FKBK0579299/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t033"
+  "id": "t046"
+ },
+ {
+  "date": "2025-12-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/946865070270/TIDYNEST HOME SERVICES/FKBK0197337/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t047"
  },
  {
   "date": "2025-12-06",
@@ -337,7 +477,17 @@
   "name": "8411XXXXXX8790 WELLCARE PHARMACY",
   "description": "POS 8411XXXXXX8790 WELLCARE PHARMACY",
   "notes": "",
-  "id": "t034"
+  "id": "t048"
+ },
+ {
+  "date": "2025-12-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/034252292388/SIP",
+  "notes": "",
+  "id": "t049"
  },
  {
   "date": "2025-12-08",
@@ -347,7 +497,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/560739273197/ELECTRICITY BILL",
   "notes": "",
-  "id": "t035"
+  "id": "t050"
  },
  {
   "date": "2025-12-09",
@@ -357,7 +507,7 @@
   "name": "GADGETZONE ELECTRONICS",
   "description": "UPI/DR/866060511324/GADGETZONE ELECTRONICS/FKBK0993064/gadgetzoneelectronics@fkbank/UPI",
   "notes": "",
-  "id": "t036"
+  "id": "t051"
  },
  {
   "date": "2025-12-10",
@@ -367,7 +517,17 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/274404309642/HOME LOAN EMI",
   "notes": "",
-  "id": "t037"
+  "id": "t052"
+ },
+ {
+  "date": "2025-12-12",
+  "txn_type": "credit",
+  "amount": "22275.63",
+  "category": "Others",
+  "name": "BRIGHTPIXEL STUDIO",
+  "description": "NEFT/CR/FKBKN68853106/BRIGHTPIXEL STUDIO/INVOICE PAYMENT DEC",
+  "notes": "",
+  "id": "t053"
  },
  {
   "date": "2025-12-12",
@@ -377,7 +537,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/156697961567/SKYLINE MOBILE/FKBK0959650/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t038"
+  "id": "t054"
  },
  {
   "date": "2025-12-15",
@@ -387,7 +547,7 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/534479672521/SUBSCRIPTION",
   "notes": "",
-  "id": "t039"
+  "id": "t055"
  },
  {
   "date": "2025-12-16",
@@ -397,7 +557,7 @@
   "name": "7365XXXXXX3546 THREADLINE APPAREL",
   "description": "POS 7365XXXXXX3546 THREADLINE APPAREL",
   "notes": "",
-  "id": "t040"
+  "id": "t056"
  },
  {
   "date": "2025-12-16",
@@ -407,7 +567,7 @@
   "name": "BREWBEAN COFFEE",
   "description": "UPI/DR/683820801125/BREWBEAN COFFEE/FKBK0006530/brewbeancoffee@fkbank/UPI",
   "notes": "",
-  "id": "t041"
+  "id": "t057"
  },
  {
   "date": "2025-12-16",
@@ -417,7 +577,7 @@
   "name": "5225XXXXXX2704 GREENLEAF GROCERS",
   "description": "POS 5225XXXXXX2704 GREENLEAF GROCERS",
   "notes": "",
-  "id": "t042"
+  "id": "t058"
  },
  {
   "date": "2025-12-18",
@@ -427,7 +587,27 @@
   "name": "BRIGHTMART",
   "description": "UPI/DR/111199290607/BRIGHTMART/FKBK0911935/brightmart@fkbank/UPI",
   "notes": "",
-  "id": "t043"
+  "id": "t059"
+ },
+ {
+  "date": "2025-12-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/311742604077/STARBEAM DTH/FKBK0533720/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t060"
+ },
+ {
+  "date": "2025-12-22",
+  "txn_type": "debit",
+  "amount": "8641.00",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/262484763203/ORBIT BANK CARD/CREDIT CARD BILL DEC",
+  "notes": "",
+  "id": "t061"
  },
  {
   "date": "2025-12-22",
@@ -437,7 +617,17 @@
   "name": "2451XXXXXX5576 DAILY DOSA",
   "description": "POS 2451XXXXXX5576 DAILY DOSA",
   "notes": "",
-  "id": "t044"
+  "id": "t062"
+ },
+ {
+  "date": "2025-12-22",
+  "txn_type": "debit",
+  "amount": "211.29",
+  "category": "Food",
+  "name": "LEAFYCUP TEA HOUSE",
+  "description": "UPI/DR/551438668326/LEAFYCUP TEA HOUSE/FKBK0337471/leafycupteahouse@fkbank/UPI",
+  "notes": "",
+  "id": "t063"
  },
  {
   "date": "2025-12-23",
@@ -447,7 +637,27 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/285476677634/TASTYBITES CAFE/FKBK0488102/tastybitescafe@fkbank/UPI",
   "notes": "",
-  "id": "t045"
+  "id": "t064"
+ },
+ {
+  "date": "2025-12-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/266526663128/SUBSCRIPTION",
+  "notes": "",
+  "id": "t065"
+ },
+ {
+  "date": "2025-12-27",
+  "txn_type": "debit",
+  "amount": "257.23",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/195153827620/QUICKBITE DELIVERY/FKBK0475320/quickbitedelivery@fkbank/UPI",
+  "notes": "",
+  "id": "t066"
  },
  {
   "date": "2026-01-01",
@@ -457,7 +667,7 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN15771883/ACME CORP PAYROLL/SAL JAN",
   "notes": "",
-  "id": "t046"
+  "id": "t067"
  },
  {
   "date": "2026-01-01",
@@ -467,7 +677,17 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/850122822284/TASTYBITES CAFE/FKBK0980730/tastybitescafe@fkbank/UPI",
   "notes": "",
-  "id": "t047"
+  "id": "t068"
+ },
+ {
+  "date": "2026-01-02",
+  "txn_type": "debit",
+  "amount": "1173.46",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/356330678846/MOONBEAM DAIRY/FKBK0655474/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t069"
  },
  {
   "date": "2026-01-03",
@@ -477,7 +697,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/081967273177/MAPLE STREET HOMES/RENT JAN",
   "notes": "",
-  "id": "t048"
+  "id": "t070"
  },
  {
   "date": "2026-01-04",
@@ -487,7 +707,7 @@
   "name": "GAMEVAULT",
   "description": "UPI/DR/262124552979/GAMEVAULT/FKBK0557321/gamevault@fkbank/UPI",
   "notes": "",
-  "id": "t049"
+  "id": "t071"
  },
  {
   "date": "2026-01-05",
@@ -497,7 +717,17 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/299914706755/FITZONE GYM/FKBK0485066/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t050"
+  "id": "t072"
+ },
+ {
+  "date": "2026-01-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/335421397843/TIDYNEST HOME SERVICES/FKBK0594445/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t073"
  },
  {
   "date": "2026-01-07",
@@ -507,7 +737,7 @@
   "name": "STAYEASY HOTELS",
   "description": "UPI/DR/231591724049/STAYEASY HOTELS/FKBK0333790/stayeasyhotels@fkbank/UPI",
   "notes": "",
-  "id": "t051"
+  "id": "t074"
  },
  {
   "date": "2026-01-07",
@@ -517,7 +747,17 @@
   "name": "METRO CARD TOPUP",
   "description": "UPI/DR/208304127730/METRO CARD TOPUP/FKBK0735771/metrocardtopup@fkbank/UPI",
   "notes": "",
-  "id": "t052"
+  "id": "t075"
+ },
+ {
+  "date": "2026-01-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/926132991354/SIP",
+  "notes": "",
+  "id": "t076"
  },
  {
   "date": "2026-01-08",
@@ -527,7 +767,17 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/819539182761/ELECTRICITY BILL",
   "notes": "",
-  "id": "t053"
+  "id": "t077"
+ },
+ {
+  "date": "2026-01-09",
+  "txn_type": "debit",
+  "amount": "926.48",
+  "category": "Bills",
+  "name": "BLUEFLAME GAS AGENCY",
+  "description": "UPI/DR/948415988826/BLUEFLAME GAS AGENCY/FKBK0768011/blueflamegasagency@fkbank/LPG REFILL",
+  "notes": "",
+  "id": "t078"
  },
  {
   "date": "2026-01-10",
@@ -537,7 +787,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/627125204265/HOME LOAN EMI",
   "notes": "",
-  "id": "t054"
+  "id": "t079"
  },
  {
   "date": "2026-01-11",
@@ -547,7 +797,7 @@
   "name": "2743XXXXXX5441 FUELSTOP PETROL",
   "description": "POS 2743XXXXXX5441 FUELSTOP PETROL",
   "notes": "",
-  "id": "t055"
+  "id": "t080"
  },
  {
   "date": "2026-01-12",
@@ -557,7 +807,7 @@
   "name": "BREWBEAN COFFEE",
   "description": "UPI/DR/631155126294/BREWBEAN COFFEE/FKBK0653387/brewbeancoffee@fkbank/UPI",
   "notes": "",
-  "id": "t056"
+  "id": "t081"
  },
  {
   "date": "2026-01-12",
@@ -567,7 +817,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/646440330132/SKYLINE MOBILE/FKBK0059871/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t057"
+  "id": "t082"
  },
  {
   "date": "2026-01-15",
@@ -577,7 +827,7 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/715029529207/SUBSCRIPTION",
   "notes": "",
-  "id": "t058"
+  "id": "t083"
  },
  {
   "date": "2026-01-15",
@@ -587,7 +837,17 @@
   "name": "5682XXXXXX1072 WELLCARE PHARMACY",
   "description": "POS 5682XXXXXX1072 WELLCARE PHARMACY",
   "notes": "",
-  "id": "t059"
+  "id": "t084"
+ },
+ {
+  "date": "2026-01-16",
+  "txn_type": "debit",
+  "amount": "139.79",
+  "category": "Food",
+  "name": "LEAFYCUP TEA HOUSE",
+  "description": "UPI/DR/572820744222/LEAFYCUP TEA HOUSE/FKBK0490218/leafycupteahouse@fkbank/UPI",
+  "notes": "",
+  "id": "t085"
  },
  {
   "date": "2026-01-18",
@@ -597,7 +857,37 @@
   "name": "FIBRELINK BROADBAND",
   "description": "UPI/DR/471848078269/FIBRELINK BROADBAND/FKBK0550439/fibrelinkbroadband@fkbank/FIBRE PLAN",
   "notes": "",
-  "id": "t060"
+  "id": "t086"
+ },
+ {
+  "date": "2026-01-19",
+  "txn_type": "debit",
+  "amount": "727.69",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/883143823037/QUICKBITE DELIVERY/FKBK0652462/quickbitedelivery@fkbank/UPI",
+  "notes": "",
+  "id": "t087"
+ },
+ {
+  "date": "2026-01-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/743916598929/STARBEAM DTH/FKBK0014627/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t088"
+ },
+ {
+  "date": "2026-01-22",
+  "txn_type": "debit",
+  "amount": "5535.07",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/953142901394/ORBIT BANK CARD/CREDIT CARD BILL JAN",
+  "notes": "",
+  "id": "t089"
  },
  {
   "date": "2026-01-22",
@@ -607,7 +897,7 @@
   "name": "TUNEWAVE MUSIC",
   "description": "UPI/DR/529750777394/TUNEWAVE MUSIC/FKBK0405143/tunewavemusic@fkbank/SUBSCRIPTION",
   "notes": "",
-  "id": "t061"
+  "id": "t090"
  },
  {
   "date": "2026-01-23",
@@ -617,7 +907,7 @@
   "name": "BIRYANI JUNCTION",
   "description": "UPI/DR/911279931531/BIRYANI JUNCTION/FKBK0130571/biryanijunction@fkbank/UPI",
   "notes": "",
-  "id": "t062"
+  "id": "t091"
  },
  {
   "date": "2026-01-24",
@@ -627,7 +917,7 @@
   "name": "8970XXXXXX2852 DAILY DOSA",
   "description": "POS 8970XXXXXX2852 DAILY DOSA",
   "notes": "breakfast",
-  "id": "t063"
+  "id": "t092"
  },
  {
   "date": "2026-01-25",
@@ -637,7 +927,7 @@
   "name": "SUNRISE CLINIC",
   "description": "UPI/DR/772029272577/SUNRISE CLINIC/FKBK0591943/sunriseclinic@fkbank/CONSULTATION",
   "notes": "",
-  "id": "t064"
+  "id": "t093"
  },
  {
   "date": "2026-01-26",
@@ -647,7 +937,17 @@
   "name": "ATM",
   "description": "ATM WDL/633768881044/MG ROAD BRANCH",
   "notes": "",
-  "id": "t065"
+  "id": "t094"
+ },
+ {
+  "date": "2026-01-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/879280228453/SUBSCRIPTION",
+  "notes": "",
+  "id": "t095"
  },
  {
   "date": "2026-01-26",
@@ -657,7 +957,7 @@
   "name": "FRESHBASKET MART",
   "description": "UPI/DR/025925654055/FRESHBASKET MART/FKBK0476335/freshbasketmart@fkbank/UPI",
   "notes": "",
-  "id": "t066"
+  "id": "t096"
  },
  {
   "date": "2026-01-29",
@@ -667,7 +967,7 @@
   "name": "SKYWAY AIRLINES",
   "description": "UPI/DR/213933922290/SKYWAY AIRLINES/FKBK0280617/skywayairlines@fkbank/UPI",
   "notes": "",
-  "id": "t067"
+  "id": "t097"
  },
  {
   "date": "2026-02-01",
@@ -677,7 +977,17 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN96327926/ACME CORP PAYROLL/SAL FEB",
   "notes": "",
-  "id": "t068"
+  "id": "t098"
+ },
+ {
+  "date": "2026-02-02",
+  "txn_type": "debit",
+  "amount": "932.23",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/061906780999/MOONBEAM DAIRY/FKBK0332477/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t099"
  },
  {
   "date": "2026-02-03",
@@ -687,7 +997,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/787680457178/MAPLE STREET HOMES/RENT FEB",
   "notes": "",
-  "id": "t069"
+  "id": "t100"
  },
  {
   "date": "2026-02-05",
@@ -697,7 +1007,7 @@
   "name": "SUNRISE CLINIC",
   "description": "UPI/DR/335123666833/SUNRISE CLINIC/FKBK0571937/sunriseclinic@fkbank/CONSULTATION",
   "notes": "",
-  "id": "t070"
+  "id": "t101"
  },
  {
   "date": "2026-02-05",
@@ -707,7 +1017,17 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/726436628290/FITZONE GYM/FKBK0920824/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t071"
+  "id": "t102"
+ },
+ {
+  "date": "2026-02-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/539405512243/TIDYNEST HOME SERVICES/FKBK0894579/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t103"
  },
  {
   "date": "2026-02-06",
@@ -717,7 +1037,17 @@
   "name": "P2A",
   "description": "IMPS/P2A/497753054831/R SAMPLE/PAYBACK",
   "notes": "",
-  "id": "t072"
+  "id": "t104"
+ },
+ {
+  "date": "2026-02-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/988895866499/SIP",
+  "notes": "",
+  "id": "t105"
  },
  {
   "date": "2026-02-07",
@@ -727,7 +1057,7 @@
   "name": "BRAINY TUTORS",
   "description": "NEFT/DR/493686367800/BRAINY TUTORS/TUITION FEES FEB",
   "notes": "",
-  "id": "t073"
+  "id": "t106"
  },
  {
   "date": "2026-02-08",
@@ -737,7 +1067,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/803704121430/ELECTRICITY BILL",
   "notes": "",
-  "id": "t074"
+  "id": "t107"
  },
  {
   "date": "2026-02-10",
@@ -747,7 +1077,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/055183000714/HOME LOAN EMI",
   "notes": "",
-  "id": "t075"
+  "id": "t108"
  },
  {
   "date": "2026-02-10",
@@ -757,7 +1087,7 @@
   "name": "SPICE ROUTE KITCHEN",
   "description": "UPI/DR/408862154771/SPICE ROUTE KITCHEN/FKBK0274622/spiceroutekitchen@fkbank/UPI",
   "notes": "",
-  "id": "t076"
+  "id": "t109"
  },
  {
   "date": "2026-02-12",
@@ -767,7 +1097,7 @@
   "name": "5323XXXXXX2794 GREENLEAF GROCERS",
   "description": "POS 5323XXXXXX2794 GREENLEAF GROCERS",
   "notes": "",
-  "id": "t077"
+  "id": "t110"
  },
  {
   "date": "2026-02-12",
@@ -777,7 +1107,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/780465873064/SKYLINE MOBILE/FKBK0248296/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t078"
+  "id": "t111"
  },
  {
   "date": "2026-02-13",
@@ -787,7 +1117,7 @@
   "name": "BREWBEAN COFFEE",
   "description": "UPI/DR/318069840737/BREWBEAN COFFEE/FKBK0420617/brewbeancoffee@fkbank/UPI",
   "notes": "",
-  "id": "t079"
+  "id": "t112"
  },
  {
   "date": "2026-02-15",
@@ -797,7 +1127,7 @@
   "name": "CINESTAR SCREENS",
   "description": "UPI/DR/028532494309/CINESTAR SCREENS/FKBK0032642/cinestarscreens@fkbank/UPI",
   "notes": "",
-  "id": "t080"
+  "id": "t113"
  },
  {
   "date": "2026-02-15",
@@ -807,7 +1137,17 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/145946096584/SUBSCRIPTION",
   "notes": "",
-  "id": "t081"
+  "id": "t114"
+ },
+ {
+  "date": "2026-02-18",
+  "txn_type": "debit",
+  "amount": "1106.03",
+  "category": "Others",
+  "name": "SNIPSHAPE SALON",
+  "description": "UPI/DR/685759158567/SNIPSHAPE SALON/FKBK0831516/snipshapesalon@fkbank/UPI",
+  "notes": "",
+  "id": "t115"
  },
  {
   "date": "2026-02-19",
@@ -817,7 +1157,17 @@
   "name": "CITYRIDE CABS",
   "description": "UPI/DR/486521265006/CITYRIDE CABS/FKBK0285437/cityridecabs@fkbank/UPI",
   "notes": "",
-  "id": "t082"
+  "id": "t116"
+ },
+ {
+  "date": "2026-02-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/279611838277/STARBEAM DTH/FKBK0204905/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t117"
  },
  {
   "date": "2026-02-20",
@@ -827,7 +1177,7 @@
   "name": "GADGETZONE ELECTRONICS",
   "description": "UPI/DR/464110453125/GADGETZONE ELECTRONICS/FKBK0978796/gadgetzoneelectronics@fkbank/UPI",
   "notes": "",
-  "id": "t083"
+  "id": "t118"
  },
  {
   "date": "2026-02-20",
@@ -837,7 +1187,37 @@
   "name": "AQUAFLOW WATER BOARD",
   "description": "ACH/AQUAFLOW WATER BOARD/126524913811/WATER CHARGES",
   "notes": "",
-  "id": "t084"
+  "id": "t119"
+ },
+ {
+  "date": "2026-02-21",
+  "txn_type": "debit",
+  "amount": "290.90",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/317798623115/QUICKBITE DELIVERY/FKBK0120770/quickbitedelivery@fkbank/UPI",
+  "notes": "",
+  "id": "t120"
+ },
+ {
+  "date": "2026-02-21",
+  "txn_type": "debit",
+  "amount": "170.12",
+  "category": "Food",
+  "name": "LEAFYCUP TEA HOUSE",
+  "description": "UPI/DR/059738413385/LEAFYCUP TEA HOUSE/FKBK0402685/leafycupteahouse@fkbank/UPI",
+  "notes": "",
+  "id": "t121"
+ },
+ {
+  "date": "2026-02-22",
+  "txn_type": "debit",
+  "amount": "10322.49",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/791036385171/ORBIT BANK CARD/CREDIT CARD BILL FEB",
+  "notes": "",
+  "id": "t122"
  },
  {
   "date": "2026-02-24",
@@ -847,7 +1227,7 @@
   "name": "ATM",
   "description": "ATM WDL/438866688944/MG ROAD BRANCH",
   "notes": "",
-  "id": "t085"
+  "id": "t123"
  },
  {
   "date": "2026-02-25",
@@ -857,7 +1237,17 @@
   "name": "SAFEGUARD INSURANCE",
   "description": "ACH/SAFEGUARD INSURANCE/350191965200/PREMIUM",
   "notes": "",
-  "id": "t086"
+  "id": "t124"
+ },
+ {
+  "date": "2026-02-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/145151258833/SUBSCRIPTION",
+  "notes": "",
+  "id": "t125"
  },
  {
   "date": "2026-02-28",
@@ -867,7 +1257,7 @@
   "name": "BY INTEREST CREDIT",
   "description": "BY INTEREST CREDIT/685969030748",
   "notes": "",
-  "id": "t087"
+  "id": "t126"
  },
  {
   "date": "2026-02-28",
@@ -877,7 +1267,7 @@
   "name": "7292XXXXXX4169 WELLCARE PHARMACY",
   "description": "POS 7292XXXXXX4169 WELLCARE PHARMACY",
   "notes": "",
-  "id": "t088"
+  "id": "t127"
  },
  {
   "date": "2026-02-28",
@@ -887,7 +1277,7 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/507392923911/TASTYBITES CAFE/FKBK0317090/tastybitescafe@fkbank/UPI",
   "notes": "lunch with team",
-  "id": "t089"
+  "id": "t128"
  },
  {
   "date": "2026-03-01",
@@ -897,7 +1287,7 @@
   "name": "9757XXXXXX9737 GREENLEAF GROCERS",
   "description": "POS 9757XXXXXX9737 GREENLEAF GROCERS",
   "notes": "",
-  "id": "t090"
+  "id": "t129"
  },
  {
   "date": "2026-03-01",
@@ -907,7 +1297,17 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN88365506/ACME CORP PAYROLL/SAL MAR",
   "notes": "",
-  "id": "t091"
+  "id": "t130"
+ },
+ {
+  "date": "2026-03-02",
+  "txn_type": "debit",
+  "amount": "1075.24",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/428700537591/MOONBEAM DAIRY/FKBK0477001/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t131"
  },
  {
   "date": "2026-03-03",
@@ -917,7 +1317,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/190845205997/MAPLE STREET HOMES/RENT MAR",
   "notes": "",
-  "id": "t092"
+  "id": "t132"
  },
  {
   "date": "2026-03-04",
@@ -927,7 +1327,7 @@
   "name": "SPICE ROUTE KITCHEN",
   "description": "UPI/DR/818190637711/SPICE ROUTE KITCHEN/FKBK0729425/spiceroutekitchen@fkbank/UPI",
   "notes": "",
-  "id": "t093"
+  "id": "t133"
  },
  {
   "date": "2026-03-05",
@@ -937,7 +1337,27 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/889870415178/FITZONE GYM/FKBK0013325/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t094"
+  "id": "t134"
+ },
+ {
+  "date": "2026-03-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/668650682600/TIDYNEST HOME SERVICES/FKBK0686301/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t135"
+ },
+ {
+  "date": "2026-03-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/851776708908/SIP",
+  "notes": "",
+  "id": "t136"
  },
  {
   "date": "2026-03-08",
@@ -947,7 +1367,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/066817922328/ELECTRICITY BILL",
   "notes": "",
-  "id": "t095"
+  "id": "t137"
  },
  {
   "date": "2026-03-08",
@@ -957,7 +1377,17 @@
   "name": "RAILCONNECT TICKETS",
   "description": "UPI/DR/463493887265/RAILCONNECT TICKETS/FKBK0035108/railconnecttickets@fkbank/UPI",
   "notes": "",
-  "id": "t096"
+  "id": "t138"
+ },
+ {
+  "date": "2026-03-09",
+  "txn_type": "debit",
+  "amount": "857.43",
+  "category": "Bills",
+  "name": "BLUEFLAME GAS AGENCY",
+  "description": "UPI/DR/385361698475/BLUEFLAME GAS AGENCY/FKBK0714744/blueflamegasagency@fkbank/LPG REFILL",
+  "notes": "",
+  "id": "t139"
  },
  {
   "date": "2026-03-09",
@@ -967,7 +1397,7 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/543442531201/TASTYBITES CAFE/FKBK0412943/tastybitescafe@fkbank/UPI",
   "notes": "",
-  "id": "t097"
+  "id": "t140"
  },
  {
   "date": "2026-03-10",
@@ -977,7 +1407,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/338430590619/HOME LOAN EMI",
   "notes": "",
-  "id": "t098"
+  "id": "t141"
  },
  {
   "date": "2026-03-12",
@@ -987,7 +1417,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/352401376156/SKYLINE MOBILE/FKBK0105914/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t099"
+  "id": "t142"
  },
  {
   "date": "2026-03-15",
@@ -997,7 +1427,7 @@
   "name": "3596XXXXXX9055 THREADLINE APPAREL",
   "description": "POS 3596XXXXXX9055 THREADLINE APPAREL",
   "notes": "",
-  "id": "t100"
+  "id": "t143"
  },
  {
   "date": "2026-03-15",
@@ -1007,7 +1437,7 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/781959610101/SUBSCRIPTION",
   "notes": "",
-  "id": "t101"
+  "id": "t144"
  },
  {
   "date": "2026-03-17",
@@ -1017,7 +1447,7 @@
   "name": "STAYEASY HOTELS",
   "description": "UPI/DR/819198799151/STAYEASY HOTELS/FKBK0099864/stayeasyhotels@fkbank/UPI",
   "notes": "",
-  "id": "t102"
+  "id": "t145"
  },
  {
   "date": "2026-03-18",
@@ -1027,7 +1457,17 @@
   "name": "FIBRELINK BROADBAND",
   "description": "UPI/DR/519047087613/FIBRELINK BROADBAND/FKBK0750499/fibrelinkbroadband@fkbank/FIBRE PLAN",
   "notes": "",
-  "id": "t103"
+  "id": "t146"
+ },
+ {
+  "date": "2026-03-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/820507605967/STARBEAM DTH/FKBK0277277/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t147"
  },
  {
   "date": "2026-03-20",
@@ -1037,7 +1477,17 @@
   "name": "FRESHBASKET MART",
   "description": "UPI/DR/800243714413/FRESHBASKET MART/FKBK0454074/freshbasketmart@fkbank/UPI",
   "notes": "vegetables and fruits",
-  "id": "t104"
+  "id": "t148"
+ },
+ {
+  "date": "2026-03-22",
+  "txn_type": "debit",
+  "amount": "7842.97",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/328422159393/ORBIT BANK CARD/CREDIT CARD BILL MAR",
+  "notes": "",
+  "id": "t149"
  },
  {
   "date": "2026-03-22",
@@ -1047,7 +1497,27 @@
   "name": "TUNEWAVE MUSIC",
   "description": "UPI/DR/856903634546/TUNEWAVE MUSIC/FKBK0268572/tunewavemusic@fkbank/SUBSCRIPTION",
   "notes": "",
-  "id": "t105"
+  "id": "t150"
+ },
+ {
+  "date": "2026-03-25",
+  "txn_type": "debit",
+  "amount": "1186.93",
+  "category": "Others",
+  "name": "SNIPSHAPE SALON",
+  "description": "UPI/DR/486930052631/SNIPSHAPE SALON/FKBK0728739/snipshapesalon@fkbank/UPI",
+  "notes": "",
+  "id": "t151"
+ },
+ {
+  "date": "2026-03-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/909163432063/SUBSCRIPTION",
+  "notes": "",
+  "id": "t152"
  },
  {
   "date": "2026-03-28",
@@ -1057,7 +1527,7 @@
   "name": "4504XXXXXX8555 FUELSTOP PETROL",
   "description": "POS 4504XXXXXX8555 FUELSTOP PETROL",
   "notes": "",
-  "id": "t106"
+  "id": "t153"
  },
  {
   "date": "2026-03-30",
@@ -1067,7 +1537,7 @@
   "name": "BIRYANI JUNCTION",
   "description": "UPI/DR/012502993351/BIRYANI JUNCTION/FKBK0776874/biryanijunction@fkbank/UPI",
   "notes": "",
-  "id": "t107"
+  "id": "t154"
  },
  {
   "date": "2026-03-30",
@@ -1077,7 +1547,7 @@
   "name": "CITYRIDE CABS",
   "description": "UPI/DR/193040733601/CITYRIDE CABS/FKBK0392539/cityridecabs@fkbank/UPI",
   "notes": "",
-  "id": "t108"
+  "id": "t155"
  },
  {
   "date": "2026-03-30",
@@ -1087,7 +1557,7 @@
   "name": "METRO CARD TOPUP",
   "description": "UPI/DR/643735628353/METRO CARD TOPUP/FKBK0250176/metrocardtopup@fkbank/UPI",
   "notes": "",
-  "id": "t109"
+  "id": "t156"
  },
  {
   "date": "2026-03-31",
@@ -1097,7 +1567,7 @@
   "name": "P2A",
   "description": "IMPS/P2A/090014051445/R SAMPLE/PAYBACK",
   "notes": "split for trip",
-  "id": "t110"
+  "id": "t157"
  },
  {
   "date": "2026-04-01",
@@ -1107,7 +1577,17 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN38012537/ACME CORP PAYROLL/SAL APR",
   "notes": "",
-  "id": "t111"
+  "id": "t158"
+ },
+ {
+  "date": "2026-04-02",
+  "txn_type": "debit",
+  "amount": "1085.28",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/371554771227/MOONBEAM DAIRY/FKBK0061256/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t159"
  },
  {
   "date": "2026-04-03",
@@ -1117,7 +1597,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/610550087547/MAPLE STREET HOMES/RENT APR",
   "notes": "",
-  "id": "t112"
+  "id": "t160"
  },
  {
   "date": "2026-04-05",
@@ -1127,7 +1607,37 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/213856070022/FITZONE GYM/FKBK0386969/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t113"
+  "id": "t161"
+ },
+ {
+  "date": "2026-04-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/612383910643/TIDYNEST HOME SERVICES/FKBK0132938/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t162"
+ },
+ {
+  "date": "2026-04-07",
+  "txn_type": "debit",
+  "amount": "756.54",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/515511015429/QUICKBITE DELIVERY/FKBK0174351/quickbitedelivery@fkbank/UPI",
+  "notes": "",
+  "id": "t163"
+ },
+ {
+  "date": "2026-04-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/207546304687/SIP",
+  "notes": "",
+  "id": "t164"
  },
  {
   "date": "2026-04-08",
@@ -1137,7 +1647,7 @@
   "name": "8296XXXXXX9666 FUELSTOP PETROL",
   "description": "POS 8296XXXXXX9666 FUELSTOP PETROL",
   "notes": "",
-  "id": "t114"
+  "id": "t165"
  },
  {
   "date": "2026-04-08",
@@ -1147,7 +1657,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/617695851904/ELECTRICITY BILL",
   "notes": "",
-  "id": "t115"
+  "id": "t166"
  },
  {
   "date": "2026-04-10",
@@ -1157,7 +1667,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/929817036138/HOME LOAN EMI",
   "notes": "",
-  "id": "t116"
+  "id": "t167"
  },
  {
   "date": "2026-04-10",
@@ -1167,7 +1677,7 @@
   "name": "GAMEVAULT",
   "description": "UPI/DR/468042521562/GAMEVAULT/FKBK0074535/gamevault@fkbank/UPI",
   "notes": "",
-  "id": "t117"
+  "id": "t168"
  },
  {
   "date": "2026-04-12",
@@ -1177,7 +1687,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/238416497533/SKYLINE MOBILE/FKBK0257192/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t118"
+  "id": "t169"
  },
  {
   "date": "2026-04-13",
@@ -1187,7 +1697,7 @@
   "name": "METRO CARD TOPUP",
   "description": "UPI/DR/558749231197/METRO CARD TOPUP/FKBK0424255/metrocardtopup@fkbank/UPI",
   "notes": "",
-  "id": "t119"
+  "id": "t170"
  },
  {
   "date": "2026-04-15",
@@ -1197,7 +1707,17 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/188904995314/SUBSCRIPTION",
   "notes": "",
-  "id": "t120"
+  "id": "t171"
+ },
+ {
+  "date": "2026-04-16",
+  "txn_type": "debit",
+  "amount": "144.92",
+  "category": "Food",
+  "name": "LEAFYCUP TEA HOUSE",
+  "description": "UPI/DR/352318705362/LEAFYCUP TEA HOUSE/FKBK0337425/leafycupteahouse@fkbank/UPI",
+  "notes": "",
+  "id": "t172"
  },
  {
   "date": "2026-04-18",
@@ -1207,7 +1727,7 @@
   "name": "FRESHBASKET MART",
   "description": "UPI/DR/042190527174/FRESHBASKET MART/FKBK0384871/freshbasketmart@fkbank/UPI",
   "notes": "vegetables and fruits",
-  "id": "t121"
+  "id": "t173"
  },
  {
   "date": "2026-04-18",
@@ -1217,7 +1737,57 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/454338399084/TASTYBITES CAFE/FKBK0164413/tastybitescafe@fkbank/UPI",
   "notes": "dinner",
-  "id": "t122"
+  "id": "t174"
+ },
+ {
+  "date": "2026-04-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/672021958956/STARBEAM DTH/FKBK0592249/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t175"
+ },
+ {
+  "date": "2026-04-22",
+  "txn_type": "debit",
+  "amount": "12910.82",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/448540688820/ORBIT BANK CARD/CREDIT CARD BILL APR",
+  "notes": "",
+  "id": "t176"
+ },
+ {
+  "date": "2026-04-23",
+  "txn_type": "credit",
+  "amount": "23511.12",
+  "category": "Others",
+  "name": "BRIGHTPIXEL STUDIO",
+  "description": "NEFT/CR/FKBKN47218022/BRIGHTPIXEL STUDIO/INVOICE PAYMENT APR",
+  "notes": "",
+  "id": "t177"
+ },
+ {
+  "date": "2026-04-25",
+  "txn_type": "debit",
+  "amount": "1249.15",
+  "category": "Shopping",
+  "name": "3046XXXXXX7205 PAGETURN BOOKSTORE",
+  "description": "POS 3046XXXXXX7205 PAGETURN BOOKSTORE",
+  "notes": "",
+  "id": "t178"
+ },
+ {
+  "date": "2026-04-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/481894328420/SUBSCRIPTION",
+  "notes": "",
+  "id": "t179"
  },
  {
   "date": "2026-04-26",
@@ -1227,7 +1797,17 @@
   "name": "RAILCONNECT TICKETS",
   "description": "UPI/DR/949938171187/RAILCONNECT TICKETS/FKBK0148278/railconnecttickets@fkbank/UPI",
   "notes": "",
-  "id": "t123"
+  "id": "t180"
+ },
+ {
+  "date": "2026-04-27",
+  "txn_type": "debit",
+  "amount": "1115.10",
+  "category": "Transport",
+  "name": "INTERCITY BUSLINES",
+  "description": "UPI/DR/583594495267/INTERCITY BUSLINES/FKBK0458177/intercitybuslines@fkbank/UPI",
+  "notes": "",
+  "id": "t181"
  },
  {
   "date": "2026-05-01",
@@ -1237,7 +1817,17 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN54072075/ACME CORP PAYROLL/SAL MAY",
   "notes": "",
-  "id": "t124"
+  "id": "t182"
+ },
+ {
+  "date": "2026-05-02",
+  "txn_type": "debit",
+  "amount": "1100.22",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/098271090348/MOONBEAM DAIRY/FKBK0188059/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t183"
  },
  {
   "date": "2026-05-03",
@@ -1247,7 +1837,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/080737028382/MAPLE STREET HOMES/RENT MAY",
   "notes": "",
-  "id": "t125"
+  "id": "t184"
  },
  {
   "date": "2026-05-05",
@@ -1257,7 +1847,7 @@
   "name": "CINESTAR SCREENS",
   "description": "UPI/DR/288681500508/CINESTAR SCREENS/FKBK0205951/cinestarscreens@fkbank/UPI",
   "notes": "",
-  "id": "t126"
+  "id": "t185"
  },
  {
   "date": "2026-05-05",
@@ -1267,7 +1857,7 @@
   "name": "7074XXXXXX6209 FUELSTOP PETROL",
   "description": "POS 7074XXXXXX6209 FUELSTOP PETROL",
   "notes": "",
-  "id": "t127"
+  "id": "t186"
  },
  {
   "date": "2026-05-05",
@@ -1277,7 +1867,27 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/637171124335/FITZONE GYM/FKBK0165850/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t128"
+  "id": "t187"
+ },
+ {
+  "date": "2026-05-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/931064425062/TIDYNEST HOME SERVICES/FKBK0758219/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t188"
+ },
+ {
+  "date": "2026-05-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/514496970892/SIP",
+  "notes": "",
+  "id": "t189"
  },
  {
   "date": "2026-05-07",
@@ -1287,7 +1897,7 @@
   "name": "BRAINY TUTORS",
   "description": "NEFT/DR/110052490075/BRAINY TUTORS/TUITION FEES MAY",
   "notes": "",
-  "id": "t129"
+  "id": "t190"
  },
  {
   "date": "2026-05-08",
@@ -1297,7 +1907,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/112098426407/ELECTRICITY BILL",
   "notes": "",
-  "id": "t130"
+  "id": "t191"
  },
  {
   "date": "2026-05-09",
@@ -1307,7 +1917,27 @@
   "name": "BRIGHTMART",
   "description": "UPI/DR/205467768503/BRIGHTMART/FKBK0889054/brightmart@fkbank/UPI",
   "notes": "",
-  "id": "t131"
+  "id": "t192"
+ },
+ {
+  "date": "2026-05-09",
+  "txn_type": "debit",
+  "amount": "910.42",
+  "category": "Bills",
+  "name": "BLUEFLAME GAS AGENCY",
+  "description": "UPI/DR/111521933890/BLUEFLAME GAS AGENCY/FKBK0958400/blueflamegasagency@fkbank/LPG REFILL",
+  "notes": "",
+  "id": "t193"
+ },
+ {
+  "date": "2026-05-09",
+  "txn_type": "debit",
+  "amount": "87.04",
+  "category": "Food",
+  "name": "LEAFYCUP TEA HOUSE",
+  "description": "UPI/DR/154494020126/LEAFYCUP TEA HOUSE/FKBK0811853/leafycupteahouse@fkbank/UPI",
+  "notes": "",
+  "id": "t194"
  },
  {
   "date": "2026-05-10",
@@ -1317,7 +1947,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/398257537073/HOME LOAN EMI",
   "notes": "",
-  "id": "t132"
+  "id": "t195"
  },
  {
   "date": "2026-05-11",
@@ -1327,7 +1957,7 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/122925790817/TASTYBITES CAFE/FKBK0362184/tastybitescafe@fkbank/UPI",
   "notes": "",
-  "id": "t133"
+  "id": "t196"
  },
  {
   "date": "2026-05-12",
@@ -1337,7 +1967,17 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/146175442014/SKYLINE MOBILE/FKBK0613380/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t134"
+  "id": "t197"
+ },
+ {
+  "date": "2026-05-14",
+  "txn_type": "debit",
+  "amount": "3100.00",
+  "category": "Others",
+  "name": "LIFELINE ASSURANCE",
+  "description": "ACH/LIFELINE ASSURANCE/009541727027/LIFE COVER PREMIUM",
+  "notes": "",
+  "id": "t198"
  },
  {
   "date": "2026-05-15",
@@ -1347,7 +1987,17 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/980655856252/SUBSCRIPTION",
   "notes": "",
-  "id": "t135"
+  "id": "t199"
+ },
+ {
+  "date": "2026-05-15",
+  "txn_type": "debit",
+  "amount": "929.99",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/366800555032/QUICKBITE DELIVERY/FKBK0035142/quickbitedelivery@fkbank/UPI",
+  "notes": "",
+  "id": "t200"
  },
  {
   "date": "2026-05-17",
@@ -1357,7 +2007,7 @@
   "name": "3207XXXXXX1166 GREENLEAF GROCERS",
   "description": "POS 3207XXXXXX1166 GREENLEAF GROCERS",
   "notes": "",
-  "id": "t136"
+  "id": "t201"
  },
  {
   "date": "2026-05-18",
@@ -1367,7 +2017,17 @@
   "name": "FIBRELINK BROADBAND",
   "description": "UPI/DR/454928452225/FIBRELINK BROADBAND/FKBK0043519/fibrelinkbroadband@fkbank/FIBRE PLAN",
   "notes": "",
-  "id": "t137"
+  "id": "t202"
+ },
+ {
+  "date": "2026-05-19",
+  "txn_type": "debit",
+  "amount": "1236.53",
+  "category": "Others",
+  "name": "HELPING HANDS TRUST",
+  "description": "NEFT/DR/602207639212/HELPING HANDS TRUST/DONATION MAY",
+  "notes": "",
+  "id": "t203"
  },
  {
   "date": "2026-05-20",
@@ -1377,7 +2037,17 @@
   "name": "7100XXXXXX1715 DAILY DOSA",
   "description": "POS 7100XXXXXX1715 DAILY DOSA",
   "notes": "",
-  "id": "t138"
+  "id": "t204"
+ },
+ {
+  "date": "2026-05-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/604098211391/STARBEAM DTH/FKBK0128767/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t205"
  },
  {
   "date": "2026-05-20",
@@ -1387,7 +2057,17 @@
   "name": "AQUAFLOW WATER BOARD",
   "description": "ACH/AQUAFLOW WATER BOARD/949244214313/WATER CHARGES",
   "notes": "",
-  "id": "t139"
+  "id": "t206"
+ },
+ {
+  "date": "2026-05-22",
+  "txn_type": "debit",
+  "amount": "9580.80",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/082017629825/ORBIT BANK CARD/CREDIT CARD BILL MAY",
+  "notes": "",
+  "id": "t207"
  },
  {
   "date": "2026-05-22",
@@ -1397,7 +2077,7 @@
   "name": "TUNEWAVE MUSIC",
   "description": "UPI/DR/033699653864/TUNEWAVE MUSIC/FKBK0823768/tunewavemusic@fkbank/SUBSCRIPTION",
   "notes": "",
-  "id": "t140"
+  "id": "t208"
  },
  {
   "date": "2026-05-25",
@@ -1407,7 +2087,17 @@
   "name": "SAFEGUARD INSURANCE",
   "description": "ACH/SAFEGUARD INSURANCE/656200110875/PREMIUM",
   "notes": "",
-  "id": "t141"
+  "id": "t209"
+ },
+ {
+  "date": "2026-05-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/844803971634/SUBSCRIPTION",
+  "notes": "",
+  "id": "t210"
  },
  {
   "date": "2026-05-28",
@@ -1417,7 +2107,7 @@
   "name": "BIRYANI JUNCTION",
   "description": "UPI/DR/431255902229/BIRYANI JUNCTION/FKBK0777976/biryanijunction@fkbank/UPI",
   "notes": "",
-  "id": "t142"
+  "id": "t211"
  },
  {
   "date": "2026-05-30",
@@ -1427,7 +2117,7 @@
   "name": "BY INTEREST CREDIT",
   "description": "BY INTEREST CREDIT/734813278538",
   "notes": "",
-  "id": "t143"
+  "id": "t212"
  },
  {
   "date": "2026-05-31",
@@ -1437,7 +2127,7 @@
   "name": "BREWBEAN COFFEE",
   "description": "UPI/DR/572162436674/BREWBEAN COFFEE/FKBK0537086/brewbeancoffee@fkbank/UPI",
   "notes": "",
-  "id": "t144"
+  "id": "t213"
  },
  {
   "date": "2026-06-01",
@@ -1447,7 +2137,17 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN82488619/ACME CORP PAYROLL/SAL JUN",
   "notes": "",
-  "id": "t145"
+  "id": "t214"
+ },
+ {
+  "date": "2026-06-02",
+  "txn_type": "debit",
+  "amount": "1164.87",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/079683413429/MOONBEAM DAIRY/FKBK0779310/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t215"
  },
  {
   "date": "2026-06-02",
@@ -1457,7 +2157,7 @@
   "name": "7567XXXXXX8224 GREENLEAF GROCERS",
   "description": "POS 7567XXXXXX8224 GREENLEAF GROCERS",
   "notes": "",
-  "id": "t146"
+  "id": "t216"
  },
  {
   "date": "2026-06-03",
@@ -1467,7 +2167,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/188413301756/MAPLE STREET HOMES/RENT JUN",
   "notes": "",
-  "id": "t147"
+  "id": "t217"
  },
  {
   "date": "2026-06-05",
@@ -1477,7 +2177,27 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/021520511482/FITZONE GYM/FKBK0941834/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t148"
+  "id": "t218"
+ },
+ {
+  "date": "2026-06-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/017001333156/TIDYNEST HOME SERVICES/FKBK0338250/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t219"
+ },
+ {
+  "date": "2026-06-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/596005741642/SIP",
+  "notes": "",
+  "id": "t220"
  },
  {
   "date": "2026-06-08",
@@ -1487,7 +2207,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/521980334635/ELECTRICITY BILL",
   "notes": "",
-  "id": "t149"
+  "id": "t221"
  },
  {
   "date": "2026-06-10",
@@ -1497,7 +2217,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/310417261422/HOME LOAN EMI",
   "notes": "",
-  "id": "t150"
+  "id": "t222"
  },
  {
   "date": "2026-06-11",
@@ -1507,7 +2227,7 @@
   "name": "CINESTAR SCREENS",
   "description": "UPI/DR/697781584545/CINESTAR SCREENS/FKBK0953634/cinestarscreens@fkbank/UPI",
   "notes": "",
-  "id": "t151"
+  "id": "t223"
  },
  {
   "date": "2026-06-12",
@@ -1517,7 +2237,7 @@
   "name": "BIRYANI JUNCTION",
   "description": "UPI/DR/720302325708/BIRYANI JUNCTION/FKBK0740740/biryanijunction@fkbank/UPI",
   "notes": "",
-  "id": "t152"
+  "id": "t224"
  },
  {
   "date": "2026-06-12",
@@ -1527,7 +2247,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/760553848856/SKYLINE MOBILE/FKBK0810670/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t153"
+  "id": "t225"
  },
  {
   "date": "2026-06-14",
@@ -1537,7 +2257,7 @@
   "name": "ATM",
   "description": "ATM WDL/091259758088/MG ROAD BRANCH",
   "notes": "",
-  "id": "t154"
+  "id": "t226"
  },
  {
   "date": "2026-06-15",
@@ -1547,7 +2267,7 @@
   "name": "CITYRIDE CABS",
   "description": "UPI/DR/367651185808/CITYRIDE CABS/FKBK0540485/cityridecabs@fkbank/UPI",
   "notes": "",
-  "id": "t155"
+  "id": "t227"
  },
  {
   "date": "2026-06-15",
@@ -1557,7 +2277,7 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/981433179143/SUBSCRIPTION",
   "notes": "",
-  "id": "t156"
+  "id": "t228"
  },
  {
   "date": "2026-06-20",
@@ -1567,7 +2287,17 @@
   "name": "1309XXXXXX6362 DAILYNEEDS STORE",
   "description": "POS 1309XXXXXX6362 DAILYNEEDS STORE",
   "notes": "",
-  "id": "t157"
+  "id": "t229"
+ },
+ {
+  "date": "2026-06-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/895645106476/STARBEAM DTH/FKBK0012332/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t230"
  },
  {
   "date": "2026-06-20",
@@ -1577,7 +2307,27 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/412325017832/TASTYBITES CAFE/FKBK0633687/tastybitescafe@fkbank/UPI",
   "notes": "dinner",
-  "id": "t158"
+  "id": "t231"
+ },
+ {
+  "date": "2026-06-22",
+  "txn_type": "debit",
+  "amount": "11817.65",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/086530193752/ORBIT BANK CARD/CREDIT CARD BILL JUN",
+  "notes": "",
+  "id": "t232"
+ },
+ {
+  "date": "2026-06-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/846246449373/SUBSCRIPTION",
+  "notes": "",
+  "id": "t233"
  },
  {
   "date": "2026-06-27",
@@ -1587,7 +2337,7 @@
   "name": "SPICE ROUTE KITCHEN",
   "description": "UPI/DR/926029325838/SPICE ROUTE KITCHEN/FKBK0515348/spiceroutekitchen@fkbank/UPI",
   "notes": "",
-  "id": "t159"
+  "id": "t234"
  },
  {
   "date": "2026-06-29",
@@ -1597,7 +2347,17 @@
   "name": "SUNRISE CLINIC",
   "description": "UPI/DR/627849487517/SUNRISE CLINIC/FKBK0120463/sunriseclinic@fkbank/CONSULTATION",
   "notes": "",
-  "id": "t160"
+  "id": "t235"
+ },
+ {
+  "date": "2026-06-29",
+  "txn_type": "debit",
+  "amount": "731.75",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/029601401903/QUICKBITE DELIVERY/FKBK0020515/quickbitedelivery@fkbank/UPI",
+  "notes": "late night order",
+  "id": "t236"
  },
  {
   "date": "2026-07-01",
@@ -1607,7 +2367,37 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN00442248/ACME CORP PAYROLL/SAL JUL",
   "notes": "",
-  "id": "t161"
+  "id": "t237"
+ },
+ {
+  "date": "2026-07-01",
+  "txn_type": "debit",
+  "amount": "523.88",
+  "category": "Others",
+  "name": "SNIPSHAPE SALON",
+  "description": "UPI/DR/193433950434/SNIPSHAPE SALON/FKBK0379798/snipshapesalon@fkbank/UPI",
+  "notes": "",
+  "id": "t238"
+ },
+ {
+  "date": "2026-07-02",
+  "txn_type": "debit",
+  "amount": "1304.52",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/421768085854/MOONBEAM DAIRY/FKBK0941691/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t239"
+ },
+ {
+  "date": "2026-07-03",
+  "txn_type": "credit",
+  "amount": "12282.56",
+  "category": "Others",
+  "name": "BRIGHTPIXEL STUDIO",
+  "description": "NEFT/CR/FKBKN82177323/BRIGHTPIXEL STUDIO/INVOICE PAYMENT JUL",
+  "notes": "",
+  "id": "t240"
  },
  {
   "date": "2026-07-03",
@@ -1617,7 +2407,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/162105218549/MAPLE STREET HOMES/RENT JUL",
   "notes": "",
-  "id": "t162"
+  "id": "t241"
  },
  {
   "date": "2026-07-05",
@@ -1627,7 +2417,27 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/378776040542/FITZONE GYM/FKBK0468542/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t163"
+  "id": "t242"
+ },
+ {
+  "date": "2026-07-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/830401642993/TIDYNEST HOME SERVICES/FKBK0864137/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t243"
+ },
+ {
+  "date": "2026-07-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/331693414253/SIP",
+  "notes": "",
+  "id": "t244"
  },
  {
   "date": "2026-07-08",
@@ -1637,7 +2447,17 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/934269276709/ELECTRICITY BILL",
   "notes": "",
-  "id": "t164"
+  "id": "t245"
+ },
+ {
+  "date": "2026-07-09",
+  "txn_type": "debit",
+  "amount": "909.02",
+  "category": "Bills",
+  "name": "BLUEFLAME GAS AGENCY",
+  "description": "UPI/DR/927516374561/BLUEFLAME GAS AGENCY/FKBK0110992/blueflamegasagency@fkbank/LPG REFILL",
+  "notes": "",
+  "id": "t246"
  },
  {
   "date": "2026-07-10",
@@ -1647,7 +2467,17 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/299077091317/HOME LOAN EMI",
   "notes": "",
-  "id": "t165"
+  "id": "t247"
+ },
+ {
+  "date": "2026-07-11",
+  "txn_type": "debit",
+  "amount": "644.22",
+  "category": "Transport",
+  "name": "INTERCITY BUSLINES",
+  "description": "UPI/DR/873650338926/INTERCITY BUSLINES/FKBK0266003/intercitybuslines@fkbank/UPI",
+  "notes": "",
+  "id": "t248"
  },
  {
   "date": "2026-07-12",
@@ -1657,7 +2487,7 @@
   "name": "CITYRIDE CABS",
   "description": "UPI/DR/424269301025/CITYRIDE CABS/FKBK0759885/cityridecabs@fkbank/UPI",
   "notes": "",
-  "id": "t166"
+  "id": "t249"
  },
  {
   "date": "2026-07-12",
@@ -1667,7 +2497,17 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/010875262394/SKYLINE MOBILE/FKBK0246466/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t167"
+  "id": "t250"
+ },
+ {
+  "date": "2026-07-14",
+  "txn_type": "debit",
+  "amount": "501.29",
+  "category": "Shopping",
+  "name": "7748XXXXXX1039 PAGETURN BOOKSTORE",
+  "description": "POS 7748XXXXXX1039 PAGETURN BOOKSTORE",
+  "notes": "",
+  "id": "t251"
  },
  {
   "date": "2026-07-15",
@@ -1677,7 +2517,7 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/069563143954/SUBSCRIPTION",
   "notes": "",
-  "id": "t168"
+  "id": "t252"
  },
  {
   "date": "2026-07-18",
@@ -1687,7 +2527,7 @@
   "name": "FIBRELINK BROADBAND",
   "description": "UPI/DR/681621048103/FIBRELINK BROADBAND/FKBK0524787/fibrelinkbroadband@fkbank/FIBRE PLAN",
   "notes": "",
-  "id": "t169"
+  "id": "t253"
  },
  {
   "date": "2026-07-18",
@@ -1697,7 +2537,27 @@
   "name": "RAILCONNECT TICKETS",
   "description": "UPI/DR/107476929705/RAILCONNECT TICKETS/FKBK0555864/railconnecttickets@fkbank/UPI",
   "notes": "",
-  "id": "t170"
+  "id": "t254"
+ },
+ {
+  "date": "2026-07-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/333420429170/STARBEAM DTH/FKBK0264528/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t255"
+ },
+ {
+  "date": "2026-07-22",
+  "txn_type": "debit",
+  "amount": "11453.24",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/177819454486/ORBIT BANK CARD/CREDIT CARD BILL JUL",
+  "notes": "",
+  "id": "t256"
  },
  {
   "date": "2026-07-22",
@@ -1707,7 +2567,37 @@
   "name": "TUNEWAVE MUSIC",
   "description": "UPI/DR/296131785710/TUNEWAVE MUSIC/FKBK0424918/tunewavemusic@fkbank/SUBSCRIPTION",
   "notes": "",
-  "id": "t171"
+  "id": "t257"
+ },
+ {
+  "date": "2026-07-23",
+  "txn_type": "debit",
+  "amount": "125.87",
+  "category": "Food",
+  "name": "LEAFYCUP TEA HOUSE",
+  "description": "UPI/DR/713618422323/LEAFYCUP TEA HOUSE/FKBK0955116/leafycupteahouse@fkbank/UPI",
+  "notes": "",
+  "id": "t258"
+ },
+ {
+  "date": "2026-07-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/616742491238/SUBSCRIPTION",
+  "notes": "",
+  "id": "t259"
+ },
+ {
+  "date": "2026-07-28",
+  "txn_type": "debit",
+  "amount": "908.33",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/154213269117/QUICKBITE DELIVERY/FKBK0548121/quickbitedelivery@fkbank/UPI",
+  "notes": "",
+  "id": "t260"
  },
  {
   "date": "2026-07-28",
@@ -1717,7 +2607,7 @@
   "name": "4903XXXXXX1083 FUELSTOP PETROL",
   "description": "POS 4903XXXXXX1083 FUELSTOP PETROL",
   "notes": "",
-  "id": "t172"
+  "id": "t261"
  },
  {
   "date": "2026-08-01",
@@ -1727,7 +2617,27 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN15945028/ACME CORP PAYROLL/SAL AUG",
   "notes": "",
-  "id": "t173"
+  "id": "t262"
+ },
+ {
+  "date": "2026-08-02",
+  "txn_type": "debit",
+  "amount": "1103.91",
+  "category": "Shopping",
+  "name": "7050XXXXXX7563 PAGETURN BOOKSTORE",
+  "description": "POS 7050XXXXXX7563 PAGETURN BOOKSTORE",
+  "notes": "",
+  "id": "t263"
+ },
+ {
+  "date": "2026-08-02",
+  "txn_type": "debit",
+  "amount": "1126.73",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/902499444049/MOONBEAM DAIRY/FKBK0313527/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t264"
  },
  {
   "date": "2026-08-02",
@@ -1737,7 +2647,7 @@
   "name": "4942XXXXXX5526 DAILY DOSA",
   "description": "POS 4942XXXXXX5526 DAILY DOSA",
   "notes": "breakfast",
-  "id": "t174"
+  "id": "t265"
  },
  {
   "date": "2026-08-03",
@@ -1747,7 +2657,7 @@
   "name": "7636XXXXXX6831 THREADLINE APPAREL",
   "description": "POS 7636XXXXXX6831 THREADLINE APPAREL",
   "notes": "",
-  "id": "t175"
+  "id": "t266"
  },
  {
   "date": "2026-08-03",
@@ -1757,7 +2667,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/990659397615/MAPLE STREET HOMES/RENT AUG",
   "notes": "",
-  "id": "t176"
+  "id": "t267"
  },
  {
   "date": "2026-08-05",
@@ -1767,7 +2677,7 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/139360550496/FITZONE GYM/FKBK0570960/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t177"
+  "id": "t268"
  },
  {
   "date": "2026-08-06",
@@ -1777,7 +2687,37 @@
   "name": "3106XXXXXX4874 FUELSTOP PETROL",
   "description": "POS 3106XXXXXX4874 FUELSTOP PETROL",
   "notes": "",
-  "id": "t178"
+  "id": "t269"
+ },
+ {
+  "date": "2026-08-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/611043589070/TIDYNEST HOME SERVICES/FKBK0463219/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t270"
+ },
+ {
+  "date": "2026-08-07",
+  "txn_type": "debit",
+  "amount": "858.32",
+  "category": "Others",
+  "name": "SNIPSHAPE SALON",
+  "description": "UPI/DR/354221621700/SNIPSHAPE SALON/FKBK0706298/snipshapesalon@fkbank/UPI",
+  "notes": "",
+  "id": "t271"
+ },
+ {
+  "date": "2026-08-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/663217263678/SIP",
+  "notes": "",
+  "id": "t272"
  },
  {
   "date": "2026-08-07",
@@ -1787,7 +2727,7 @@
   "name": "BRAINY TUTORS",
   "description": "NEFT/DR/196467831845/BRAINY TUTORS/TUITION FEES AUG",
   "notes": "",
-  "id": "t179"
+  "id": "t273"
  },
  {
   "date": "2026-08-08",
@@ -1797,7 +2737,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/953896501332/ELECTRICITY BILL",
   "notes": "",
-  "id": "t180"
+  "id": "t274"
  },
  {
   "date": "2026-08-10",
@@ -1807,7 +2747,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/776034236596/HOME LOAN EMI",
   "notes": "",
-  "id": "t181"
+  "id": "t275"
  },
  {
   "date": "2026-08-12",
@@ -1817,7 +2757,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/813421723349/SKYLINE MOBILE/FKBK0677044/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t182"
+  "id": "t276"
  },
  {
   "date": "2026-08-15",
@@ -1827,7 +2767,7 @@
   "name": "BIRYANI JUNCTION",
   "description": "UPI/DR/151974727785/BIRYANI JUNCTION/FKBK0932269/biryanijunction@fkbank/UPI",
   "notes": "",
-  "id": "t183"
+  "id": "t277"
  },
  {
   "date": "2026-08-15",
@@ -1837,7 +2777,7 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/258025797817/SUBSCRIPTION",
   "notes": "",
-  "id": "t184"
+  "id": "t278"
  },
  {
   "date": "2026-08-18",
@@ -1847,7 +2787,17 @@
   "name": "CITYRIDE CABS",
   "description": "UPI/DR/529591425105/CITYRIDE CABS/FKBK0979804/cityridecabs@fkbank/UPI",
   "notes": "",
-  "id": "t185"
+  "id": "t279"
+ },
+ {
+  "date": "2026-08-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/266648463543/STARBEAM DTH/FKBK0231744/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t280"
  },
  {
   "date": "2026-08-20",
@@ -1857,7 +2807,7 @@
   "name": "2149XXXXXX6540 GREENLEAF GROCERS",
   "description": "POS 2149XXXXXX6540 GREENLEAF GROCERS",
   "notes": "",
-  "id": "t186"
+  "id": "t281"
  },
  {
   "date": "2026-08-20",
@@ -1867,7 +2817,27 @@
   "name": "AQUAFLOW WATER BOARD",
   "description": "ACH/AQUAFLOW WATER BOARD/111687285401/WATER CHARGES",
   "notes": "",
-  "id": "t187"
+  "id": "t282"
+ },
+ {
+  "date": "2026-08-22",
+  "txn_type": "debit",
+  "amount": "14821.41",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/353998135478/ORBIT BANK CARD/CREDIT CARD BILL AUG",
+  "notes": "",
+  "id": "t283"
+ },
+ {
+  "date": "2026-08-24",
+  "txn_type": "debit",
+  "amount": "579.81",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/569704701664/QUICKBITE DELIVERY/FKBK0881939/quickbitedelivery@fkbank/UPI",
+  "notes": "late night order",
+  "id": "t284"
  },
  {
   "date": "2026-08-24",
@@ -1877,7 +2847,7 @@
   "name": "BRIGHTMART",
   "description": "UPI/CR/803987204101/BRIGHTMART/FKBK0933655/brightmart@fkbank/REFUND",
   "notes": "",
-  "id": "t188"
+  "id": "t285"
  },
  {
   "date": "2026-08-25",
@@ -1887,7 +2857,17 @@
   "name": "SAFEGUARD INSURANCE",
   "description": "ACH/SAFEGUARD INSURANCE/904529313139/PREMIUM",
   "notes": "",
-  "id": "t189"
+  "id": "t286"
+ },
+ {
+  "date": "2026-08-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/302301872079/SUBSCRIPTION",
+  "notes": "",
+  "id": "t287"
  },
  {
   "date": "2026-08-29",
@@ -1897,7 +2877,7 @@
   "name": "BREWBEAN COFFEE",
   "description": "UPI/DR/854706778057/BREWBEAN COFFEE/FKBK0641800/brewbeancoffee@fkbank/UPI",
   "notes": "",
-  "id": "t190"
+  "id": "t288"
  },
  {
   "date": "2026-08-30",
@@ -1907,7 +2887,7 @@
   "name": "BY INTEREST CREDIT",
   "description": "BY INTEREST CREDIT/438903270698",
   "notes": "",
-  "id": "t191"
+  "id": "t289"
  },
  {
   "date": "2026-08-31",
@@ -1917,7 +2897,7 @@
   "name": "0818XXXXXX1872 DAILYNEEDS STORE",
   "description": "POS 0818XXXXXX1872 DAILYNEEDS STORE",
   "notes": "",
-  "id": "t192"
+  "id": "t290"
  },
  {
   "date": "2026-09-01",
@@ -1927,7 +2907,7 @@
   "name": "BRIGHTMART",
   "description": "UPI/DR/514432658995/BRIGHTMART/FKBK0588454/brightmart@fkbank/UPI",
   "notes": "",
-  "id": "t193"
+  "id": "t291"
  },
  {
   "date": "2026-09-01",
@@ -1937,7 +2917,17 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN15921236/ACME CORP PAYROLL/SAL SEP",
   "notes": "",
-  "id": "t194"
+  "id": "t292"
+ },
+ {
+  "date": "2026-09-02",
+  "txn_type": "debit",
+  "amount": "1002.60",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/138110869235/MOONBEAM DAIRY/FKBK0992892/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t293"
  },
  {
   "date": "2026-09-03",
@@ -1947,7 +2937,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/291102859406/MAPLE STREET HOMES/RENT SEP",
   "notes": "",
-  "id": "t195"
+  "id": "t294"
  },
  {
   "date": "2026-09-05",
@@ -1957,7 +2947,7 @@
   "name": "0519XXXXXX7552 FUELSTOP PETROL",
   "description": "POS 0519XXXXXX7552 FUELSTOP PETROL",
   "notes": "",
-  "id": "t196"
+  "id": "t295"
  },
  {
   "date": "2026-09-05",
@@ -1967,7 +2957,27 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/444694037205/FITZONE GYM/FKBK0683266/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t197"
+  "id": "t296"
+ },
+ {
+  "date": "2026-09-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/748498076468/TIDYNEST HOME SERVICES/FKBK0615241/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t297"
+ },
+ {
+  "date": "2026-09-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/093958175942/SIP",
+  "notes": "",
+  "id": "t298"
  },
  {
   "date": "2026-09-08",
@@ -1977,7 +2987,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/540115276113/ELECTRICITY BILL",
   "notes": "",
-  "id": "t198"
+  "id": "t299"
  },
  {
   "date": "2026-09-08",
@@ -1987,7 +2997,17 @@
   "name": "P2A",
   "description": "IMPS/P2A/141730154650/R SAMPLE/PAYBACK",
   "notes": "",
-  "id": "t199"
+  "id": "t300"
+ },
+ {
+  "date": "2026-09-09",
+  "txn_type": "debit",
+  "amount": "872.50",
+  "category": "Bills",
+  "name": "BLUEFLAME GAS AGENCY",
+  "description": "UPI/DR/405186029815/BLUEFLAME GAS AGENCY/FKBK0160505/blueflamegasagency@fkbank/LPG REFILL",
+  "notes": "",
+  "id": "t301"
  },
  {
   "date": "2026-09-10",
@@ -1997,7 +3017,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/304461811833/HOME LOAN EMI",
   "notes": "",
-  "id": "t200"
+  "id": "t302"
  },
  {
   "date": "2026-09-11",
@@ -2007,7 +3027,7 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/304054187359/TASTYBITES CAFE/FKBK0284631/tastybitescafe@fkbank/UPI",
   "notes": "",
-  "id": "t201"
+  "id": "t303"
  },
  {
   "date": "2026-09-12",
@@ -2017,7 +3037,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/823595349404/SKYLINE MOBILE/FKBK0294747/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t202"
+  "id": "t304"
  },
  {
   "date": "2026-09-14",
@@ -2027,7 +3047,7 @@
   "name": "BRIGHTMART",
   "description": "UPI/CR/709605482018/BRIGHTMART/FKBK0202029/brightmart@fkbank/REFUND",
   "notes": "",
-  "id": "t203"
+  "id": "t305"
  },
  {
   "date": "2026-09-15",
@@ -2037,7 +3057,7 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/548367088785/SUBSCRIPTION",
   "notes": "",
-  "id": "t204"
+  "id": "t306"
  },
  {
   "date": "2026-09-17",
@@ -2047,7 +3067,7 @@
   "name": "BREWBEAN COFFEE",
   "description": "UPI/DR/670744018785/BREWBEAN COFFEE/FKBK0970294/brewbeancoffee@fkbank/UPI",
   "notes": "",
-  "id": "t205"
+  "id": "t307"
  },
  {
   "date": "2026-09-18",
@@ -2057,7 +3077,27 @@
   "name": "FIBRELINK BROADBAND",
   "description": "UPI/DR/010810232093/FIBRELINK BROADBAND/FKBK0065477/fibrelinkbroadband@fkbank/FIBRE PLAN",
   "notes": "",
-  "id": "t206"
+  "id": "t308"
+ },
+ {
+  "date": "2026-09-20",
+  "txn_type": "debit",
+  "amount": "349.00",
+  "category": "Bills",
+  "name": "STARBEAM DTH",
+  "description": "UPI/DR/509197646545/STARBEAM DTH/FKBK0380307/starbeamdth@fkbank/DTH RECHARGE",
+  "notes": "",
+  "id": "t309"
+ },
+ {
+  "date": "2026-09-21",
+  "txn_type": "debit",
+  "amount": "833.93",
+  "category": "Food",
+  "name": "QUICKBITE DELIVERY",
+  "description": "UPI/DR/084829144236/QUICKBITE DELIVERY/FKBK0003121/quickbitedelivery@fkbank/UPI",
+  "notes": "",
+  "id": "t310"
  },
  {
   "date": "2026-09-21",
@@ -2067,7 +3107,17 @@
   "name": "FRESHBASKET MART",
   "description": "UPI/DR/640255486925/FRESHBASKET MART/FKBK0245732/freshbasketmart@fkbank/UPI",
   "notes": "vegetables and fruits",
-  "id": "t207"
+  "id": "t311"
+ },
+ {
+  "date": "2026-09-22",
+  "txn_type": "debit",
+  "amount": "7615.59",
+  "category": "Others",
+  "name": "ORBIT BANK CARD",
+  "description": "NEFT/DR/637415535652/ORBIT BANK CARD/CREDIT CARD BILL SEP",
+  "notes": "",
+  "id": "t312"
  },
  {
   "date": "2026-09-22",
@@ -2077,7 +3127,7 @@
   "name": "TUNEWAVE MUSIC",
   "description": "UPI/DR/269310951179/TUNEWAVE MUSIC/FKBK0027752/tunewavemusic@fkbank/SUBSCRIPTION",
   "notes": "",
-  "id": "t208"
+  "id": "t313"
  },
  {
   "date": "2026-09-23",
@@ -2087,7 +3137,17 @@
   "name": "1973XXXXXX2139 DAILYNEEDS STORE",
   "description": "POS 1973XXXXXX2139 DAILYNEEDS STORE",
   "notes": "",
-  "id": "t209"
+  "id": "t314"
+ },
+ {
+  "date": "2026-09-26",
+  "txn_type": "debit",
+  "amount": "130.00",
+  "category": "Others",
+  "name": "NIMBUS CLOUD STORAGE",
+  "description": "ACH/NIMBUS CLOUD STORAGE/833042886668/SUBSCRIPTION",
+  "notes": "",
+  "id": "t315"
  },
  {
   "date": "2026-09-28",
@@ -2097,7 +3157,7 @@
   "name": "8216XXXXXX8691 WELLCARE PHARMACY",
   "description": "POS 8216XXXXXX8691 WELLCARE PHARMACY",
   "notes": "",
-  "id": "t210"
+  "id": "t316"
  },
  {
   "date": "2026-09-28",
@@ -2107,7 +3167,7 @@
   "name": "SPICE ROUTE KITCHEN",
   "description": "UPI/DR/259489354914/SPICE ROUTE KITCHEN/FKBK0652583/spiceroutekitchen@fkbank/UPI",
   "notes": "",
-  "id": "t211"
+  "id": "t317"
  },
  {
   "date": "2026-10-01",
@@ -2117,7 +3177,17 @@
   "name": "ACME CORP PAYROLL",
   "description": "NEFT/CR/FKBKN54177588/ACME CORP PAYROLL/SAL OCT",
   "notes": "",
-  "id": "t212"
+  "id": "t318"
+ },
+ {
+  "date": "2026-10-02",
+  "txn_type": "debit",
+  "amount": "1155.44",
+  "category": "Groceries",
+  "name": "MOONBEAM DAIRY",
+  "description": "UPI/DR/732096550378/MOONBEAM DAIRY/FKBK0156268/moonbeamdairy@fkbank/MONTHLY DUES",
+  "notes": "",
+  "id": "t319"
  },
  {
   "date": "2026-10-03",
@@ -2127,7 +3197,7 @@
   "name": "MAPLE STREET HOMES",
   "description": "NEFT/DR/645291280845/MAPLE STREET HOMES/RENT OCT",
   "notes": "",
-  "id": "t213"
+  "id": "t320"
  },
  {
   "date": "2026-10-03",
@@ -2137,7 +3207,7 @@
   "name": "TASTYBITES CAFE",
   "description": "UPI/DR/194606542681/TASTYBITES CAFE/FKBK0735316/tastybitescafe@fkbank/UPI",
   "notes": "dinner",
-  "id": "t214"
+  "id": "t321"
  },
  {
   "date": "2026-10-05",
@@ -2147,7 +3217,7 @@
   "name": "FITZONE GYM",
   "description": "UPI/DR/396220987695/FITZONE GYM/FKBK0397110/fitzonegym@fkbank/MEMBERSHIP",
   "notes": "",
-  "id": "t215"
+  "id": "t322"
  },
  {
   "date": "2026-10-06",
@@ -2157,7 +3227,27 @@
   "name": "5381XXXXXX0598 DAILY DOSA",
   "description": "POS 5381XXXXXX0598 DAILY DOSA",
   "notes": "breakfast",
-  "id": "t216"
+  "id": "t323"
+ },
+ {
+  "date": "2026-10-06",
+  "txn_type": "debit",
+  "amount": "2500.00",
+  "category": "Others",
+  "name": "TIDYNEST HOME SERVICES",
+  "description": "UPI/DR/673423978251/TIDYNEST HOME SERVICES/FKBK0712730/tidynesthomeservices@fkbank/HOUSE CLEANING",
+  "notes": "",
+  "id": "t324"
+ },
+ {
+  "date": "2026-10-07",
+  "txn_type": "debit",
+  "amount": "5000.00",
+  "category": "Others",
+  "name": "NORTHSTAR MUTUAL FUND",
+  "description": "ACH/NORTHSTAR MUTUAL FUND/829881321636/SIP",
+  "notes": "",
+  "id": "t325"
  },
  {
   "date": "2026-10-08",
@@ -2167,7 +3257,7 @@
   "name": "FRESHBASKET MART",
   "description": "UPI/DR/161596998138/FRESHBASKET MART/FKBK0694134/freshbasketmart@fkbank/UPI",
   "notes": "",
-  "id": "t217"
+  "id": "t326"
  },
  {
   "date": "2026-10-08",
@@ -2177,7 +3267,7 @@
   "name": "NORTHWIND POWER",
   "description": "ACH/NORTHWIND POWER/775106261488/ELECTRICITY BILL",
   "notes": "",
-  "id": "t218"
+  "id": "t327"
  },
  {
   "date": "2026-10-09",
@@ -2187,7 +3277,7 @@
   "name": "ATM",
   "description": "ATM WDL/065578474459/MG ROAD BRANCH",
   "notes": "",
-  "id": "t219"
+  "id": "t328"
  },
  {
   "date": "2026-10-10",
@@ -2197,7 +3287,7 @@
   "name": "NEXA FINANCE",
   "description": "ACH/NEXA FINANCE/173675127255/HOME LOAN EMI",
   "notes": "",
-  "id": "t220"
+  "id": "t329"
  },
  {
   "date": "2026-10-12",
@@ -2207,7 +3297,7 @@
   "name": "SKYLINE MOBILE",
   "description": "UPI/DR/100052007009/SKYLINE MOBILE/FKBK0170392/skylinemobile@fkbank/POSTPAID",
   "notes": "",
-  "id": "t221"
+  "id": "t330"
  },
  {
   "date": "2026-10-14",
@@ -2217,7 +3307,7 @@
   "name": "BREWBEAN COFFEE",
   "description": "UPI/DR/053454711112/BREWBEAN COFFEE/FKBK0573607/brewbeancoffee@fkbank/UPI",
   "notes": "",
-  "id": "t222"
+  "id": "t331"
  },
  {
   "date": "2026-10-15",
@@ -2227,6 +3317,6 @@
   "name": "CINESTREAM",
   "description": "ACH/CINESTREAM/229035750580/SUBSCRIPTION",
   "notes": "",
-  "id": "t223"
+  "id": "t332"
  }
 ]

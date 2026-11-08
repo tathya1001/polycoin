@@ -11,6 +11,7 @@ from transactions.models import Transaction
 from vault.services import UserCipher
 
 from . import scoring
+from .rag.profiles import base_name
 
 # Which directions the AI may PROPOSE each seed category for. A debit is never auto-labelled
 # Salary and a credit is never auto-labelled Food. Categories not listed here (Transfer, and
@@ -80,7 +81,41 @@ def _load_examples(user, default: Category, txn_types, every_row):
     return {key: load_in_order(rows, row_ids) for key, row_ids in taken.items() if row_ids}
 
 
-def prepare_run(user) -> dict:
+# Thresholds tuned per embedding model on the categorisation evaluation set
+# (frontend/lib/eval/categorize.ts): the most coverage whose pooled precision reaches 0.90, across
+# every number of examples a user may have given, checked by cross-validation. Models score on
+# different scales, so one set of numbers can't fit all. A model not listed uses the AI_* settings:
+# for nomic-embed-text, tuning found nothing better than those.
+TUNED_THRESHOLDS = {
+    # 2026-11-06, 332 rows: cross-validated accuracy 0.676 -> 0.743 (a real gain), precision with
+    # full examples 0.884 -> 0.937. Its scores run lower than nomic's.
+    "embeddinggemma": {
+        "min_score": 0.34,
+        "min_margin": 0.08,
+        "blend_full_at": 5,
+        "blend_max_weight": 0.7,
+    },
+    # 2026-11-06: pooled precision 0.885 -> 0.904, which brings it to the target; accuracy the same.
+    "bge-m3": {"min_score": 0.42, "min_margin": 0.06, "blend_full_at": 5, "blend_max_weight": 0.5},
+}
+
+
+def thresholds_for(model: str) -> dict:
+    """The scoring thresholds the browser should use with this embedding model."""
+    tuned = TUNED_THRESHOLDS.get(base_name(model)) if model else None
+    return (
+        dict(tuned)
+        if tuned
+        else {
+            "min_score": settings.AI_MIN_SCORE,
+            "min_margin": settings.AI_MIN_MARGIN,
+            "blend_full_at": settings.AI_BLEND_FULL_AT,
+            "blend_max_weight": settings.AI_BLEND_MAX_WEIGHT,
+        }
+    )
+
+
+def prepare_run(user, model: str = "") -> dict:
     """Everything the browser needs to embed and score the user's uncategorised rows with the
     user's own Ollama, so narrations go from here to that browser and nowhere else. Makes no
     Ollama call and writes nothing.
@@ -98,12 +133,7 @@ def prepare_run(user) -> dict:
     result = {
         "considered": len(targets),
         "capped": capped,
-        "thresholds": {
-            "min_score": settings.AI_MIN_SCORE,
-            "min_margin": settings.AI_MIN_MARGIN,
-            "blend_full_at": settings.AI_BLEND_FULL_AT,
-            "blend_max_weight": settings.AI_BLEND_MAX_WEIGHT,
-        },
+        "thresholds": thresholds_for(model),
         "texts": [],
         "candidates": {},
         "targets": [],
@@ -190,4 +220,3 @@ def apply_decisions(user, decisions: list[dict]) -> dict:
             applied += 1
 
     return {"applied": applied, "skipped": skipped}
-

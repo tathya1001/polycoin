@@ -7,6 +7,7 @@ import uuid
 import pytest
 from rest_framework.test import APIClient
 
+from ai import services
 from categories.testing import category_named
 from transactions.tests import make_txn, make_user
 
@@ -80,6 +81,31 @@ def test_prepare_only_ever_shows_the_callers_transactions(alice, bob):
     assert [t["transaction"] for t in body["targets"]] == [str(mine.id)]
 
 
+def test_prepare_sends_the_models_own_tuned_thresholds(alice, settings):
+    make_txn(alice, name="TASTYBITES", description="UPI/DR/412345678901/TASTYBITES")
+    defaults = {
+        "min_score": settings.AI_MIN_SCORE,
+        "min_margin": settings.AI_MIN_MARGIN,
+        "blend_full_at": settings.AI_BLEND_FULL_AT,
+        "blend_max_weight": settings.AI_BLEND_MAX_WEIGHT,
+    }
+    tuned = services.TUNED_THRESHOLDS["embeddinggemma"]
+
+    def thresholds(query: str) -> dict:
+        return as_user(alice).get(PREPARE + query).json()["thresholds"]
+
+    assert thresholds("?model=embeddinggemma:latest") == tuned
+    assert thresholds("?model=EmbeddingGemma") == tuned  # matched by base name, any case or tag
+    assert thresholds("") == defaults  # an older page sends no model
+    assert thresholds("?model=nomic-embed-text:latest") == defaults  # tuning found no gain
+    assert thresholds("?model=" + "x" * 500) == defaults  # unknown, and cut to length
+
+
+def test_every_tuned_model_has_every_threshold():
+    keys = {"min_score", "min_margin", "blend_full_at", "blend_max_weight"}
+    assert all(set(values) == keys for values in services.TUNED_THRESHOLDS.values())
+
+
 def test_prepare_is_never_cached(alice):
     # It carries decrypted narrations, so no proxy or CDN may keep a copy.
     assert "no-store" in as_user(alice).get(PREPARE)["Cache-Control"]
@@ -92,7 +118,9 @@ def test_apply_moves_the_rows_and_the_transactions_api_shows_the_new_category(al
     txn = make_txn(alice)
     food = category(alice, "Food")
 
-    response = post(alice, APPLY, {"decisions": [{"transaction": str(txn.id), "category": str(food.id)}]})
+    response = post(
+        alice, APPLY, {"decisions": [{"transaction": str(txn.id), "category": str(food.id)}]}
+    )
 
     assert response.status_code == 200
     assert response.json() == {"applied": 1, "skipped": []}

@@ -15,13 +15,13 @@ from django.db.models import F, Q
 from ai.models import RagDocument
 from ai.scoring import prepare_text
 from ai.services import decrypt_fields
-from transactions.index import load_in_order, newest_first, rows_of
+from transactions.index import ids, load_in_order, newest_first, rows_of
 from transactions.models import Transaction
 from vault.services import UserCipher
 
 from . import codec
 from .errors import RagError
-from .profiles import TEXT_VERSION, profile_for
+from .profiles import profile_for, text_version_for
 
 logger = logging.getLogger(__name__)
 
@@ -50,23 +50,27 @@ def _fresh(model: str, digest: str) -> Q:
     return Q(
         rag_document__model=model,
         rag_document__model_digest=digest,
-        rag_document__text_version=TEXT_VERSION,
+        rag_document__text_version=text_version_for(model),
         rag_document__source_updated_at__gte=F("updated_at"),
     )
 
 
 def _same_index(doc: RagDocument, model: str, digest: str) -> bool:
-    return (doc.model, doc.model_digest, doc.text_version) == (model, digest, TEXT_VERSION)
+    return (doc.model, doc.model_digest, doc.text_version) == (
+        model,
+        digest,
+        text_version_for(model),
+    )
 
 
 def pending(user, model: str, digest: str, limit: int) -> dict:
     """Up to `limit` rows that need embedding, newest first: {items, remaining}.
 
-    A row needs work when it has no document, its document is for another model, digest or
-    TEXT_VERSION, or the row changed after it was embedded. In the last case the text often did
-    not change: a new category, say, which search matches by name and keeps out of the vector. So
-    the text hash is compared first, and a match only moves `source_updated_at` forward, with no
-    re-embed.
+    A row needs work when it has no document, its document is for another model, digest or text
+    version (text_version_for: the text format and the model's prefix), or the row changed after
+    it was embedded. In the last case the text often did not change: a new category, say, which
+    search matches by name and keeps out of the vector. So the text hash is compared first, and a
+    match only moves `source_updated_at` forward, with no re-embed.
 
     Each item is {transaction, version, text}; the text carries the model's document prefix,
     and `version` must come back with the vector. `remaining` counts the rows still needing work
@@ -78,8 +82,8 @@ def pending(user, model: str, digest: str, limit: int) -> dict:
         .exclude(_fresh(model, digest))
         .values_list("pk", flat=True)
     )
-    # Newest first, from the decrypted cores: dates are encrypted (Phase 12.2).
-    order = [row.id for row in newest_first(rows_of(user)) if row.id in stale]
+    # Newest first, from the decrypted cores: dates are encrypted.
+    order = [pk for pk in ids(newest_first(rows_of(user))) if pk in stale]
     count = len(order)
     candidates = (
         Transaction.objects.filter(user=user)
@@ -187,7 +191,7 @@ def store_vectors(user, model: str, digest: str, items: list[dict]) -> dict:
                 model=model,
                 model_digest=digest,
                 dims=vector.size,
-                text_version=TEXT_VERSION,
+                text_version=text_version_for(model),
                 payload_enc=cipher.encrypt(payload, DOC_CONTEXT),
                 text_hash=_text_hash(cipher, text),
                 source_updated_at=txn.updated_at,

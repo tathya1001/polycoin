@@ -10,7 +10,7 @@ from datetime import date
 from django.utils import timezone
 
 from .answer import build_answer
-from .profiles import PROMPT_VERSION, profile_for
+from .profiles import profile_for
 from .retriever import EncryptedHybridRetriever
 
 logger = logging.getLogger(__name__)
@@ -25,9 +25,10 @@ def ask(
     digest: str,
     filters: dict | None = None,
     use_question_period: bool = True,
+    answer_format: str = "text",
     today: date | None = None,
 ) -> dict:
-    """The ask response: {prompt_version, profile, period, coverage, summary, sources,
+    """The ask response: {prompt_version, format, profile, period, coverage, summary, sources,
     messages | None, options}. Raises RagError for a request the services refuse.
 
     Logs one line per ask with counts and milliseconds only: never the question, the
@@ -44,14 +45,14 @@ def ask(
         today=today,
     )
     result = found.search(question)
-    response = build_answer(user, question, result, today)
+    response = build_answer(user, question, result, today, answer_format)
     response["profile"] = profile_for(model).as_dict()
 
     stats = result.stats
     logger.info(
         "rag ask: prompt=%s documents=%d keyword=%d vector=%d matches=%d sources=%d "
         "period=%s ms=%s",
-        PROMPT_VERSION,
+        response["prompt_version"],
         stats["documents"],
         stats["keyword"],
         stats["vector"],

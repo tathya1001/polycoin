@@ -14,6 +14,7 @@ Decrypted text lives only in memory here: never log or persist it.
 """
 
 import gc
+import math
 import re
 import time
 import uuid
@@ -23,9 +24,7 @@ from datetime import date
 from typing import Any
 
 import numpy as np
-import psycopg
 from django.conf import settings
-from django.db import connection
 from django.utils import timezone
 from langchain_core.callbacks import CallbackManagerForRetrieverRun
 from langchain_core.documents import Document
@@ -34,6 +33,7 @@ from rank_bm25 import BM25Okapi
 
 from ai.models import RagDocument
 from categories.models import Category
+from core.db import fetch_binary, uuid_array
 from insights.spec import (
     MAX_DATA_SOURCES,
     MIN_DATE,
@@ -42,14 +42,14 @@ from insights.spec import (
     resolve_period,
     validate_date_filter,
 )
-from transactions.index import keep, newest_first, rows_of
+from transactions.index import category_ids, keep, newest_first, only, raw_ids, rows_of
 from vault.services import UserCipher
 
 from . import codec
 from .errors import RagError
 from .index import DOC_CONTEXT
 from .periods import detect_period
-from .profiles import TEXT_VERSION, Profile, profile_for
+from .profiles import Profile, profile_for, text_version_for
 
 COSINE_CHUNK = 2048  # rows widened to float32 at a time, so 8k rows never need 25 MB at once
 
@@ -94,6 +94,21 @@ def tokenize(text: str) -> list[str]:
     return [stem(token) for token in _TOKEN.findall(text.lower())]
 
 
+def tokenize_many(texts) -> list[list[str]]:
+    """tokenize() for every document of one search. Bank text repeats a few hundred words, so each
+    word is stemmed once. The memo lives only for this call: decrypted words never outlive the
+    request in a process-wide cache."""
+    stems: dict[str, str] = {}
+
+    def stemmed(word: str) -> str:
+        found = stems.get(word)
+        if found is None:
+            found = stems[word] = stem(word)
+        return found
+
+    return [[stemmed(token) for token in _TOKEN.findall(text.lower())] for text in texts]
+
+
 def remove_stopwords(tokens: list[str]) -> list[str]:
     return [token for token in tokens if token not in STOP_WORDS]
 
@@ -107,10 +122,19 @@ def bm25_scores(query: list[str], corpus: list[list[str]]) -> np.ndarray:
     return BM25Okapi(corpus).get_scores(query)
 
 
-def keyword_presence(query: list[str], corpus: list[list[str]]) -> np.ndarray:
-    """True where a document contains at least one query term: a keyword match."""
+def keyword_presence(
+    query: list[str], corpus: list[list[str]], min_share: float | None = None
+) -> np.ndarray:
+    """True where a document is a keyword match: it holds at least `min_share` (default
+    RAG_KEYWORD_MIN_SHARE) of the query's known terms, and at least one. A known term is one some
+    document holds; the others (usually typos) are left to the vector side. With one or two known
+    terms every one must be there, so "car insurance" doesn't match a health insurance row."""
+    share = settings.RAG_KEYWORD_MIN_SHARE if min_share is None else min_share
     terms = set(query)
-    return np.array([not terms.isdisjoint(tokens) for tokens in corpus], dtype=bool)
+    hits = [terms.intersection(tokens) for tokens in corpus]
+    known = set().union(*hits)
+    need = max(1, math.ceil(share * len(known) - 1e-9))
+    return np.array([len(found) >= need for found in hits], dtype=bool)
 
 
 def unit_query(vector) -> np.ndarray:
@@ -257,40 +281,35 @@ class _Stopwatch:
 # --- Database ------------------------------------------------------------------------------------
 
 _DOCS = RagDocument._meta.db_table
+# Transaction ids travel as their 16 bytes (`uuid_send`) from here to the ranking: thousands of
+# UUID objects, made and hashed, cost more than the SQL itself on a 0.1 CPU.
+_CURRENT = (
+    "d.user_id = %s AND d.model = %s AND d.model_digest = %s AND d.dims = %s "
+    "AND d.text_version = %s"
+)
 
 
-def _fetch_binary(sql: str, params: list) -> list[tuple]:
-    """Rows with bytea in binary form, on Django's own connection and transaction.
-
-    Django's cursor binds parameters client-side, and psycopg can then only return text, where
-    bytea arrives hex-encoded: twice the bytes from Neon and decoding work on our 0.1 CPU (binary
-    halves the SQL stage's CPU). The query is still fully parameterised. Being a plain psycopg
-    cursor, it bypasses Django's query hooks (DEBUG query log, execute_wrapper).
-    """
-    connection.ensure_connection()
-    with psycopg.Cursor(connection.connection) as cursor:
-        cursor.execute(sql, params, binary=True)
-        return cursor.fetchall()
-
-
-def _indexed(user, model: str, digest: str, dims: int) -> set:
-    """The ids of the user's transactions that have a current document for this model."""
-    return set(
-        RagDocument.objects.filter(
-            user=user, model=model, model_digest=digest, dims=dims, text_version=TEXT_VERSION
-        ).values_list("transaction_id", flat=True)
+def _indexed(user, model: str, digest: str, dims: int) -> set[bytes]:
+    """The ids (16 bytes each) of the user's transactions with a current document for this model,
+    sent back as one byte string rather than one row each."""
+    ((joined,),) = fetch_binary(
+        f"SELECT coalesce(string_agg(uuid_send(d.transaction_id), ''::bytea), ''::bytea) "
+        f"FROM {_DOCS} d WHERE {_CURRENT}",
+        [user.id, model, digest, dims, text_version_for(model)],
     )
+    return {joined[at : at + 16] for at in range(0, len(joined), 16)}
 
 
-def _payloads(user, model: str, digest: str, dims: int, transaction_ids: list) -> dict:
-    """{transaction id: encrypted payload} for these documents only: payloads are the heavy part."""
-    rows = _fetch_binary(
-        f"SELECT d.transaction_id, d.payload_enc FROM {_DOCS} d "
-        "WHERE d.user_id = %s AND d.model = %s AND d.model_digest = %s AND d.dims = %s "
-        "AND d.text_version = %s AND d.transaction_id = ANY(%s)",
-        [user.id, model, digest, dims, TEXT_VERSION, transaction_ids],
+def _payloads(user, model: str, digest: str, dims: int, raw_ids: list[bytes]) -> list:
+    """The encrypted payload of each of these documents, in the order given (None where one is
+    missing), so no id has to come back with each: payloads are the heavy part."""
+    rows = fetch_binary(
+        f"SELECT d.payload_enc FROM unnest(%s::uuid[]) WITH ORDINALITY AS wanted(id, n) "
+        f"LEFT JOIN {_DOCS} d ON d.transaction_id = wanted.id AND {_CURRENT} "
+        "ORDER BY wanted.n",
+        [uuid_array(raw_ids), user.id, model, digest, dims, text_version_for(model)],
     )
-    return dict(rows)
+    return [payload for (payload,) in rows]
 
 
 # --- The retriever -------------------------------------------------------------------------------
@@ -355,14 +374,15 @@ class EncryptedHybridRetriever(BaseRetriever):
                 )
             )
             indexed = _indexed(self.user, self.model, self.digest, dims)
-            searchable = [row for row in in_period if row.id in indexed]
+            searchable = only(in_period, indexed)
             chosen = searchable[: settings.RAG_MAX_DOCS]
-            payloads = _payloads(self.user, self.model, self.digest, dims, [row.id for row in chosen])
+            chosen_ids = raw_ids(chosen)
+            payloads = _payloads(self.user, self.model, self.digest, dims, chosen_ids)
             names = {category.pk: category.name for category in Category.objects.filter(user=self.user)}
             rows = [
-                (row.id, payloads[row.id], names.get(row.category_id, ""))
-                for row in chosen
-                if row.id in payloads
+                (raw, payload, names.get(category_id, ""))
+                for raw, payload, category_id in zip(chosen_ids, payloads, category_ids(chosen))
+                if payload is not None
             ]
         if not rows:
             self._explain_empty(dims)
@@ -371,13 +391,14 @@ class EncryptedHybridRetriever(BaseRetriever):
         coverage = {"searched": len(rows), "indexed": len(searchable), "total": len(in_period)}
         first = in_period[-1].date if in_period else None
         with watch.stage("decrypt"):
-            cipher = UserCipher(self.user)
-            payloads = [cipher.decrypt(blob, DOC_CONTEXT) for _, blob, _ in rows]
+            payloads = UserCipher(self.user).decrypt_many(
+                [blob for _, blob, _ in rows], DOC_CONTEXT
+            )
         with watch.stage("unpack"):
             matrix, texts = codec.unpack_many(payloads, dims)
             del payloads
         with watch.stage("tokens"):
-            corpus = [tokenize(f"{text} {row[2]}") for text, row in zip(texts, rows)]
+            corpus = tokenize_many(f"{text} {row[2]}" for text, row in zip(texts, rows))
             keyword_text = detected.remainder if detected else question
             query = remove_stopwords(tokenize(keyword_text))
         limit = settings.RAG_MAX_MATCHES
@@ -394,7 +415,7 @@ class EncryptedHybridRetriever(BaseRetriever):
                 Document(
                     page_content=texts[index],
                     metadata={
-                        "transaction": str(rows[index][0]),
+                        "transaction": str(uuid.UUID(bytes=rows[index][0])),
                         "rrf": round(score, 6),
                         "bm25": round(float(bm25[index]), 4),
                         "cosine": round(float(cosine[index]), 4),

@@ -6,6 +6,9 @@ import type { ChatMessage, ChatModel, EmbeddingModel } from "@/lib/types";
 import { recall, remember } from "@/lib/storage";
 
 export const DEFAULT_OLLAMA_URL = "http://localhost:11434";
+// The embedding model the app suggests installing, and picks when the user hasn't chosen one. It
+// scored best of the models compared on the search evaluation set.
+export const RECOMMENDED_EMBEDDING_MODEL = "embeddinggemma";
 const URL_KEY = "moneyangle.ai.ollamaUrl";
 const BATCH_SIZE = 64;
 const TIMEOUT_MS = 60_000; // per request; a big batch on a slow machine can take a while
@@ -85,14 +88,34 @@ function isEmbedding(tag: Tag): boolean {
   return tag.capabilities ? tag.capabilities.includes("embedding") : tag.name.toLowerCase().includes("embed");
 }
 
-/** Installed models that can produce embeddings. */
+/** "embeddinggemma:latest" -> "embeddinggemma", in lower case, as the server's base_name does:
+ * only a trailing tag goes, so in "host:5000/name" the colon stays with the registry address. */
+export function baseModelName(name: string): string {
+  const clean = name.trim().toLowerCase();
+  const colon = clean.lastIndexOf(":");
+  if (colon <= 0 || clean.slice(colon + 1).includes("/")) return clean;
+  return clean.slice(0, colon);
+}
+
+/** Installed models that can produce embeddings, the recommended one first: pages fall back to
+ * the first model when the user hasn't picked one. */
 export async function listEmbeddingModels(base: string): Promise<EmbeddingModel[]> {
-  const models = (await listTags(base))
-    .filter(isEmbedding)
-    .map((m) => ({ name: m.name, dimension: m.details?.embedding_length ?? null, digest: m.digest }));
+  // Ollama can list one name twice with different digests (the same weights). Keep one entry per
+  // name, and always the same one, so the index key (model and digest) never flips between them.
+  const byName = new Map<string, EmbeddingModel>();
+  for (const tag of (await listTags(base)).filter(isEmbedding)) {
+    const model = { name: tag.name, dimension: tag.details?.embedding_length ?? null, digest: tag.digest };
+    const kept = byName.get(tag.name);
+    if (!kept || (model.digest ?? "") < (kept.digest ?? "")) byName.set(tag.name, model);
+  }
+  const recommended = (m: EmbeddingModel) => baseModelName(m.name) === RECOMMENDED_EMBEDDING_MODEL;
+  const models = [...byName.values()].sort((a, b) => Number(recommended(b)) - Number(recommended(a)));
 
   if (models.length === 0) {
-    throw new OllamaError("no_embedding_models", "Ollama has no embedding model installed. Run: ollama pull nomic-embed-text");
+    throw new OllamaError(
+      "no_embedding_models",
+      `Ollama has no embedding model installed. Run: ollama pull ${RECOMMENDED_EMBEDDING_MODEL}`,
+    );
   }
   return models;
 }

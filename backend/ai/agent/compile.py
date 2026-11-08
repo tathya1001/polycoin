@@ -367,14 +367,16 @@ def compile_intent(
     *,
     message: str = "",
     dashboard_date: dict | None = None,
+    notes: list | None = None,
 ) -> Compiled:
     """The panel spec for a "panel" intent. Raises SpecError for what only the model can fix.
 
     `message` is the user's latest message (its date phrase wins); `dashboard_date` is the
-    dashboard's validated date filter, for the period an inheriting panel will show."""
+    dashboard's validated date filter, for the period an inheriting panel will show; `notes`
+    are earlier fixes to the intent (guard.rein_in), shown first."""
     if intent.kind != "panel":
         raise ValueError("Only a panel intent compiles to a spec.")
-    notes = list(grounding.notes)
+    notes = [*(notes or []), *grounding.notes]
     date_filter, period_update = _date_filter(intent, message, ctx.today, notes)
 
     encoding = _encoding(intent, notes)

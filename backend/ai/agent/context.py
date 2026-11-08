@@ -18,17 +18,18 @@ from django.conf import settings
 from django.utils import timezone
 
 from categories.models import Category, CategoryKeyword, sort_categories
+from core.db import fetch_binary, uuid_array
 from datasources.services import sources_for
 from insights.formula import source_key
 from insights.services import first_transaction_date
 from insights.spec import MAX_MERCHANT_LENGTH
-from transactions.index import ids, newest_first, rows_of
+from transactions.index import newest_first, raw_ids, rows_of
 from transactions.models import Transaction
 from vault.services import UserCipher
 
 from ..models import RagDocument
 from ..rag.errors import RagError
-from ..rag.profiles import TEXT_VERSION
+from ..rag.profiles import text_version_for
 from ..rag.retriever import EncryptedHybridRetriever, tokenize
 
 FUZZY_CUTOFF = 0.8  # difflib ratio: catches a typo ("grocries"), not a different word
@@ -151,7 +152,7 @@ class AgentContext:
 def rag_available(user, model: str, digest: str) -> bool:
     """True if the user has search documents for this embedding model and version."""
     return RagDocument.objects.filter(
-        user=user, model=model, model_digest=digest, text_version=TEXT_VERSION
+        user=user, model=model, model_digest=digest, text_version=text_version_for(model)
     ).exists()
 
 
@@ -190,11 +191,18 @@ def merchant_names(user, limit: int | None = None) -> list[str]:
     Names are encrypted, so finding one means decrypting them; the cap bounds that work. One
     cipher (one key load) serves every row."""
     limit = settings.AGENT_MERCHANT_SCAN if limit is None else limit
-    newest = ids(newest_first(rows_of(user))[:limit])  # dates are encrypted (Phase 12.2)
-    found = dict(Transaction.objects.filter(user=user, pk__in=newest).values_list("pk", "name_enc"))
-    blobs = [found[pk] for pk in newest if pk in found]
-    cipher = UserCipher(user)
-    names = (normal_merchant(cipher.decrypt(bytes(blob), "txn.name").decode()) for blob in blobs)
+    newest = raw_ids(newest_first(rows_of(user))[:limit])  # dates are encrypted
+    found = dict(
+        fetch_binary(
+            "SELECT uuid_send(id), name_enc FROM transactions_transaction "
+            "WHERE user_id = %s AND id = ANY(%s::uuid[])",
+            [user.pk, uuid_array(newest)],
+        )
+    )
+    blobs = [found[raw] for raw in newest if raw in found]
+    names = (
+        normal_merchant(name.decode()) for name in UserCipher(user).decrypt_many(blobs, "txn.name")
+    )
     return list(dict.fromkeys(name for name in names if name))
 
 

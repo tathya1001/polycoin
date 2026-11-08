@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
-import { DEFAULT_OLLAMA_URL, loopbackUrl, type OllamaError } from "@/lib/ollama";
+import { DEFAULT_OLLAMA_URL, loopbackUrl, type OllamaError, RECOMMENDED_EMBEDDING_MODEL } from "@/lib/ollama";
 import { Button } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
 import { Field, Input } from "@/components/ui/Field";
@@ -47,7 +47,7 @@ export function OllamaSetup({
   checking,
   onRetry,
   onUrlChange,
-  models = ["nomic-embed-text"],
+  models = [RECOMMENDED_EMBEDDING_MODEL],
 }: {
   problem: OllamaError;
   url: string;

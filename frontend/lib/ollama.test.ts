@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  baseModelName,
   chatStream,
   DEFAULT_OLLAMA_URL,
   embed,
@@ -7,6 +8,7 @@ import {
   listEmbeddingModels,
   loopbackUrl,
   OllamaError,
+  RECOMMENDED_EMBEDDING_MODEL,
   savedOllamaUrl,
 } from "./ollama";
 
@@ -127,7 +129,7 @@ describe("listEmbeddingModels", () => {
 
     const error = await failure(listEmbeddingModels(BASE));
     expect(error.code).toBe("no_embedding_models");
-    expect(error.message).toContain("ollama pull nomic-embed-text");
+    expect(error.message).toContain(`ollama pull ${RECOMMENDED_EMBEDDING_MODEL}`);
   });
 
   it("treats a non-200 answer as unreachable", async () => {
@@ -219,6 +221,53 @@ describe("listEmbeddingModels digests", () => {
       json({ models: [{ name: "nomic-embed-text:latest", digest: "0a109f422b47", capabilities: ["embedding"] }] }),
     );
     expect((await listEmbeddingModels(BASE))[0].digest).toBe("0a109f422b47");
+  });
+
+  it("keeps one entry per name, and always the same digest, when Ollama lists a tag twice", async () => {
+    const twice = (first: string, second: string) =>
+      json({
+        models: [
+          { name: "embeddinggemma:latest", digest: first, capabilities: ["embedding"] },
+          { name: "embeddinggemma:latest", digest: second, capabilities: ["embedding"] },
+        ],
+      });
+    mockFetch(() => twice("82f094e4", "3a2d262b"));
+    const once = await listEmbeddingModels(BASE);
+    mockFetch(() => twice("3a2d262b", "82f094e4"));
+    const reordered = await listEmbeddingModels(BASE);
+
+    expect(once).toHaveLength(1);
+    expect(once[0].digest).toBe("3a2d262b");
+    expect(reordered).toEqual(once);
+  });
+});
+
+describe("the recommended embedding model", () => {
+  it("comes first, so a page with no saved choice picks it; the others keep their order", async () => {
+    mockFetch(() =>
+      json({
+        models: [
+          { name: "nomic-embed-text:latest", capabilities: ["embedding"] },
+          { name: "bge-m3:latest", capabilities: ["embedding"] },
+          { name: `${RECOMMENDED_EMBEDDING_MODEL}:latest`, capabilities: ["embedding"] },
+        ],
+      }),
+    );
+    expect((await listEmbeddingModels(BASE)).map((m) => m.name)).toEqual([
+      `${RECOMMENDED_EMBEDDING_MODEL}:latest`,
+      "nomic-embed-text:latest",
+      "bge-m3:latest",
+    ]);
+  });
+
+  it.each([
+    ["embeddinggemma:latest", "embeddinggemma"],
+    ["  EmbeddingGemma:300M ", "embeddinggemma"],
+    ["localhost:5000/embeddinggemma", "localhost:5000/embeddinggemma"],
+    ["localhost:5000/embeddinggemma:latest", "localhost:5000/embeddinggemma"],
+    [":latest", ":latest"],
+  ])("is matched by base name: %s -> %s", (name, expected) => {
+    expect(baseModelName(name)).toBe(expected);
   });
 });
 

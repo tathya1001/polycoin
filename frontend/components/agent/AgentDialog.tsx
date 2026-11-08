@@ -19,7 +19,16 @@ import { ErrorNote, Spinner } from "@/components/ui/Feedback";
 import { Field, Input, Select } from "@/components/ui/Field";
 import { AgentProblem, httpAgentApi, MAX_MESSAGE, runTurn } from "@/lib/agent";
 import { categoryColorMap } from "@/lib/insights";
-import { chatStream, embed, listChatModels, listEmbeddingModels, OllamaError, savedOllamaUrl, saveOllamaUrl } from "@/lib/ollama";
+import {
+  chatStream,
+  embed,
+  listChatModels,
+  listEmbeddingModels,
+  OllamaError,
+  RECOMMENDED_EMBEDDING_MODEL,
+  savedOllamaUrl,
+  saveOllamaUrl,
+} from "@/lib/ollama";
 import { recall, remember } from "@/lib/storage";
 import type { AgentDashboard, AgentOutcome, Category, ChatModel, EmbeddingModel, PanelConfig } from "@/lib/types";
 
@@ -263,7 +272,7 @@ export default function AgentDialog({
             checking={checking}
             onRetry={checkAgain}
             onUrlChange={changeOllamaUrl}
-            models={["llama3.2", "nomic-embed-text"]}
+            models={["llama3.2", RECOMMENDED_EMBEDDING_MODEL]}
           />
         )}
 

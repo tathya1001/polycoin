@@ -12,7 +12,7 @@ from insights.services import (
     rename_source_in_panels,
     source_labels,
 )
-from transactions.index import rows_of
+from transactions.index import ids, keep, rows_of, source_spans
 from transactions.models import TransferLink
 from transactions.services import remove_source
 from vault.services import UserCipher
@@ -59,14 +59,8 @@ class DataSourceViewSet(OwnedQuerysetMixin, viewsets.GenericViewSet):
     def list(self, request):
         cipher = UserCipher(request.user)
         sources = sources_for(request.user, cipher)
-        # Each source's row count and first and last date, from the decrypted cores (Phase 12.2).
-        facts: dict = {}
-        for row in rows_of(request.user):
-            fact = facts.setdefault(
-                row.data_source_id, {"count": 0, "first": row.date, "last": row.date}
-            )
-            fact["count"] += 1
-            fact["first"], fact["last"] = min(fact["first"], row.date), max(fact["last"], row.date)
+        # Each source's row count and first and last date, from the decrypted cores.
+        facts = source_spans(rows_of(request.user))
         labels = source_labels(request.user, cipher)
         balances = opening_balances(request.user, cipher, date.max, labels)
         return Response(
@@ -114,7 +108,7 @@ class DataSourceViewSet(OwnedQuerysetMixin, viewsets.GenericViewSet):
         source = self.get_object()
         cipher = UserCipher(request.user)
         name = next(s.name for s in sources_for(request.user, cipher) if s.pk == source.pk)
-        held = {row.id for row in rows_of(request.user) if row.data_source_id == source.pk}
+        held = set(ids(keep(rows_of(request.user), sources=[source.pk])))
         links = TransferLink.objects.filter(user=request.user).values_list("first_id", "second_id")
         return Response(
             {

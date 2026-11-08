@@ -16,7 +16,16 @@ import { CircleStop, MessageSquareText, SearchX } from "lucide-react";
 import { loadSources } from "@/lib/dataSources";
 import { money } from "@/lib/format";
 import { PRESET_LABELS } from "@/lib/insights";
-import { chatStream, embed, listChatModels, listEmbeddingModels, OllamaError, savedOllamaUrl, saveOllamaUrl } from "@/lib/ollama";
+import {
+  chatStream,
+  embed,
+  listChatModels,
+  listEmbeddingModels,
+  OllamaError,
+  RECOMMENDED_EMBEDDING_MODEL,
+  savedOllamaUrl,
+  saveOllamaUrl,
+} from "@/lib/ollama";
 import { ask, httpRagApi, RagProblem, syncIndex, type SyncProgress } from "@/lib/rag";
 import { recall, remember } from "@/lib/storage";
 import type { AskResponse, ChatModel, DataSource, DatePreset, EmbeddingModel, RagStatus } from "@/lib/types";
@@ -29,12 +38,15 @@ import { Button, buttonClass } from "@/components/ui/Button";
 import { Card, Chip } from "@/components/ui/Card";
 import { useConfirm } from "@/components/ui/Confirm";
 import { EmptyState, ErrorNote, Loading } from "@/components/ui/Feedback";
-import { Field, Input, Select } from "@/components/ui/Field";
+import { Checkbox, Field, Input, Select } from "@/components/ui/Field";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useToast } from "@/components/ui/Toast";
 
 const EMBED_MODEL_KEY = "moneyangle.ai.model"; // shared with Categorize: one embedding model for both
 const CHAT_MODEL_KEY = "moneyangle.ai.chatModel";
+// Structured (JSON) answers: better citations from small models, shown once complete. Per browser,
+// like the model choice, because it depends on the user's own model.
+const STRUCTURED_KEY = "moneyangle.ai.structuredAnswers";
 const MAX_QUESTION = 300; // the server's limit
 const PERIODS: DatePreset[] = ["all", "this_month", "last_month", "last_3_months", "last_12_months", "this_year"];
 const TYPES = { all: "Money in and out", debit: "Money out", credit: "Money in" } as const;
@@ -103,6 +115,7 @@ export default function Ask() {
   const [asking, setAsking] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
+  const [structured, setStructured] = useState(false);
   const [asked, setAsked] = useState(""); // the question the shown answer belongs to
   const [highlighted, setHighlighted] = useState<number | null>(null);
   const askAbort = useRef<AbortController | null>(null);
@@ -121,6 +134,7 @@ export default function Ask() {
         setChatModels(chat);
         setEmbedName(pickSaved(embedding, EMBED_MODEL_KEY));
         setChatName(pickSaved(chat, CHAT_MODEL_KEY));
+        setStructured(recall(STRUCTURED_KEY) === "1"); // read here: the server render has no storage
       } catch (problem) {
         if (cancelled) return;
         setOllamaProblem(
@@ -252,17 +266,18 @@ export default function Ask() {
     setHighlighted(null);
     setAsked(text.trim());
     try {
-      await ask({
+      const result = await ask({
         api: httpRagApi,
         embed: (texts) => embed(ollamaUrl, embedModel.name, texts),
-        chat: (messages, options, onToken, signal) =>
-          chatStream(ollamaUrl, chatName, messages, options, onToken, signal),
+        chat: (messages, options, onToken, signal, extra) =>
+          chatStream(ollamaUrl, chatName, messages, options, onToken, signal, extra),
         model: embedModel.name,
         digest: digestOf(embedModel),
         queryPrefix: status.profile.query_prefix,
         question: text.trim(),
         filters: { date: { preset }, type: txnType === "all" ? null : txnType, data_sources: askSources },
         useQuestionPeriod,
+        answerFormat: structured ? "json" : "text",
         onResponse: (next) => {
           setResponse(next);
           setStreaming(next.messages !== null);
@@ -270,6 +285,8 @@ export default function Ask() {
         onToken: (piece) => setAnswer((current) => current + piece),
         signal: controller.signal,
       });
+      // A streamed answer is already shown token by token; a structured one arrives whole.
+      if (result.response.format && result.answer !== null) setAnswer(result.answer);
     } catch (problem) {
       if (!isAbort(problem)) setAskError(explain(problem));
     } finally {
@@ -305,7 +322,7 @@ export default function Ask() {
           checking={loadingSetup}
           onRetry={checkAgain}
           onUrlChange={changeOllamaUrl}
-          models={["nomic-embed-text", "llama3.2"]}
+          models={[RECOMMENDED_EMBEDDING_MODEL, "llama3.2"]}
         />
       )}
 
@@ -353,6 +370,19 @@ export default function Ask() {
                 ))}
               </Select>
             </Field>
+            {/* Not a Field: a checkbox is its own label, and labels can't nest. */}
+            <div className="w-72 space-y-1.5">
+              <span className="block text-[13px] font-medium text-ink">Answer style</span>
+              <Checkbox
+                label="Structured answers"
+                checked={structured}
+                onChange={(checked) => {
+                  setStructured(checked);
+                  remember(STRUCTURED_KEY, checked ? "1" : "0");
+                }}
+              />
+              <p className="text-xs text-muted">Better citations; the answer appears when it&apos;s complete</p>
+            </div>
           </Card>
 
           {status && (

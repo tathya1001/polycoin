@@ -366,11 +366,19 @@ class UserCipher:
         return bytes([BLOB_VERSION]) + nonce + ciphertext
 
     def decrypt(self, blob: bytes, context: str) -> bytes:
-        blob = bytes(blob)
+        return self._open(bytes(blob), _data_aad(self.user, context))
+
+    def decrypt_many(self, blobs, context: str) -> list[bytes]:
+        """decrypt() for many blobs of one field, with the binding built once: thousands of rows
+        are read this way. Raises like decrypt() on the first blob that doesn't open."""
+        aad = _data_aad(self.user, context)
+        return [self._open(bytes(blob), aad) for blob in blobs]
+
+    def _open(self, blob: bytes, aad: bytes) -> bytes:
         if not blob or blob[0] != BLOB_VERSION:
             raise ValueError("Unsupported blob version.")
         nonce, ciphertext = blob[1 : 1 + NONCE_SIZE], blob[1 + NONCE_SIZE :]
-        return self._aead.decrypt(nonce, ciphertext, _data_aad(self.user, context))
+        return self._aead.decrypt(nonce, ciphertext, aad)
 
     def blind_index(self, data: bytes, context: str) -> bytes:
         """Deterministic 32-byte fingerprint, for equality/dedupe lookups on data

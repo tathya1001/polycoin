@@ -91,6 +91,25 @@ def test_wrong_context_fails(alice):
         decrypt(alice, blob, "account.nickname")
 
 
+def test_decrypt_many_opens_like_decrypt_and_keeps_every_check(alice, bob):
+    cipher = UserCipher(alice)
+    blobs = [cipher.encrypt(f"row {n}".encode(), "ctx") for n in range(3)]
+    assert cipher.decrypt_many(blobs, "ctx") == [b"row 0", b"row 1", b"row 2"]
+    assert cipher.decrypt_many([memoryview(blobs[0])], "ctx") == [b"row 0"]  # as Postgres gives
+    assert cipher.decrypt_many([], "ctx") == []
+    tampered = bytearray(blobs[1])
+    tampered[-1] ^= 1
+    for wrong in (
+        lambda: cipher.decrypt_many([blobs[0], bytes(tampered)], "ctx"),
+        lambda: cipher.decrypt_many(blobs, "other"),  # wrong context
+        lambda: UserCipher(bob).decrypt_many(blobs, "ctx"),  # wrong user
+    ):
+        with pytest.raises(InvalidTag):
+            wrong()
+    with pytest.raises(ValueError):
+        cipher.decrypt_many([b"\x09" + blobs[0][1:]], "ctx")  # unknown blob version
+
+
 def test_cipher_needs_no_query_once_the_key_is_unlocked(alice, django_assert_num_queries):
     with django_assert_num_queries(0):
         cipher = UserCipher(alice)

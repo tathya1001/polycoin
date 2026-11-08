@@ -48,10 +48,31 @@ def test_remove_stopwords_keeps_only_the_words_that_carry_meaning():
     assert remove_stopwords(tokens) == ["gym", "month"]
 
 
-def test_keyword_presence_means_at_least_one_query_term():
+def test_keyword_presence_with_one_term_means_the_term_is_there():
     corpus = [["fitzone", "gym"], ["tastybites", "cafe"], ["gym", "cafe"]]
     assert keyword_presence(["gym"], corpus).tolist() == [True, False, True]
     assert keyword_presence([], corpus).tolist() == [False, False, False]
+
+
+def test_two_known_terms_must_both_be_there():
+    # "car insurance": a health insurance row holds only one of the two words
+    corpus = [["safeguard", "insurance", "premium"], ["car", "insurance", "renewal"], ["car", "wash"]]
+    assert keyword_presence(["car", "insurance"], corpus).tolist() == [False, True, False]
+
+
+def test_a_longer_question_needs_two_thirds_of_its_words():
+    corpus = [["gas", "cylinder", "deposit"], ["shop", "refund"], ["gas", "agency"], ["deposit"]]
+    # four known terms: three must be there
+    query = ["gas", "cylinder", "deposit", "refund"]
+    assert keyword_presence(query, corpus).tolist() == [True, False, False, False]
+    assert keyword_presence(query, corpus, min_share=0.25).tolist() == [True, True, True, True]
+
+
+def test_a_word_no_row_holds_doesnt_count():
+    # "electrcity bill": the typo is in no row, so "bill" alone decides; vectors handle the typo
+    corpus = [["northwind", "electricity", "bill"], ["phone", "bill"], ["cafe"]]
+    assert keyword_presence(["electrcity", "bill"], corpus).tolist() == [True, True, False]
+    assert keyword_presence(["electrcity"], corpus).tolist() == [False, False, False]
 
 
 def test_bm25_ranks_a_repeated_term_higher_and_is_zero_without_a_query():
@@ -377,3 +398,11 @@ def test_bad_data_source_filters_are_refused():
     for raw in ({"data_sources": "x"}, {"data_sources": ["x"]}, {"data_sources": [1]}):
         with pytest.raises(RagError):
             validate_ask_filters(raw)
+
+
+def test_tokenizing_many_documents_matches_one_at_a_time():
+    from ai.rag.retriever import tokenize_many
+
+    texts = ["Groceries at FreshBasket stores", "UPI/TASTYBITES CAFE/12 payments", "", "Taxes"]
+    assert tokenize_many(texts) == [tokenize(text) for text in texts]
+    assert tokenize_many(iter(texts)) == [tokenize(text) for text in texts]

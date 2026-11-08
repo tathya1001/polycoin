@@ -123,7 +123,8 @@ export default function Categorize() {
     setResult(null);
     try {
       // 1. Our server decrypts the rows and returns the texts to embed (no Ollama call there).
-      const res = await apiFetch(PREPARE_URL);
+      // The model picks its own tuned thresholds on the server.
+      const res = await apiFetch(`${PREPARE_URL}?model=${encodeURIComponent(model)}`);
       if (!res.ok) {
         setError(await readError(res, "Could not prepare the run."));
         return;

@@ -11,9 +11,10 @@ builder for starter templates.
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 from functools import partial
+from itertools import groupby
 
 from django.conf import settings
 from django.db import transaction
@@ -21,7 +22,7 @@ from django.utils import timezone
 
 from categories.models import Category
 from datasources.services import sources_for
-from transactions.index import keep, rows_of
+from transactions.index import keep, newest_first, oldest_first, only, rows_of
 from transactions.models import Transaction, TransferLink
 from vault.services import UserCipher
 
@@ -65,11 +66,16 @@ def source_labels(user, cipher) -> dict:
     }
 
 
-def _link_partners(user, source_of: dict) -> dict:
-    """{transaction id: the data source of the transaction it is linked to}. `source_of` is
-    {transaction id: its source id}, from the decrypted cores."""
+def _link_partners(user, rows) -> dict:
+    """{transaction id: the data source of the transaction it is linked to}. `rows` are the
+    user's decrypted cores; only the linked ones are read."""
+    links = list(TransferLink.objects.filter(user=user).values_list("first_id", "second_id"))
+    if not links:
+        return {}
+    linked = {pk for pair in links for pk in pair}
+    source_of = {row.id: row.data_source_id for row in only(rows, linked)}
     partners = {}
-    for first, second in TransferLink.objects.filter(user=user).values_list("first_id", "second_id"):
+    for first, second in links:
         partners[first] = str(source_of[second])
         partners[second] = str(source_of[first])
     return partners
@@ -110,8 +116,8 @@ def load_rows(
     load when the caller has them.
     """
     cipher = cipher or UserCipher(user)  # one DEK load for every row
-    # Date, type, category and source are encrypted (Phase 12.2, D10): every core is decrypted,
-    # and the period and filters are applied here, before any amount is.
+    # Date, type, category and source are encrypted: the period and filters are applied to the
+    # decrypted cores, before any amount is decrypted.
     every_row = rows_of(user)
     selected = keep(
         every_row,
@@ -124,10 +130,10 @@ def load_rows(
     if len(selected) > settings.INSIGHTS_MAX_ROWS:
         raise TooManyRows(f"More than {settings.INSIGHTS_MAX_ROWS} transactions in the period.")
     if "stored_order" in need:
-        selected.sort(key=lambda row: row.created_at)  # the order that settles a balance
+        selected = sorted(selected, key=lambda row: row.created_at)  # settles a balance
 
     labels = source_labels(user, cipher) if labels is None else labels
-    partners = _link_partners(user, {row.id: row.data_source_id for row in every_row})
+    partners = _link_partners(user, every_row)
     category_names = {category.pk: category.name for category in Category.objects.filter(user=user)}
 
     def dec(blob, context):
@@ -167,7 +173,8 @@ def load_rows(
 
 def first_transaction_date(user) -> date | None:
     """The date of the user's oldest transaction, or None if they have none."""
-    return min((row.date for row in rows_of(user)), default=None)
+    oldest = oldest_first(rows_of(user))
+    return oldest[0].date if len(oldest) else None
 
 
 def opening_balances(user, cipher, before: date, labels: dict) -> dict[str, Decimal]:
@@ -176,14 +183,17 @@ def opening_balances(user, cipher, before: date, labels: dict) -> dict[str, Deci
     {source key: balance}. Only when a panel reads a balance. The days come from the decrypted
     cores; then, from the latest day back, the first day with a balance on the statement wins.
     """
-    days_of: dict = {}
-    for row in rows_of(user):
-        if row.date < before:
-            days_of.setdefault(row.data_source_id, {}).setdefault(row.date, []).append(row)
+    if before == date.min:
+        return {}  # no date is before it
+    every_row = rows_of(user)
+    if before != date.max:  # every date is before date.max
+        every_row = keep(every_row, end=before - timedelta(days=1))
     balances = {}
     for source_id, label in labels.items():
-        for day in sorted(days_of.get(source_id, {}), reverse=True):
-            on_day = sorted(days_of[source_id][day], key=lambda row: row.created_at)
+        earlier = keep(every_row, sources={source_id})
+        # Newest day first, read lazily: most sources stop at their last day.
+        for _, same_day in groupby(newest_first(earlier), key=lambda row: row.date):
+            on_day = sorted(same_day, key=lambda row: row.created_at)
             blobs = _blobs(user, [row.id for row in on_day], ["amount_enc", "balance_enc"])
             rows = [
                 {

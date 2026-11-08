@@ -1,0 +1,2352 @@
+[
+ {
+  "date": "2025-11-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN41052856/GLOBEX SYSTEMS PAYROLL/SALARY NOV",
+  "notes": "",
+  "id": "h001"
+ },
+ {
+  "date": "2025-11-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/729266782227/LOTUS YOGA STUDIO/FKBK0594308/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h002"
+ },
+ {
+  "date": "2025-11-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/620966542870/OAKWOOD RESIDENCY/HOUSE RENT NOV",
+  "notes": "",
+  "id": "h003"
+ },
+ {
+  "date": "2025-11-04",
+  "txn_type": "debit",
+  "amount": "973.06",
+  "category": "Transport",
+  "name": "TRACKLINE RAIL",
+  "description": "UPI/DR/889600391343/TRACKLINE RAIL/FKBK0542806/tracklinerail@fkbank/UPI",
+  "notes": "",
+  "id": "h004"
+ },
+ {
+  "date": "2025-11-05",
+  "txn_type": "debit",
+  "amount": "96.08",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/848750223804/ZIPAUTO RIDES/FKBK0353831/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h005"
+ },
+ {
+  "date": "2025-11-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/176382512340/CAR LOAN EMI",
+  "notes": "",
+  "id": "h006"
+ },
+ {
+  "date": "2025-11-06",
+  "txn_type": "debit",
+  "amount": "4335.15",
+  "category": "Shopping",
+  "name": "NESTWELL HOME DECOR",
+  "description": "UPI/DR/791400419032/NESTWELL HOME DECOR/FKBK0375361/nestwellhomedecor@fkbank/UPI",
+  "notes": "",
+  "id": "h007"
+ },
+ {
+  "date": "2025-11-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/964261677742/IRONPEAK FITNESS/FKBK0925667/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h008"
+ },
+ {
+  "date": "2025-11-07",
+  "txn_type": "debit",
+  "amount": "357.05",
+  "category": "Groceries",
+  "name": "CORNERSTOP PROVISIONS",
+  "description": "UPI/DR/315530616636/CORNERSTOP PROVISIONS/FKBK0560561/cornerstopprovisions@fkbank/UPI",
+  "notes": "",
+  "id": "h009"
+ },
+ {
+  "date": "2025-11-08",
+  "txn_type": "debit",
+  "amount": "15000.00",
+  "category": "Others",
+  "name": "LITTLE SPROUTS SCHOOL",
+  "description": "NEFT/DR/408108639687/LITTLE SPROUTS SCHOOL/TERM FEES NOV",
+  "notes": "",
+  "id": "h010"
+ },
+ {
+  "date": "2025-11-09",
+  "txn_type": "debit",
+  "amount": "711.91",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/475787790680/POWER BILL",
+  "notes": "",
+  "id": "h011"
+ },
+ {
+  "date": "2025-11-11",
+  "txn_type": "debit",
+  "amount": "974.40",
+  "category": "Bills",
+  "name": "HEARTH GAS",
+  "description": "UPI/DR/027943459684/HEARTH GAS/FKBK0391199/hearthgas@fkbank/CYLINDER BOOKING",
+  "notes": "",
+  "id": "h012"
+ },
+ {
+  "date": "2025-11-12",
+  "txn_type": "debit",
+  "amount": "5200.00",
+  "category": "Health",
+  "name": "TRUSTSHIELD HEALTH INSURANCE",
+  "description": "ACH/TRUSTSHIELD HEALTH INSURANCE/894155007408/POLICY RENEWAL",
+  "notes": "",
+  "id": "h013"
+ },
+ {
+  "date": "2025-11-13",
+  "txn_type": "debit",
+  "amount": "269.25",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/707452902471/MORNING MUG CAFE/FKBK0215114/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h014"
+ },
+ {
+  "date": "2025-11-13",
+  "txn_type": "debit",
+  "amount": "2421.60",
+  "category": "Groceries",
+  "name": "3112XXXXXX2655 VALUECART SUPERMARKET",
+  "description": "POS 3112XXXXXX2655 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h015"
+ },
+ {
+  "date": "2025-11-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/093758689763/PULSE TELECOM/FKBK0528666/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h016"
+ },
+ {
+  "date": "2025-11-16",
+  "txn_type": "debit",
+  "amount": "999.00",
+  "category": "Bills",
+  "name": "SWIFTNET FIBER",
+  "description": "UPI/DR/994220668960/SWIFTNET FIBER/FKBK0685530/swiftnetfiber@fkbank/INTERNET PLAN",
+  "notes": "",
+  "id": "h017"
+ },
+ {
+  "date": "2025-11-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/497023926475/SUBSCRIPTION",
+  "notes": "",
+  "id": "h018"
+ },
+ {
+  "date": "2025-11-21",
+  "txn_type": "debit",
+  "amount": "436.65",
+  "category": "Bills",
+  "name": "CLEARSTREAM WATER",
+  "description": "ACH/CLEARSTREAM WATER/916868720075/WATER BILL",
+  "notes": "",
+  "id": "h019"
+ },
+ {
+  "date": "2025-11-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/219957392171/MELODIA/FKBK0998605/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h020"
+ },
+ {
+  "date": "2025-11-23",
+  "txn_type": "debit",
+  "amount": "1450.24",
+  "category": "Health",
+  "name": "4080XXXXXX9514 MEDIPLUS CHEMIST",
+  "description": "POS 4080XXXXXX9514 MEDIPLUS CHEMIST",
+  "notes": "",
+  "id": "h021"
+ },
+ {
+  "date": "2025-11-24",
+  "txn_type": "debit",
+  "amount": "2427.84",
+  "category": "Others",
+  "name": "PAWS AND CLAWS VET",
+  "description": "UPI/DR/902087169783/PAWS AND CLAWS VET/FKBK0804634/pawsandclawsvet@fkbank/UPI",
+  "notes": "",
+  "id": "h022"
+ },
+ {
+  "date": "2025-11-28",
+  "txn_type": "credit",
+  "amount": "353.53",
+  "category": "Others",
+  "name": "BY INTEREST CREDIT",
+  "description": "BY INTEREST CREDIT/666900984213",
+  "notes": "",
+  "id": "h023"
+ },
+ {
+  "date": "2025-12-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN54149246/GLOBEX SYSTEMS PAYROLL/SALARY DEC",
+  "notes": "",
+  "id": "h024"
+ },
+ {
+  "date": "2025-12-03",
+  "txn_type": "debit",
+  "amount": "107.51",
+  "category": "Food",
+  "name": "SQUEEZE JUICE BAR",
+  "description": "UPI/DR/234327686337/SQUEEZE JUICE BAR/FKBK0205697/squeezejuicebar@fkbank/UPI",
+  "notes": "",
+  "id": "h025"
+ },
+ {
+  "date": "2025-12-03",
+  "txn_type": "debit",
+  "amount": "409.94",
+  "category": "Groceries",
+  "name": "CORNERSTOP PROVISIONS",
+  "description": "UPI/DR/833152571163/CORNERSTOP PROVISIONS/FKBK0299045/cornerstopprovisions@fkbank/UPI",
+  "notes": "",
+  "id": "h026"
+ },
+ {
+  "date": "2025-12-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/551504137293/LOTUS YOGA STUDIO/FKBK0639082/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h027"
+ },
+ {
+  "date": "2025-12-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/855966542598/OAKWOOD RESIDENCY/HOUSE RENT DEC",
+  "notes": "",
+  "id": "h028"
+ },
+ {
+  "date": "2025-12-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/271170626761/CAR LOAN EMI",
+  "notes": "",
+  "id": "h029"
+ },
+ {
+  "date": "2025-12-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/158603772910/IRONPEAK FITNESS/FKBK0574095/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h030"
+ },
+ {
+  "date": "2025-12-09",
+  "txn_type": "debit",
+  "amount": "1392.10",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/146041445781/POWER BILL",
+  "notes": "",
+  "id": "h031"
+ },
+ {
+  "date": "2025-12-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/054975800364/PULSE TELECOM/FKBK0101550/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h032"
+ },
+ {
+  "date": "2025-12-15",
+  "txn_type": "debit",
+  "amount": "349.48",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/410858353942/MORNING MUG CAFE/FKBK0253623/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h033"
+ },
+ {
+  "date": "2025-12-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/701301767659/SUBSCRIPTION",
+  "notes": "",
+  "id": "h034"
+ },
+ {
+  "date": "2025-12-20",
+  "txn_type": "debit",
+  "amount": "111.94",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/306724243821/ZIPAUTO RIDES/FKBK0128738/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h035"
+ },
+ {
+  "date": "2025-12-20",
+  "txn_type": "debit",
+  "amount": "555.86",
+  "category": "Food",
+  "name": "CRUSTWORKS PIZZA",
+  "description": "UPI/DR/248944862737/CRUSTWORKS PIZZA/FKBK0060628/crustworkspizza@fkbank/UPI",
+  "notes": "friday night",
+  "id": "h036"
+ },
+ {
+  "date": "2025-12-20",
+  "txn_type": "debit",
+  "amount": "1518.46",
+  "category": "Transfer",
+  "name": "P2A",
+  "description": "IMPS/P2A/962217119506/K EXAMPLE/SHARE",
+  "notes": "",
+  "id": "h037"
+ },
+ {
+  "date": "2025-12-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/961536438975/MELODIA/FKBK0900389/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h038"
+ },
+ {
+  "date": "2025-12-29",
+  "txn_type": "credit",
+  "amount": "331.88",
+  "category": "Groceries",
+  "name": "VALUECART SUPERMARKET",
+  "description": "UPI/CR/293057721942/VALUECART SUPERMARKET/FKBK0760365/valuecartsupermarket@fkbank/REFUND",
+  "notes": "",
+  "id": "h039"
+ },
+ {
+  "date": "2026-01-01",
+  "txn_type": "debit",
+  "amount": "112.89",
+  "category": "Food",
+  "name": "1959XXXXXX2330 GOLDENCRUST BAKERY",
+  "description": "POS 1959XXXXXX2330 GOLDENCRUST BAKERY",
+  "notes": "",
+  "id": "h040"
+ },
+ {
+  "date": "2026-01-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN56083504/GLOBEX SYSTEMS PAYROLL/SALARY JAN",
+  "notes": "",
+  "id": "h041"
+ },
+ {
+  "date": "2026-01-03",
+  "txn_type": "debit",
+  "amount": "4566.31",
+  "category": "Shopping",
+  "name": "NESTWELL HOME DECOR",
+  "description": "UPI/DR/021115057720/NESTWELL HOME DECOR/FKBK0138579/nestwellhomedecor@fkbank/UPI",
+  "notes": "",
+  "id": "h042"
+ },
+ {
+  "date": "2026-01-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/580471804838/LOTUS YOGA STUDIO/FKBK0688631/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h043"
+ },
+ {
+  "date": "2026-01-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/686335386140/OAKWOOD RESIDENCY/HOUSE RENT JAN",
+  "notes": "",
+  "id": "h044"
+ },
+ {
+  "date": "2026-01-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/425130308924/CAR LOAN EMI",
+  "notes": "",
+  "id": "h045"
+ },
+ {
+  "date": "2026-01-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/587946180348/IRONPEAK FITNESS/FKBK0682433/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h046"
+ },
+ {
+  "date": "2026-01-09",
+  "txn_type": "debit",
+  "amount": "1948.52",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/498134565482/POWER BILL",
+  "notes": "",
+  "id": "h047"
+ },
+ {
+  "date": "2026-01-11",
+  "txn_type": "debit",
+  "amount": "966.06",
+  "category": "Bills",
+  "name": "HEARTH GAS",
+  "description": "UPI/DR/916760684516/HEARTH GAS/FKBK0655049/hearthgas@fkbank/CYLINDER BOOKING",
+  "notes": "",
+  "id": "h048"
+ },
+ {
+  "date": "2026-01-11",
+  "txn_type": "debit",
+  "amount": "757.91",
+  "category": "Health",
+  "name": "1988XXXXXX2548 MEDIPLUS CHEMIST",
+  "description": "POS 1988XXXXXX2548 MEDIPLUS CHEMIST",
+  "notes": "",
+  "id": "h049"
+ },
+ {
+  "date": "2026-01-12",
+  "txn_type": "debit",
+  "amount": "1060.52",
+  "category": "Food",
+  "name": "CRUSTWORKS PIZZA",
+  "description": "UPI/DR/269414992134/CRUSTWORKS PIZZA/FKBK0170594/crustworkspizza@fkbank/UPI",
+  "notes": "",
+  "id": "h050"
+ },
+ {
+  "date": "2026-01-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/279080417058/PULSE TELECOM/FKBK0446227/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h051"
+ },
+ {
+  "date": "2026-01-15",
+  "txn_type": "debit",
+  "amount": "274.08",
+  "category": "Entertainment",
+  "name": "GRANDVIEW CINEMAS",
+  "description": "UPI/DR/773037397403/GRANDVIEW CINEMAS/FKBK0566283/grandviewcinemas@fkbank/UPI",
+  "notes": "",
+  "id": "h052"
+ },
+ {
+  "date": "2026-01-15",
+  "txn_type": "debit",
+  "amount": "1252.33",
+  "category": "Transport",
+  "name": "4299XXXXXX3764 HIGHWAY FUELS",
+  "description": "POS 4299XXXXXX3764 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h053"
+ },
+ {
+  "date": "2026-01-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/654347905978/SUBSCRIPTION",
+  "notes": "",
+  "id": "h054"
+ },
+ {
+  "date": "2026-01-21",
+  "txn_type": "debit",
+  "amount": "301.86",
+  "category": "Bills",
+  "name": "CLEARSTREAM WATER",
+  "description": "ACH/CLEARSTREAM WATER/234020587492/WATER BILL",
+  "notes": "",
+  "id": "h055"
+ },
+ {
+  "date": "2026-01-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/137052158089/MELODIA/FKBK0779494/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h056"
+ },
+ {
+  "date": "2026-01-29",
+  "txn_type": "debit",
+  "amount": "170.75",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/485510310458/ZIPAUTO RIDES/FKBK0101981/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h057"
+ },
+ {
+  "date": "2026-02-01",
+  "txn_type": "debit",
+  "amount": "292.75",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/015626133202/ZIPAUTO RIDES/FKBK0571008/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h058"
+ },
+ {
+  "date": "2026-02-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN24741525/GLOBEX SYSTEMS PAYROLL/SALARY FEB",
+  "notes": "",
+  "id": "h059"
+ },
+ {
+  "date": "2026-02-02",
+  "txn_type": "debit",
+  "amount": "729.45",
+  "category": "Food",
+  "name": "CRUSTWORKS PIZZA",
+  "description": "UPI/DR/796294033601/CRUSTWORKS PIZZA/FKBK0498905/crustworkspizza@fkbank/UPI",
+  "notes": "friday night",
+  "id": "h060"
+ },
+ {
+  "date": "2026-02-03",
+  "txn_type": "debit",
+  "amount": "241.52",
+  "category": "Food",
+  "name": "SQUEEZE JUICE BAR",
+  "description": "UPI/DR/641105619397/SQUEEZE JUICE BAR/FKBK0726853/squeezejuicebar@fkbank/UPI",
+  "notes": "",
+  "id": "h061"
+ },
+ {
+  "date": "2026-02-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/096036394104/LOTUS YOGA STUDIO/FKBK0263017/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h062"
+ },
+ {
+  "date": "2026-02-04",
+  "txn_type": "debit",
+  "amount": "2385.56",
+  "category": "Transport",
+  "name": "7130XXXXXX6526 HIGHWAY FUELS",
+  "description": "POS 7130XXXXXX6526 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h063"
+ },
+ {
+  "date": "2026-02-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/179375418820/OAKWOOD RESIDENCY/HOUSE RENT FEB",
+  "notes": "",
+  "id": "h064"
+ },
+ {
+  "date": "2026-02-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/944867894697/CAR LOAN EMI",
+  "notes": "",
+  "id": "h065"
+ },
+ {
+  "date": "2026-02-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/990165281600/IRONPEAK FITNESS/FKBK0666668/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h066"
+ },
+ {
+  "date": "2026-02-08",
+  "txn_type": "debit",
+  "amount": "15000.00",
+  "category": "Others",
+  "name": "LITTLE SPROUTS SCHOOL",
+  "description": "NEFT/DR/370332661602/LITTLE SPROUTS SCHOOL/TERM FEES FEB",
+  "notes": "",
+  "id": "h067"
+ },
+ {
+  "date": "2026-02-09",
+  "txn_type": "debit",
+  "amount": "1078.29",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/908191236072/POWER BILL",
+  "notes": "",
+  "id": "h068"
+ },
+ {
+  "date": "2026-02-11",
+  "txn_type": "debit",
+  "amount": "445.99",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/149340910938/MORNING MUG CAFE/FKBK0826342/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h069"
+ },
+ {
+  "date": "2026-02-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/737832566025/PULSE TELECOM/FKBK0702453/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h070"
+ },
+ {
+  "date": "2026-02-15",
+  "txn_type": "debit",
+  "amount": "360.93",
+  "category": "Food",
+  "name": "4156XXXXXX4333 SAFFRON THALI HOUSE",
+  "description": "POS 4156XXXXXX4333 SAFFRON THALI HOUSE",
+  "notes": "",
+  "id": "h071"
+ },
+ {
+  "date": "2026-02-16",
+  "txn_type": "debit",
+  "amount": "999.00",
+  "category": "Bills",
+  "name": "SWIFTNET FIBER",
+  "description": "UPI/DR/307019784006/SWIFTNET FIBER/FKBK0819205/swiftnetfiber@fkbank/INTERNET PLAN",
+  "notes": "",
+  "id": "h072"
+ },
+ {
+  "date": "2026-02-16",
+  "txn_type": "debit",
+  "amount": "2724.21",
+  "category": "Groceries",
+  "name": "4179XXXXXX3378 VALUECART SUPERMARKET",
+  "description": "POS 4179XXXXXX3378 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h073"
+ },
+ {
+  "date": "2026-02-17",
+  "txn_type": "debit",
+  "amount": "3966.78",
+  "category": "Transport",
+  "name": "BLUEWING AIR",
+  "description": "UPI/DR/108832810981/BLUEWING AIR/FKBK0753526/bluewingair@fkbank/UPI",
+  "notes": "",
+  "id": "h074"
+ },
+ {
+  "date": "2026-02-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/374004888080/SUBSCRIPTION",
+  "notes": "",
+  "id": "h075"
+ },
+ {
+  "date": "2026-02-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/348594070581/MELODIA/FKBK0972057/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h076"
+ },
+ {
+  "date": "2026-02-24",
+  "txn_type": "debit",
+  "amount": "24275.95",
+  "category": "Shopping",
+  "name": "VOLTEDGE DIGITAL",
+  "description": "UPI/DR/065137744372/VOLTEDGE DIGITAL/FKBK0421879/voltedgedigital@fkbank/UPI",
+  "notes": "",
+  "id": "h077"
+ },
+ {
+  "date": "2026-02-28",
+  "txn_type": "credit",
+  "amount": "167.61",
+  "category": "Others",
+  "name": "BY INTEREST CREDIT",
+  "description": "BY INTEREST CREDIT/677028620752",
+  "notes": "",
+  "id": "h078"
+ },
+ {
+  "date": "2026-03-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN12751353/GLOBEX SYSTEMS PAYROLL/SALARY MAR",
+  "notes": "",
+  "id": "h079"
+ },
+ {
+  "date": "2026-03-02",
+  "txn_type": "debit",
+  "amount": "1042.07",
+  "category": "Shopping",
+  "name": "6417XXXXXX5079 URBAN THREADS",
+  "description": "POS 6417XXXXXX5079 URBAN THREADS",
+  "notes": "shoes",
+  "id": "h080"
+ },
+ {
+  "date": "2026-03-03",
+  "txn_type": "debit",
+  "amount": "367.70",
+  "category": "Food",
+  "name": "CRUSTWORKS PIZZA",
+  "description": "UPI/DR/713515020832/CRUSTWORKS PIZZA/FKBK0156242/crustworkspizza@fkbank/UPI",
+  "notes": "",
+  "id": "h081"
+ },
+ {
+  "date": "2026-03-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/503987417859/LOTUS YOGA STUDIO/FKBK0521987/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h082"
+ },
+ {
+  "date": "2026-03-04",
+  "txn_type": "debit",
+  "amount": "2727.60",
+  "category": "Transport",
+  "name": "9256XXXXXX2860 HIGHWAY FUELS",
+  "description": "POS 9256XXXXXX2860 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h083"
+ },
+ {
+  "date": "2026-03-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/922121951072/OAKWOOD RESIDENCY/HOUSE RENT MAR",
+  "notes": "",
+  "id": "h084"
+ },
+ {
+  "date": "2026-03-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/403798060315/CAR LOAN EMI",
+  "notes": "",
+  "id": "h085"
+ },
+ {
+  "date": "2026-03-06",
+  "txn_type": "debit",
+  "amount": "291.43",
+  "category": "Entertainment",
+  "name": "GRANDVIEW CINEMAS",
+  "description": "UPI/DR/246749752230/GRANDVIEW CINEMAS/FKBK0312237/grandviewcinemas@fkbank/UPI",
+  "notes": "",
+  "id": "h086"
+ },
+ {
+  "date": "2026-03-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/903514088404/IRONPEAK FITNESS/FKBK0953901/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h087"
+ },
+ {
+  "date": "2026-03-09",
+  "txn_type": "debit",
+  "amount": "271.56",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/704081372080/MORNING MUG CAFE/FKBK0998440/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h088"
+ },
+ {
+  "date": "2026-03-09",
+  "txn_type": "debit",
+  "amount": "1887.55",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/286886301695/POWER BILL",
+  "notes": "",
+  "id": "h089"
+ },
+ {
+  "date": "2026-03-10",
+  "txn_type": "debit",
+  "amount": "206.49",
+  "category": "Food",
+  "name": "SQUEEZE JUICE BAR",
+  "description": "UPI/DR/075668092505/SQUEEZE JUICE BAR/FKBK0464136/squeezejuicebar@fkbank/UPI",
+  "notes": "",
+  "id": "h090"
+ },
+ {
+  "date": "2026-03-11",
+  "txn_type": "debit",
+  "amount": "992.95",
+  "category": "Bills",
+  "name": "HEARTH GAS",
+  "description": "UPI/DR/334239203816/HEARTH GAS/FKBK0427606/hearthgas@fkbank/CYLINDER BOOKING",
+  "notes": "",
+  "id": "h091"
+ },
+ {
+  "date": "2026-03-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/072967552332/PULSE TELECOM/FKBK0500990/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h092"
+ },
+ {
+  "date": "2026-03-15",
+  "txn_type": "debit",
+  "amount": "1096.07",
+  "category": "Transport",
+  "name": "TRACKLINE RAIL",
+  "description": "UPI/DR/344506734784/TRACKLINE RAIL/FKBK0366720/tracklinerail@fkbank/UPI",
+  "notes": "",
+  "id": "h093"
+ },
+ {
+  "date": "2026-03-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/449727581806/SUBSCRIPTION",
+  "notes": "",
+  "id": "h094"
+ },
+ {
+  "date": "2026-03-18",
+  "txn_type": "debit",
+  "amount": "800.93",
+  "category": "Health",
+  "name": "5746XXXXXX0158 MEDIPLUS CHEMIST",
+  "description": "POS 5746XXXXXX0158 MEDIPLUS CHEMIST",
+  "notes": "",
+  "id": "h095"
+ },
+ {
+  "date": "2026-03-19",
+  "txn_type": "debit",
+  "amount": "877.04",
+  "category": "Health",
+  "name": "BRIGHTSMILE DENTAL",
+  "description": "UPI/DR/952788434572/BRIGHTSMILE DENTAL/FKBK0092828/brightsmiledental@fkbank/UPI",
+  "notes": "",
+  "id": "h096"
+ },
+ {
+  "date": "2026-03-21",
+  "txn_type": "debit",
+  "amount": "214.66",
+  "category": "Food",
+  "name": "5736XXXXXX5182 SAFFRON THALI HOUSE",
+  "description": "POS 5736XXXXXX5182 SAFFRON THALI HOUSE",
+  "notes": "",
+  "id": "h097"
+ },
+ {
+  "date": "2026-03-21",
+  "txn_type": "debit",
+  "amount": "410.05",
+  "category": "Bills",
+  "name": "CLEARSTREAM WATER",
+  "description": "ACH/CLEARSTREAM WATER/202578531217/WATER BILL",
+  "notes": "",
+  "id": "h098"
+ },
+ {
+  "date": "2026-03-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/945727171775/MELODIA/FKBK0918581/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h099"
+ },
+ {
+  "date": "2026-03-28",
+  "txn_type": "debit",
+  "amount": "9270.16",
+  "category": "Others",
+  "name": "PALM COVE RESORT",
+  "description": "UPI/DR/233350870859/PALM COVE RESORT/FKBK0947857/palmcoveresort@fkbank/UPI",
+  "notes": "",
+  "id": "h100"
+ },
+ {
+  "date": "2026-03-31",
+  "txn_type": "debit",
+  "amount": "1150.46",
+  "category": "Transfer",
+  "name": "P2A",
+  "description": "IMPS/P2A/219664534973/K EXAMPLE/GIFT",
+  "notes": "rent share",
+  "id": "h101"
+ },
+ {
+  "date": "2026-04-01",
+  "txn_type": "debit",
+  "amount": "306.54",
+  "category": "Food",
+  "name": "5081XXXXXX2546 GOLDENCRUST BAKERY",
+  "description": "POS 5081XXXXXX2546 GOLDENCRUST BAKERY",
+  "notes": "",
+  "id": "h102"
+ },
+ {
+  "date": "2026-04-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN78149576/GLOBEX SYSTEMS PAYROLL/SALARY APR",
+  "notes": "",
+  "id": "h103"
+ },
+ {
+  "date": "2026-04-03",
+  "txn_type": "debit",
+  "amount": "2105.24",
+  "category": "Shopping",
+  "name": "4920XXXXXX7683 URBAN THREADS",
+  "description": "POS 4920XXXXXX7683 URBAN THREADS",
+  "notes": "shoes",
+  "id": "h104"
+ },
+ {
+  "date": "2026-04-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/543054037183/LOTUS YOGA STUDIO/FKBK0111729/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h105"
+ },
+ {
+  "date": "2026-04-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/420705786222/OAKWOOD RESIDENCY/HOUSE RENT APR",
+  "notes": "",
+  "id": "h106"
+ },
+ {
+  "date": "2026-04-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/121148155016/CAR LOAN EMI",
+  "notes": "",
+  "id": "h107"
+ },
+ {
+  "date": "2026-04-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/857251218118/IRONPEAK FITNESS/FKBK0005710/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h108"
+ },
+ {
+  "date": "2026-04-07",
+  "txn_type": "debit",
+  "amount": "234.19",
+  "category": "Food",
+  "name": "3522XXXXXX0360 SAFFRON THALI HOUSE",
+  "description": "POS 3522XXXXXX0360 SAFFRON THALI HOUSE",
+  "notes": "",
+  "id": "h109"
+ },
+ {
+  "date": "2026-04-09",
+  "txn_type": "debit",
+  "amount": "1057.06",
+  "category": "Food",
+  "name": "CRUSTWORKS PIZZA",
+  "description": "UPI/DR/290407221580/CRUSTWORKS PIZZA/FKBK0418374/crustworkspizza@fkbank/UPI",
+  "notes": "",
+  "id": "h110"
+ },
+ {
+  "date": "2026-04-09",
+  "txn_type": "debit",
+  "amount": "1242.82",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/626872748368/POWER BILL",
+  "notes": "",
+  "id": "h111"
+ },
+ {
+  "date": "2026-04-10",
+  "txn_type": "debit",
+  "amount": "1772.98",
+  "category": "Transport",
+  "name": "1339XXXXXX2548 HIGHWAY FUELS",
+  "description": "POS 1339XXXXXX2548 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h112"
+ },
+ {
+  "date": "2026-04-10",
+  "txn_type": "debit",
+  "amount": "220.34",
+  "category": "Food",
+  "name": "SQUEEZE JUICE BAR",
+  "description": "UPI/DR/377177755098/SQUEEZE JUICE BAR/FKBK0072478/squeezejuicebar@fkbank/UPI",
+  "notes": "",
+  "id": "h113"
+ },
+ {
+  "date": "2026-04-12",
+  "txn_type": "debit",
+  "amount": "157.62",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/359399178233/MORNING MUG CAFE/FKBK0820879/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h114"
+ },
+ {
+  "date": "2026-04-13",
+  "txn_type": "debit",
+  "amount": "1208.58",
+  "category": "Transfer",
+  "name": "P2A",
+  "description": "IMPS/P2A/865846351527/K EXAMPLE/PAYBACK",
+  "notes": "rent share",
+  "id": "h115"
+ },
+ {
+  "date": "2026-04-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/907120525862/PULSE TELECOM/FKBK0293658/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h116"
+ },
+ {
+  "date": "2026-04-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/667654521372/SUBSCRIPTION",
+  "notes": "",
+  "id": "h117"
+ },
+ {
+  "date": "2026-04-18",
+  "txn_type": "debit",
+  "amount": "155.31",
+  "category": "Groceries",
+  "name": "CORNERSTOP PROVISIONS",
+  "description": "UPI/DR/426648052553/CORNERSTOP PROVISIONS/FKBK0124738/cornerstopprovisions@fkbank/UPI",
+  "notes": "",
+  "id": "h118"
+ },
+ {
+  "date": "2026-04-19",
+  "txn_type": "debit",
+  "amount": "2366.50",
+  "category": "Groceries",
+  "name": "2359XXXXXX9620 VALUECART SUPERMARKET",
+  "description": "POS 2359XXXXXX9620 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h119"
+ },
+ {
+  "date": "2026-04-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/104565668591/MELODIA/FKBK0204445/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h120"
+ },
+ {
+  "date": "2026-04-25",
+  "txn_type": "debit",
+  "amount": "1933.85",
+  "category": "Health",
+  "name": "BRIGHTSMILE DENTAL",
+  "description": "UPI/DR/337330336794/BRIGHTSMILE DENTAL/FKBK0537760/brightsmiledental@fkbank/UPI",
+  "notes": "",
+  "id": "h121"
+ },
+ {
+  "date": "2026-05-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN47063064/GLOBEX SYSTEMS PAYROLL/SALARY MAY",
+  "notes": "",
+  "id": "h122"
+ },
+ {
+  "date": "2026-05-03",
+  "txn_type": "debit",
+  "amount": "255.35",
+  "category": "Food",
+  "name": "3282XXXXXX8525 SAFFRON THALI HOUSE",
+  "description": "POS 3282XXXXXX8525 SAFFRON THALI HOUSE",
+  "notes": "",
+  "id": "h123"
+ },
+ {
+  "date": "2026-05-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/285877766234/LOTUS YOGA STUDIO/FKBK0143637/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h124"
+ },
+ {
+  "date": "2026-05-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/133290599706/OAKWOOD RESIDENCY/HOUSE RENT MAY",
+  "notes": "",
+  "id": "h125"
+ },
+ {
+  "date": "2026-05-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/437582332662/CAR LOAN EMI",
+  "notes": "",
+  "id": "h126"
+ },
+ {
+  "date": "2026-05-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/224065787774/IRONPEAK FITNESS/FKBK0902209/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h127"
+ },
+ {
+  "date": "2026-05-07",
+  "txn_type": "debit",
+  "amount": "126.95",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/434195448777/ZIPAUTO RIDES/FKBK0748209/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h128"
+ },
+ {
+  "date": "2026-05-08",
+  "txn_type": "debit",
+  "amount": "15000.00",
+  "category": "Others",
+  "name": "LITTLE SPROUTS SCHOOL",
+  "description": "NEFT/DR/439362136841/LITTLE SPROUTS SCHOOL/TERM FEES MAY",
+  "notes": "",
+  "id": "h129"
+ },
+ {
+  "date": "2026-05-09",
+  "txn_type": "debit",
+  "amount": "3389.92",
+  "category": "Shopping",
+  "name": "NESTWELL HOME DECOR",
+  "description": "UPI/DR/261959081317/NESTWELL HOME DECOR/FKBK0145779/nestwellhomedecor@fkbank/UPI",
+  "notes": "",
+  "id": "h130"
+ },
+ {
+  "date": "2026-05-09",
+  "txn_type": "debit",
+  "amount": "1914.77",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/119437119997/POWER BILL",
+  "notes": "",
+  "id": "h131"
+ },
+ {
+  "date": "2026-05-11",
+  "txn_type": "debit",
+  "amount": "956.52",
+  "category": "Bills",
+  "name": "HEARTH GAS",
+  "description": "UPI/DR/756119567326/HEARTH GAS/FKBK0015153/hearthgas@fkbank/CYLINDER BOOKING",
+  "notes": "",
+  "id": "h132"
+ },
+ {
+  "date": "2026-05-12",
+  "txn_type": "debit",
+  "amount": "2170.29",
+  "category": "Transport",
+  "name": "7830XXXXXX1974 HIGHWAY FUELS",
+  "description": "POS 7830XXXXXX1974 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h133"
+ },
+ {
+  "date": "2026-05-12",
+  "txn_type": "debit",
+  "amount": "5200.00",
+  "category": "Health",
+  "name": "TRUSTSHIELD HEALTH INSURANCE",
+  "description": "ACH/TRUSTSHIELD HEALTH INSURANCE/276961124502/POLICY RENEWAL",
+  "notes": "",
+  "id": "h134"
+ },
+ {
+  "date": "2026-05-14",
+  "txn_type": "debit",
+  "amount": "252.45",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/874160278651/MORNING MUG CAFE/FKBK0858651/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h135"
+ },
+ {
+  "date": "2026-05-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/141192682235/PULSE TELECOM/FKBK0944102/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h136"
+ },
+ {
+  "date": "2026-05-15",
+  "txn_type": "credit",
+  "amount": "1099.69",
+  "category": "Groceries",
+  "name": "VALUECART SUPERMARKET",
+  "description": "UPI/CR/037357540706/VALUECART SUPERMARKET/FKBK0888649/valuecartsupermarket@fkbank/REFUND",
+  "notes": "",
+  "id": "h137"
+ },
+ {
+  "date": "2026-05-16",
+  "txn_type": "debit",
+  "amount": "999.00",
+  "category": "Bills",
+  "name": "SWIFTNET FIBER",
+  "description": "UPI/DR/638125709351/SWIFTNET FIBER/FKBK0660558/swiftnetfiber@fkbank/INTERNET PLAN",
+  "notes": "",
+  "id": "h138"
+ },
+ {
+  "date": "2026-05-17",
+  "txn_type": "debit",
+  "amount": "2592.31",
+  "category": "Others",
+  "name": "ATM",
+  "description": "ATM WDL/662449198200/LINK ROAD BRANCH",
+  "notes": "",
+  "id": "h139"
+ },
+ {
+  "date": "2026-05-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/987141887878/SUBSCRIPTION",
+  "notes": "",
+  "id": "h140"
+ },
+ {
+  "date": "2026-05-19",
+  "txn_type": "debit",
+  "amount": "188.76",
+  "category": "Groceries",
+  "name": "CORNERSTOP PROVISIONS",
+  "description": "UPI/DR/908097193087/CORNERSTOP PROVISIONS/FKBK0960625/cornerstopprovisions@fkbank/UPI",
+  "notes": "",
+  "id": "h141"
+ },
+ {
+  "date": "2026-05-21",
+  "txn_type": "debit",
+  "amount": "458.69",
+  "category": "Bills",
+  "name": "CLEARSTREAM WATER",
+  "description": "ACH/CLEARSTREAM WATER/902507664376/WATER BILL",
+  "notes": "",
+  "id": "h142"
+ },
+ {
+  "date": "2026-05-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/506592929138/MELODIA/FKBK0581674/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h143"
+ },
+ {
+  "date": "2026-05-23",
+  "txn_type": "debit",
+  "amount": "3102.77",
+  "category": "Groceries",
+  "name": "5318XXXXXX1990 VALUECART SUPERMARKET",
+  "description": "POS 5318XXXXXX1990 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h144"
+ },
+ {
+  "date": "2026-05-28",
+  "txn_type": "credit",
+  "amount": "201.96",
+  "category": "Others",
+  "name": "BY INTEREST CREDIT",
+  "description": "BY INTEREST CREDIT/039706599371",
+  "notes": "",
+  "id": "h145"
+ },
+ {
+  "date": "2026-05-29",
+  "txn_type": "debit",
+  "amount": "5886.80",
+  "category": "Transport",
+  "name": "BLUEWING AIR",
+  "description": "UPI/DR/879780656149/BLUEWING AIR/FKBK0047566/bluewingair@fkbank/UPI",
+  "notes": "",
+  "id": "h146"
+ },
+ {
+  "date": "2026-06-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN25318381/GLOBEX SYSTEMS PAYROLL/SALARY JUN",
+  "notes": "",
+  "id": "h147"
+ },
+ {
+  "date": "2026-06-03",
+  "txn_type": "debit",
+  "amount": "1459.87",
+  "category": "Transport",
+  "name": "7781XXXXXX4871 HIGHWAY FUELS",
+  "description": "POS 7781XXXXXX4871 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h148"
+ },
+ {
+  "date": "2026-06-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/367823787133/LOTUS YOGA STUDIO/FKBK0817382/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h149"
+ },
+ {
+  "date": "2026-06-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/346197705044/OAKWOOD RESIDENCY/HOUSE RENT JUN",
+  "notes": "",
+  "id": "h150"
+ },
+ {
+  "date": "2026-06-04",
+  "txn_type": "debit",
+  "amount": "2392.62",
+  "category": "Groceries",
+  "name": "3068XXXXXX2165 VALUECART SUPERMARKET",
+  "description": "POS 3068XXXXXX2165 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h151"
+ },
+ {
+  "date": "2026-06-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/866886991954/CAR LOAN EMI",
+  "notes": "",
+  "id": "h152"
+ },
+ {
+  "date": "2026-06-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/146967115545/IRONPEAK FITNESS/FKBK0215838/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h153"
+ },
+ {
+  "date": "2026-06-09",
+  "txn_type": "debit",
+  "amount": "291.04",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/728870989736/MORNING MUG CAFE/FKBK0145256/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h154"
+ },
+ {
+  "date": "2026-06-09",
+  "txn_type": "debit",
+  "amount": "2153.40",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/127379972026/POWER BILL",
+  "notes": "",
+  "id": "h155"
+ },
+ {
+  "date": "2026-06-11",
+  "txn_type": "debit",
+  "amount": "4233.95",
+  "category": "Others",
+  "name": "ATM",
+  "description": "ATM WDL/563961115986/LINK ROAD BRANCH",
+  "notes": "",
+  "id": "h156"
+ },
+ {
+  "date": "2026-06-13",
+  "txn_type": "debit",
+  "amount": "19752.49",
+  "category": "Shopping",
+  "name": "VOLTEDGE DIGITAL",
+  "description": "UPI/DR/319931313867/VOLTEDGE DIGITAL/FKBK0013115/voltedgedigital@fkbank/UPI",
+  "notes": "",
+  "id": "h157"
+ },
+ {
+  "date": "2026-06-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/102232568306/PULSE TELECOM/FKBK0541804/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h158"
+ },
+ {
+  "date": "2026-06-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/215127831479/SUBSCRIPTION",
+  "notes": "",
+  "id": "h159"
+ },
+ {
+  "date": "2026-06-22",
+  "txn_type": "debit",
+  "amount": "163.72",
+  "category": "Groceries",
+  "name": "CORNERSTOP PROVISIONS",
+  "description": "UPI/DR/157187805987/CORNERSTOP PROVISIONS/FKBK0419273/cornerstopprovisions@fkbank/UPI",
+  "notes": "",
+  "id": "h160"
+ },
+ {
+  "date": "2026-06-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/367524096581/MELODIA/FKBK0674075/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h161"
+ },
+ {
+  "date": "2026-06-24",
+  "txn_type": "debit",
+  "amount": "139.45",
+  "category": "Food",
+  "name": "3614XXXXXX1989 GOLDENCRUST BAKERY",
+  "description": "POS 3614XXXXXX1989 GOLDENCRUST BAKERY",
+  "notes": "",
+  "id": "h162"
+ },
+ {
+  "date": "2026-06-30",
+  "txn_type": "debit",
+  "amount": "311.16",
+  "category": "Food",
+  "name": "4333XXXXXX2057 SAFFRON THALI HOUSE",
+  "description": "POS 4333XXXXXX2057 SAFFRON THALI HOUSE",
+  "notes": "",
+  "id": "h163"
+ },
+ {
+  "date": "2026-07-01",
+  "txn_type": "debit",
+  "amount": "1685.24",
+  "category": "Others",
+  "name": "ATM",
+  "description": "ATM WDL/400397686151/LINK ROAD BRANCH",
+  "notes": "",
+  "id": "h164"
+ },
+ {
+  "date": "2026-07-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN99490136/GLOBEX SYSTEMS PAYROLL/SALARY JUL",
+  "notes": "",
+  "id": "h165"
+ },
+ {
+  "date": "2026-07-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/079225053126/LOTUS YOGA STUDIO/FKBK0307367/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h166"
+ },
+ {
+  "date": "2026-07-04",
+  "txn_type": "debit",
+  "amount": "614.11",
+  "category": "Groceries",
+  "name": "CORNERSTOP PROVISIONS",
+  "description": "UPI/DR/784104584136/CORNERSTOP PROVISIONS/FKBK0400470/cornerstopprovisions@fkbank/UPI",
+  "notes": "",
+  "id": "h167"
+ },
+ {
+  "date": "2026-07-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/124829211248/OAKWOOD RESIDENCY/HOUSE RENT JUL",
+  "notes": "",
+  "id": "h168"
+ },
+ {
+  "date": "2026-07-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/566648451419/CAR LOAN EMI",
+  "notes": "",
+  "id": "h169"
+ },
+ {
+  "date": "2026-07-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/977546349232/IRONPEAK FITNESS/FKBK0750171/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h170"
+ },
+ {
+  "date": "2026-07-08",
+  "txn_type": "debit",
+  "amount": "1095.90",
+  "category": "Health",
+  "name": "0990XXXXXX8968 MEDIPLUS CHEMIST",
+  "description": "POS 0990XXXXXX8968 MEDIPLUS CHEMIST",
+  "notes": "",
+  "id": "h171"
+ },
+ {
+  "date": "2026-07-09",
+  "txn_type": "debit",
+  "amount": "1604.92",
+  "category": "Shopping",
+  "name": "2821XXXXXX0376 URBAN THREADS",
+  "description": "POS 2821XXXXXX0376 URBAN THREADS",
+  "notes": "",
+  "id": "h172"
+ },
+ {
+  "date": "2026-07-09",
+  "txn_type": "debit",
+  "amount": "1593.19",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/876510197472/POWER BILL",
+  "notes": "",
+  "id": "h173"
+ },
+ {
+  "date": "2026-07-11",
+  "txn_type": "debit",
+  "amount": "960.38",
+  "category": "Bills",
+  "name": "HEARTH GAS",
+  "description": "UPI/DR/775024720024/HEARTH GAS/FKBK0219899/hearthgas@fkbank/CYLINDER BOOKING",
+  "notes": "",
+  "id": "h174"
+ },
+ {
+  "date": "2026-07-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/740455047714/PULSE TELECOM/FKBK0629363/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h175"
+ },
+ {
+  "date": "2026-07-15",
+  "txn_type": "debit",
+  "amount": "122.88",
+  "category": "Food",
+  "name": "SQUEEZE JUICE BAR",
+  "description": "UPI/DR/920162644259/SQUEEZE JUICE BAR/FKBK0968821/squeezejuicebar@fkbank/UPI",
+  "notes": "",
+  "id": "h176"
+ },
+ {
+  "date": "2026-07-17",
+  "txn_type": "debit",
+  "amount": "238.75",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/792345636680/MORNING MUG CAFE/FKBK0693833/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h177"
+ },
+ {
+  "date": "2026-07-17",
+  "txn_type": "debit",
+  "amount": "745.69",
+  "category": "Entertainment",
+  "name": "GRANDVIEW CINEMAS",
+  "description": "UPI/DR/754316983038/GRANDVIEW CINEMAS/FKBK0335262/grandviewcinemas@fkbank/UPI",
+  "notes": "",
+  "id": "h178"
+ },
+ {
+  "date": "2026-07-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/075683820479/SUBSCRIPTION",
+  "notes": "",
+  "id": "h179"
+ },
+ {
+  "date": "2026-07-21",
+  "txn_type": "debit",
+  "amount": "1337.60",
+  "category": "Transport",
+  "name": "9232XXXXXX6570 HIGHWAY FUELS",
+  "description": "POS 9232XXXXXX6570 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h180"
+ },
+ {
+  "date": "2026-07-21",
+  "txn_type": "debit",
+  "amount": "498.90",
+  "category": "Bills",
+  "name": "CLEARSTREAM WATER",
+  "description": "ACH/CLEARSTREAM WATER/905796213376/WATER BILL",
+  "notes": "",
+  "id": "h181"
+ },
+ {
+  "date": "2026-07-22",
+  "txn_type": "debit",
+  "amount": "194.89",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/410275808137/ZIPAUTO RIDES/FKBK0076168/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h182"
+ },
+ {
+  "date": "2026-07-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/048954039117/MELODIA/FKBK0552541/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h183"
+ },
+ {
+  "date": "2026-07-25",
+  "txn_type": "debit",
+  "amount": "4150.54",
+  "category": "Groceries",
+  "name": "6594XXXXXX3437 VALUECART SUPERMARKET",
+  "description": "POS 6594XXXXXX3437 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h184"
+ },
+ {
+  "date": "2026-07-28",
+  "txn_type": "debit",
+  "amount": "2818.65",
+  "category": "Entertainment",
+  "name": "LIVEWIRE EVENTS",
+  "description": "UPI/DR/699679052513/LIVEWIRE EVENTS/FKBK0530597/livewireevents@fkbank/CONCERT",
+  "notes": "",
+  "id": "h185"
+ },
+ {
+  "date": "2026-08-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN39661889/GLOBEX SYSTEMS PAYROLL/SALARY AUG",
+  "notes": "",
+  "id": "h186"
+ },
+ {
+  "date": "2026-08-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/369369772948/LOTUS YOGA STUDIO/FKBK0662587/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h187"
+ },
+ {
+  "date": "2026-08-04",
+  "txn_type": "debit",
+  "amount": "1035.54",
+  "category": "Food",
+  "name": "CRUSTWORKS PIZZA",
+  "description": "UPI/DR/104916447609/CRUSTWORKS PIZZA/FKBK0642517/crustworkspizza@fkbank/UPI",
+  "notes": "",
+  "id": "h188"
+ },
+ {
+  "date": "2026-08-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/732535509432/OAKWOOD RESIDENCY/HOUSE RENT AUG",
+  "notes": "",
+  "id": "h189"
+ },
+ {
+  "date": "2026-08-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/069450065385/CAR LOAN EMI",
+  "notes": "",
+  "id": "h190"
+ },
+ {
+  "date": "2026-08-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/896518676328/IRONPEAK FITNESS/FKBK0884952/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h191"
+ },
+ {
+  "date": "2026-08-08",
+  "txn_type": "debit",
+  "amount": "15000.00",
+  "category": "Others",
+  "name": "LITTLE SPROUTS SCHOOL",
+  "description": "NEFT/DR/686751266488/LITTLE SPROUTS SCHOOL/TERM FEES AUG",
+  "notes": "",
+  "id": "h192"
+ },
+ {
+  "date": "2026-08-08",
+  "txn_type": "debit",
+  "amount": "1510.61",
+  "category": "Others",
+  "name": "PAWS AND CLAWS VET",
+  "description": "UPI/DR/675307713504/PAWS AND CLAWS VET/FKBK0119242/pawsandclawsvet@fkbank/UPI",
+  "notes": "",
+  "id": "h193"
+ },
+ {
+  "date": "2026-08-09",
+  "txn_type": "debit",
+  "amount": "2060.51",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/619306379777/POWER BILL",
+  "notes": "",
+  "id": "h194"
+ },
+ {
+  "date": "2026-08-14",
+  "txn_type": "debit",
+  "amount": "185.03",
+  "category": "Food",
+  "name": "9588XXXXXX2069 GOLDENCRUST BAKERY",
+  "description": "POS 9588XXXXXX2069 GOLDENCRUST BAKERY",
+  "notes": "",
+  "id": "h195"
+ },
+ {
+  "date": "2026-08-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/700774968778/PULSE TELECOM/FKBK0703342/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h196"
+ },
+ {
+  "date": "2026-08-15",
+  "txn_type": "debit",
+  "amount": "782.04",
+  "category": "Groceries",
+  "name": "CORNERSTOP PROVISIONS",
+  "description": "UPI/DR/061740654430/CORNERSTOP PROVISIONS/FKBK0689324/cornerstopprovisions@fkbank/UPI",
+  "notes": "",
+  "id": "h197"
+ },
+ {
+  "date": "2026-08-16",
+  "txn_type": "debit",
+  "amount": "999.00",
+  "category": "Bills",
+  "name": "SWIFTNET FIBER",
+  "description": "UPI/DR/303999698732/SWIFTNET FIBER/FKBK0174738/swiftnetfiber@fkbank/INTERNET PLAN",
+  "notes": "",
+  "id": "h198"
+ },
+ {
+  "date": "2026-08-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/831697458228/SUBSCRIPTION",
+  "notes": "",
+  "id": "h199"
+ },
+ {
+  "date": "2026-08-22",
+  "txn_type": "debit",
+  "amount": "1473.73",
+  "category": "Groceries",
+  "name": "9077XXXXXX5891 VALUECART SUPERMARKET",
+  "description": "POS 9077XXXXXX5891 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h200"
+ },
+ {
+  "date": "2026-08-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/825231536377/MELODIA/FKBK0517676/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h201"
+ },
+ {
+  "date": "2026-08-24",
+  "txn_type": "debit",
+  "amount": "428.84",
+  "category": "Food",
+  "name": "MORNING MUG CAFE",
+  "description": "UPI/DR/108749144734/MORNING MUG CAFE/FKBK0390386/morningmugcafe@fkbank/UPI",
+  "notes": "",
+  "id": "h202"
+ },
+ {
+  "date": "2026-08-25",
+  "txn_type": "debit",
+  "amount": "841.13",
+  "category": "Shopping",
+  "name": "3185XXXXXX1178 URBAN THREADS",
+  "description": "POS 3185XXXXXX1178 URBAN THREADS",
+  "notes": "",
+  "id": "h203"
+ },
+ {
+  "date": "2026-08-28",
+  "txn_type": "debit",
+  "amount": "272.43",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/363215390418/ZIPAUTO RIDES/FKBK0245759/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h204"
+ },
+ {
+  "date": "2026-08-28",
+  "txn_type": "debit",
+  "amount": "672.21",
+  "category": "Entertainment",
+  "name": "GRANDVIEW CINEMAS",
+  "description": "UPI/DR/143173428276/GRANDVIEW CINEMAS/FKBK0226473/grandviewcinemas@fkbank/UPI",
+  "notes": "",
+  "id": "h205"
+ },
+ {
+  "date": "2026-08-28",
+  "txn_type": "credit",
+  "amount": "276.53",
+  "category": "Others",
+  "name": "BY INTEREST CREDIT",
+  "description": "BY INTEREST CREDIT/814493160033",
+  "notes": "",
+  "id": "h206"
+ },
+ {
+  "date": "2026-09-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN57483138/GLOBEX SYSTEMS PAYROLL/SALARY SEP",
+  "notes": "",
+  "id": "h207"
+ },
+ {
+  "date": "2026-09-03",
+  "txn_type": "debit",
+  "amount": "1556.17",
+  "category": "Transport",
+  "name": "3473XXXXXX1392 HIGHWAY FUELS",
+  "description": "POS 3473XXXXXX1392 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h208"
+ },
+ {
+  "date": "2026-09-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/766479329519/LOTUS YOGA STUDIO/FKBK0389267/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h209"
+ },
+ {
+  "date": "2026-09-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/546371924777/OAKWOOD RESIDENCY/HOUSE RENT SEP",
+  "notes": "",
+  "id": "h210"
+ },
+ {
+  "date": "2026-09-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/986508108150/CAR LOAN EMI",
+  "notes": "",
+  "id": "h211"
+ },
+ {
+  "date": "2026-09-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/283480656709/IRONPEAK FITNESS/FKBK0017234/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h212"
+ },
+ {
+  "date": "2026-09-09",
+  "txn_type": "debit",
+  "amount": "1381.61",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/541493617005/POWER BILL",
+  "notes": "",
+  "id": "h213"
+ },
+ {
+  "date": "2026-09-11",
+  "txn_type": "debit",
+  "amount": "945.77",
+  "category": "Bills",
+  "name": "HEARTH GAS",
+  "description": "UPI/DR/856858609478/HEARTH GAS/FKBK0369191/hearthgas@fkbank/CYLINDER BOOKING",
+  "notes": "",
+  "id": "h214"
+ },
+ {
+  "date": "2026-09-11",
+  "txn_type": "debit",
+  "amount": "624.24",
+  "category": "Transport",
+  "name": "TRACKLINE RAIL",
+  "description": "UPI/DR/928545928543/TRACKLINE RAIL/FKBK0003532/tracklinerail@fkbank/UPI",
+  "notes": "",
+  "id": "h215"
+ },
+ {
+  "date": "2026-09-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/848583892535/PULSE TELECOM/FKBK0585605/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h216"
+ },
+ {
+  "date": "2026-09-16",
+  "txn_type": "debit",
+  "amount": "4004.67",
+  "category": "Groceries",
+  "name": "2167XXXXXX4486 VALUECART SUPERMARKET",
+  "description": "POS 2167XXXXXX4486 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h217"
+ },
+ {
+  "date": "2026-09-17",
+  "txn_type": "debit",
+  "amount": "299.00",
+  "category": "Entertainment",
+  "name": "REELBOX",
+  "description": "ACH/REELBOX/605347194624/SUBSCRIPTION",
+  "notes": "",
+  "id": "h218"
+ },
+ {
+  "date": "2026-09-21",
+  "txn_type": "debit",
+  "amount": "257.85",
+  "category": "Bills",
+  "name": "CLEARSTREAM WATER",
+  "description": "ACH/CLEARSTREAM WATER/327890013220/WATER BILL",
+  "notes": "",
+  "id": "h219"
+ },
+ {
+  "date": "2026-09-23",
+  "txn_type": "debit",
+  "amount": "99.00",
+  "category": "Entertainment",
+  "name": "MELODIA",
+  "description": "UPI/DR/155448801352/MELODIA/FKBK0472315/melodia@fkbank/PREMIUM",
+  "notes": "",
+  "id": "h220"
+ },
+ {
+  "date": "2026-09-24",
+  "txn_type": "debit",
+  "amount": "479.75",
+  "category": "Health",
+  "name": "6211XXXXXX8274 MEDIPLUS CHEMIST",
+  "description": "POS 6211XXXXXX8274 MEDIPLUS CHEMIST",
+  "notes": "",
+  "id": "h221"
+ },
+ {
+  "date": "2026-09-25",
+  "txn_type": "debit",
+  "amount": "193.95",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/340713007229/ZIPAUTO RIDES/FKBK0851556/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h222"
+ },
+ {
+  "date": "2026-09-27",
+  "txn_type": "debit",
+  "amount": "2562.50",
+  "category": "Entertainment",
+  "name": "LIVEWIRE EVENTS",
+  "description": "UPI/DR/193962642987/LIVEWIRE EVENTS/FKBK0453345/livewireevents@fkbank/CONCERT",
+  "notes": "",
+  "id": "h223"
+ },
+ {
+  "date": "2026-09-30",
+  "txn_type": "debit",
+  "amount": "391.47",
+  "category": "Food",
+  "name": "6989XXXXXX3372 SAFFRON THALI HOUSE",
+  "description": "POS 6989XXXXXX3372 SAFFRON THALI HOUSE",
+  "notes": "",
+  "id": "h224"
+ },
+ {
+  "date": "2026-10-01",
+  "txn_type": "credit",
+  "amount": "72000.00",
+  "category": "Salary",
+  "name": "GLOBEX SYSTEMS PAYROLL",
+  "description": "NEFT/CR/FKBKN35004447/GLOBEX SYSTEMS PAYROLL/SALARY OCT",
+  "notes": "",
+  "id": "h225"
+ },
+ {
+  "date": "2026-10-01",
+  "txn_type": "debit",
+  "amount": "4624.38",
+  "category": "Transfer",
+  "name": "P2A",
+  "description": "IMPS/P2A/142579922063/K EXAMPLE/PAYBACK",
+  "notes": "",
+  "id": "h226"
+ },
+ {
+  "date": "2026-10-03",
+  "txn_type": "debit",
+  "amount": "1200.00",
+  "category": "Health",
+  "name": "LOTUS YOGA STUDIO",
+  "description": "UPI/DR/307574146341/LOTUS YOGA STUDIO/FKBK0471682/lotusyogastudio@fkbank/CLASSES",
+  "notes": "",
+  "id": "h227"
+ },
+ {
+  "date": "2026-10-04",
+  "txn_type": "debit",
+  "amount": "18500.00",
+  "category": "Rent",
+  "name": "OAKWOOD RESIDENCY",
+  "description": "NEFT/DR/719140486644/OAKWOOD RESIDENCY/HOUSE RENT OCT",
+  "notes": "",
+  "id": "h228"
+ },
+ {
+  "date": "2026-10-05",
+  "txn_type": "debit",
+  "amount": "9800.00",
+  "category": "Others",
+  "name": "CAPSTONE AUTO LOANS",
+  "description": "ACH/CAPSTONE AUTO LOANS/082618950553/CAR LOAN EMI",
+  "notes": "",
+  "id": "h229"
+ },
+ {
+  "date": "2026-10-06",
+  "txn_type": "debit",
+  "amount": "2000.00",
+  "category": "Health",
+  "name": "IRONPEAK FITNESS",
+  "description": "UPI/DR/881295433059/IRONPEAK FITNESS/FKBK0875015/ironpeakfitness@fkbank/MONTHLY FEE",
+  "notes": "",
+  "id": "h230"
+ },
+ {
+  "date": "2026-10-09",
+  "txn_type": "debit",
+  "amount": "1924.43",
+  "category": "Bills",
+  "name": "SUNGRID ELECTRIC",
+  "description": "ACH/SUNGRID ELECTRIC/750622301855/POWER BILL",
+  "notes": "",
+  "id": "h231"
+ },
+ {
+  "date": "2026-10-11",
+  "txn_type": "debit",
+  "amount": "2318.27",
+  "category": "Groceries",
+  "name": "3210XXXXXX1204 VALUECART SUPERMARKET",
+  "description": "POS 3210XXXXXX1204 VALUECART SUPERMARKET",
+  "notes": "",
+  "id": "h232"
+ },
+ {
+  "date": "2026-10-13",
+  "txn_type": "debit",
+  "amount": "2634.89",
+  "category": "Transport",
+  "name": "6505XXXXXX3758 HIGHWAY FUELS",
+  "description": "POS 6505XXXXXX3758 HIGHWAY FUELS",
+  "notes": "",
+  "id": "h233"
+ },
+ {
+  "date": "2026-10-14",
+  "txn_type": "debit",
+  "amount": "274.54",
+  "category": "Transport",
+  "name": "ZIPAUTO RIDES",
+  "description": "UPI/DR/023390513220/ZIPAUTO RIDES/FKBK0827055/zipautorides@fkbank/UPI",
+  "notes": "",
+  "id": "h234"
+ },
+ {
+  "date": "2026-10-14",
+  "txn_type": "debit",
+  "amount": "499.00",
+  "category": "Bills",
+  "name": "PULSE TELECOM",
+  "description": "UPI/DR/751772820133/PULSE TELECOM/FKBK0272941/pulsetelecom@fkbank/PREPAID PACK",
+  "notes": "",
+  "id": "h235"
+ }
+]

@@ -141,6 +141,22 @@ def test_a_broken_reply_is_repaired(alice):
     assert outcome(responses)["kind"] == "preview"
 
 
+def test_a_panel_reply_that_sets_nothing_is_repaired(alice):
+    # A small model sometimes copies a worked example's words and sets no key at all.
+    empty = reply(reason="This asks for a reason, not a chart.", title="Why so much in March?")
+    responses = converse(alice, "spend by category", [empty, BAR])
+    assert responses[1]["progress"] == {"label": "Fixing the panel", "attempt": 2}
+    assert "sets no chart, measure or x axis" in last_message(responses[1])
+    assert outcome(responses)["kind"] == "preview"
+
+
+def test_reining_in_shows_its_notes_with_the_panel(alice):
+    spurious = reply(chart="bar", measure="spend", x="category", calc="running_total")
+    shown = outcome(converse(alice, "spend by category", [spurious]))
+    assert "calc" not in shown["config"]
+    assert "The request asks for no calculation, so none was added." in shown["notes"]
+
+
 def test_a_panel_the_rules_refuse_is_repaired_with_the_reason(alice):
     pie_of_net = reply(chart="pie", measure="net", x="category")
     responses = converse(alice, "net by category", [pie_of_net, BAR])
@@ -275,7 +291,7 @@ def test_a_step_with_nothing_waiting_is_refused(alice):
 
 
 def test_a_step_of_the_wrong_kind_is_refused(indexed):
-    waiting_chat = service.turn(indexed, "spend", None, {}, EMBED)
+    waiting_chat = service.turn(indexed, "workout spend", None, {}, EMBED)
     with pytest.raises(AgentError):
         service.step(indexed, waiting_chat["token"], vector=NEAR_GYM)
     waiting_embed = service.step(

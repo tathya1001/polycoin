@@ -93,15 +93,26 @@ def test_index_then_ask_end_to_end(alice):
     assert response.status_code == 200
     body = response.json()
     assert set(body) == {
-        "prompt_version", "profile", "period", "coverage", "summary", "sources", "in_prompt",
-        "messages",
-        "options",
+        "prompt_version", "format", "profile", "period", "coverage", "summary", "sources",
+        "in_prompt", "messages", "options",
     }  # fmt: skip
+    assert body["format"] is None
     assert body["sources"][0]["transaction"] == str(rows["gym"].id)
     assert body["sources"][0]["amount"] == "4.50"
     assert [m["role"] for m in body["messages"]] == ["system", "user"]
     assert body["options"] == {"temperature": 0.1, "num_ctx": 4096}
     assert body["coverage"] == {"searched": 2, "indexed": 2, "total": 2}
+
+
+def test_an_ask_can_request_a_structured_answer(alice):
+    history(alice)
+    api = as_user(alice)
+    index_over_http(api)
+
+    body = ask(api, answer_format="json").json()
+    assert body["format"]["required"] == ["answer", "citations"]
+    assert body["prompt_version"].endswith("-json")
+    assert ask(api, answer_format="html").status_code == 400
 
 
 def test_a_question_with_a_date_phrase_reports_the_period_it_searched(alice):

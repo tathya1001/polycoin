@@ -203,14 +203,34 @@ def test_a_search_becomes_a_full_answer_context(alice):
     result = answer.build_answer(alice, "gym", search(alice, "gym", vector=NEAR_GYM), TODAY)
 
     assert set(result) == {
-        "prompt_version", "period", "coverage", "summary", "sources", "in_prompt", "messages",
-        "options",
+        "prompt_version", "format", "period", "coverage", "summary", "sources", "in_prompt",
+        "messages", "options",
     }  # fmt: skip
     assert result["sources"][0]["transaction"] == str(rows["gym"].id)
     assert result["sources"][0]["n"] == 1
     assert result["summary"]["matches"] == len(result["sources"])
     assert [message["role"] for message in result["messages"]] == ["system", "user"]
     assert "Fitzone Gym" in result["messages"][1]["content"]
+    assert result["format"] is None  # free text, streamed
+    assert result["prompt_version"] == answer.PROMPT_VERSION
+
+
+def test_a_structured_answer_asks_for_json_in_a_fixed_shape(alice):
+    history(alice)
+    found = search(alice, "gym", vector=NEAR_GYM)
+    text = answer.build_answer(alice, "gym", found, TODAY)
+    structured = answer.build_answer(alice, "gym", found, TODAY, "json")
+
+    assert structured["format"] == answer.ANSWER_SCHEMA
+    assert structured["format"]["required"] == ["answer", "citations"]
+    assert structured["prompt_version"] == f"{answer.PROMPT_VERSION}-json"
+    # The same rules, sources and summary; only the closing instruction differs.
+    assert structured["messages"][0] == text["messages"][0]
+    assert structured["sources"] == text["sources"]
+    assert structured["messages"][1]["content"].endswith(
+        '"citations" lists the number of every transaction you used.'
+    )
+    assert text["messages"][1]["content"].endswith("like [1].")
 
 
 def test_in_prompt_says_how_many_sources_the_model_saw(alice, settings):

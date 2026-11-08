@@ -57,6 +57,31 @@ Answer in a few short sentences and cite the transactions you used, like [1]."""
 # where they attend most: with llama3.2 (3B) this took answers that cite from 3 of 12 to 9 of 12.
 
 PROMPT = ChatPromptTemplate.from_messages([("system", SYSTEM), ("human", HUMAN)])
+
+# Structured answers, a per-user setting: the model must return JSON in this shape, so it can't
+# drop the citations the way free text can (measured on the evaluation set: ai/eval/answers.py).
+# The browser shows the answer once it is complete, since half a JSON object can't be shown.
+ANSWER_FORMATS = ("text", "json")
+ANSWER_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "answer": {"type": "string"},
+        "citations": {"type": "array", "items": {"type": "integer"}},
+    },
+    "required": ["answer", "citations"],
+}
+HUMAN_JSON = (
+    HUMAN.rsplit("\n\n", 1)[0]
+    + '\n\nReply as JSON: "answer" holds a few short sentences that cite transactions like [1], '
+    'and "citations" lists the number of every transaction you used.'
+)
+PROMPT_JSON = ChatPromptTemplate.from_messages([("system", SYSTEM), ("human", HUMAN_JSON)])
+
+
+def prompt_version(answer_format: str) -> str:
+    return PROMPT_VERSION if answer_format == "text" else f"{PROMPT_VERSION}-json"
+
+
 _ROLES = {"system": "system", "human": "user"}  # LangChain message type -> Ollama chat role
 _UNSAFE = re.compile(r"[<>\x00-\x1f\x7f]")  # tags and control characters, newlines included
 
@@ -149,7 +174,12 @@ def summarize(sources: list[Source]) -> dict:
 
 
 def build_messages(
-    question: str, sources: list[Source], summary: dict, period: dict, today: date
+    question: str,
+    sources: list[Source],
+    summary: dict,
+    period: dict,
+    today: date,
+    answer_format: str = "text",
 ) -> list[dict]:
     """The grounded prompt as Ollama chat messages: [{"role", "content"}].
 
@@ -169,7 +199,8 @@ def build_messages(
         if len(shown) < summary["matches"]
         else ""
     )
-    messages = PROMPT.format_messages(
+    template = PROMPT_JSON if answer_format == "json" else PROMPT
+    messages = template.format_messages(
         today=today.isoformat(),
         period_from=period["from"],
         period_to=period["to"],
@@ -191,17 +222,25 @@ def chat_options() -> dict:
     return {"temperature": TEMPERATURE, "num_ctx": settings.RAG_NUM_CTX}
 
 
-def build_answer(user, question: str, result: SearchResult, today: date) -> dict:
+def build_answer(
+    user, question: str, result: SearchResult, today: date, answer_format: str = "text"
+) -> dict:
     """Everything the ask response carries besides the model profile.
 
     With no matches the model is not called at all: `messages` is None, and the page shows
-    "No matching transactions".
+    "No matching transactions". `format` is the JSON schema to send with the messages for a
+    structured answer, else None.
     """
     sources = build_sources(UserCipher(user), user, result.documents) if result.documents else []
     summary = summarize(sources)
-    messages = build_messages(question, sources, summary, result.period, today) if sources else None
+    messages = (
+        build_messages(question, sources, summary, result.period, today, answer_format)
+        if sources
+        else None
+    )
     return {
-        "prompt_version": PROMPT_VERSION,
+        "prompt_version": prompt_version(answer_format),
+        "format": ANSWER_SCHEMA if answer_format == "json" else None,
         "period": result.period,
         "coverage": result.coverage,
         "summary": summary,

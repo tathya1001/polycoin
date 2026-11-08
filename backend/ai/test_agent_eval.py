@@ -14,17 +14,29 @@ from ai.eval.agent import FIELDS, SPENDING, golden_answer, golden_reply, load_ca
 from transactions.tests import make_user
 
 CASES = load_cases()
+HELD_OUT = load_cases(held_out=True)
+EVERY_CASE = CASES + HELD_OUT
+
+
+def _questions(cases: list[dict]) -> list[dict]:
+    turns = [turn for case in cases for turn in case["turns"]]
+    return [turn for turn in turns if turn["expect"].get("kind") == "not_a_panel"]
 
 
 def test_the_set_is_big_enough_and_mixed():
-    turns = [turn for case in CASES for turn in case["turns"]]
-    questions = [turn for turn in turns if turn["expect"].get("kind") == "not_a_panel"]
     chains = [case for case in CASES if len(case["turns"]) > 1]
-    assert len(CASES) >= 45 and len(questions) >= 5 and len(chains) >= 4
-    assert len({case["id"] for case in CASES}) == len(CASES)
+    assert len(CASES) >= 45 and len(_questions(CASES)) >= 5 and len(chains) >= 4
+    assert len({case["id"] for case in EVERY_CASE}) == len(EVERY_CASE)
 
 
-@pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
+def test_the_held_out_set_is_mixed_and_separate():
+    assert len(HELD_OUT) >= 20 and len(_questions(HELD_OUT)) >= 5
+    assert {case["id"] for case in HELD_OUT}.isdisjoint(case["id"] for case in CASES)
+    messages = {turn["message"].casefold() for case in CASES for turn in case["turns"]}
+    assert not any(turn["message"].casefold() in messages for c in HELD_OUT for turn in c["turns"])
+
+
+@pytest.mark.parametrize("case", EVERY_CASE, ids=[case["id"] for case in EVERY_CASE])
 def test_each_turn_is_well_formed(case):
     for turn in case["turns"]:
         assert set(turn) == {"message", "golden", "expect"}
@@ -35,18 +47,18 @@ def test_each_turn_is_well_formed(case):
 
 def test_merchants_are_the_fictional_ones():
     known = [name.lower() for name, _, _ in SPENDING]
-    for case in CASES:
+    for case in EVERY_CASE:
         for turn in case["turns"]:
             merchant = turn["golden"].get("merchant")
             assert merchant is None or any(merchant.lower() in name for name in known)
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("case", CASES, ids=[case["id"] for case in CASES])
+@pytest.mark.parametrize("case", EVERY_CASE, ids=[case["id"] for case in EVERY_CASE])
 def test_golden_replies_build_the_expected_panel(case):
     user = make_user("eval@example.com")
     seed(user, timezone.localdate())
-    for result in run_case(user, case, golden_answer(CASES)):
+    for result in run_case(user, case, golden_answer(EVERY_CASE)):
         assert result.error is None, result.error
         assert result.correct, {name: ok for name, ok in result.fields.items() if not ok}
         assert result.calls == result.parsed == 1
