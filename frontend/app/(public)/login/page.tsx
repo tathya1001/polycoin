@@ -56,7 +56,6 @@ export default function Login() {
   return (
     <AuthLayout
       title="Welcome back"
-      subtitle="Log in to see your dashboards."
       footer={
         <>
           No account?{" "}
@@ -95,11 +94,6 @@ export default function Login() {
         <Button type="submit" variant="primary" loading={loading} className="w-full">
           {loading ? "Logging in…" : "Log in"}
         </Button>
-        <p className="text-center text-sm text-ink-2">
-          <Link href="/recover" className={RECOVER_LINK}>
-            Forgot your password?
-          </Link>
-        </p>
       </form>
     </AuthLayout>
   );

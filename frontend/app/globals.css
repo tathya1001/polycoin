@@ -80,6 +80,8 @@ html[data-font="instrument-serif"] {
 @theme {
   --font-sans: var(--app-font);
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* The brand's typeface: the logo and the pages for visitors. The font setting never changes it. */
+  --font-brand: var(--font-geist-sans), system-ui, sans-serif;
 
   /* Classic values. Light and Dark override them below. */
   --color-canvas: #f7f6f2; /* the page */
@@ -243,6 +245,54 @@ dialog::backdrop {
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/* Marks drawn outside the chart library (the home page's dashboard preview) take a series colour
+   like the charts do: each carries its colour and its dark step, and Dark mode uses the step. */
+.series-mark {
+  --mark: var(--mark-light);
+}
+
+:root[data-theme="dark"] .series-mark {
+  --mark: var(--mark-dark);
+}
+
+/* Donut slice edges, as the charts draw them: an ink outline in Classic, a thin gap the colour of
+   the page in Light and Dark. */
+.preview-slice {
+  stroke: var(--color-ink);
+  stroke-width: 1.5px;
+}
+
+:root[data-theme="light"] .preview-slice,
+:root[data-theme="dark"] .preview-slice {
+  stroke: var(--color-canvas);
+  stroke-width: 2px;
+}
+
+/* The dashboard preview's entrance, once: the panels rise in turn and the stacked area draws from
+   left to right. With reduced motion there is no entrance at all (not even the delays). */
+@keyframes preview-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+@keyframes preview-reveal {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .preview-rise {
+    animation: preview-rise 0.5s ease-out backwards;
+  }
+
+  .preview-reveal {
+    animation: preview-reveal 1.2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.45s backwards;
   }
 }
 

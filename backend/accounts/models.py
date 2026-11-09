@@ -78,15 +78,15 @@ class UserPreferences(models.Model):
     # canvas, faster when a chart has thousands of points.
     CHART_QUALITY_CHOICES = [("quality", "High quality"), ("performance", "Performance")]
     DEFAULT_CHART_QUALITY = "quality"
-    # Colour mode. "system" follows the device's light/dark setting. The ids must match
-    # frontend/lib/theme.ts (THEME_OPTIONS).
+    # Colour mode. "system" follows the device's light/dark setting, and is the default. The ids
+    # and the default must match frontend/lib/theme.ts (THEME_OPTIONS, DEFAULT_THEME).
     THEME_CHOICES = [
         ("classic", "Classic"),
         ("light", "Light"),
         ("dark", "Dark"),
         ("system", "Match device"),
     ]
-    DEFAULT_THEME = "classic"
+    DEFAULT_THEME = "system"
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="preferences")
     font = models.CharField(max_length=32, choices=FONT_CHOICES, default=DEFAULT_FONT)

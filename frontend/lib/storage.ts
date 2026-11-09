@@ -4,6 +4,10 @@
 // Every key the app keeps starts with this, so lib/signOut.ts can forget them all at once.
 export const STORAGE_PREFIX = "moneyangle.";
 
+// The cached copy of the user's preferences (font, colour mode...). Read by the session, by the
+// pre-paint script in app/layout.tsx, and by the pages without a session.
+export const PREFERENCES_KEY = `${STORAGE_PREFIX}prefs`;
+
 export function recall(key: string): string | null {
   try {
     return localStorage.getItem(key);

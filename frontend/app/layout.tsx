@@ -1,18 +1,21 @@
 import type { Metadata } from "next";
 import { UiProviders } from "@/components/ui/UiProviders";
+import { PREFERENCES_KEY } from "@/lib/storage";
 import { fontVariables } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "MoneyAngle",
-  description: "Secure Smart Personal Bank Statement Analyzer",
+  description: "Import a bank statement. MoneyAngle sorts every transaction and builds your dashboards.",
 };
 
 // Runs before first paint so a saved font or colour mode never flashes the default one. It only
 // reads the cached copy of the preferences (localStorage); the real values are fetched after
 // sign-in. The font id is checked against a strict pattern (an id with no CSS rule just means
-// "default"); the theme must be one of the known modes, and "system" asks the device.
-const APPLY_LOOK = `try{var d=document.documentElement,p=JSON.parse(localStorage.getItem("moneyangle.prefs")||"{}"),f=p.font,t=p.theme;if(typeof f==="string"&&/^[a-z0-9-]{1,32}$/.test(f)&&f!=="geist")d.dataset.font=f;if(t==="system")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";if(t==="light"||t==="dark")d.dataset.theme=t}catch(e){}`;
+// "default"). A theme other than the three fixed modes, or none cached at all (a visitor, or after
+// logging out), means the default, "Match device": the device's light or dark setting. When
+// localStorage is blocked, the device still decides.
+const APPLY_LOOK = `(function(){var d=document.documentElement,p={};try{p=JSON.parse(localStorage.getItem(${JSON.stringify(PREFERENCES_KEY)})||"{}")||{}}catch(e){}try{var f=p.font,t=p.theme;if(typeof f==="string"&&/^[a-z0-9-]{1,32}$/.test(f)&&f!=="geist")d.dataset.font=f;if(t!=="classic"&&t!=="light"&&t!=="dark")t=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";if(t!=="classic")d.dataset.theme=t}catch(e){}})()`;
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (

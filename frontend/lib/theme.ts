@@ -9,13 +9,15 @@ export const THEME_OPTIONS = [
   { id: "classic", name: "Classic", blurb: "Bold black outlines on a warm paper tone. The original look." },
   { id: "light", name: "Light", blurb: "A clean white tone, softer than pure white." },
   { id: "dark", name: "Dark", blurb: "Neutral black with soft text, easy on the eyes at night." },
-  { id: "system", name: "Match device", blurb: "Light or Dark, following your device's setting." },
+  { id: "system", name: "Match device", blurb: "Light or Dark, following your device's setting. The default." },
 ] as const;
 
 export type ThemeChoice = (typeof THEME_OPTIONS)[number]["id"];
 export type ResolvedTheme = "classic" | "light" | "dark";
 
-export const DEFAULT_THEME: ThemeChoice = "classic";
+// Keep in step with backend/accounts/models.py DEFAULT_THEME and the pre-paint script in
+// app/layout.tsx, which uses it when no choice is cached (a visitor, or after logging out).
+export const DEFAULT_THEME: ThemeChoice = "system";
 export const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 const IDS: readonly string[] = THEME_OPTIONS.map((theme) => theme.id);

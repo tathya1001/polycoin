@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 import { createLocalStore } from "@/lib/localStore";
 import { AgeGate } from "@/components/auth/AgeGate";
 import { IconButton } from "@/components/ui/Button";
-import { Wordmark } from "@/components/shell/Logo";
+import { Logo } from "@/components/shell/Logo";
 import { useSession } from "@/components/shell/Session";
 import { Sidebar } from "@/components/shell/Sidebar";
 
@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen md:flex md:gap-3 md:p-3">
       <header className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b-[1.5px] border-line bg-canvas px-3 md:hidden">
         <IconButton label="Open menu" icon={<Menu size={20} />} onClick={() => setOpenedOn(pathname)} />
-        <Wordmark />
+        <Logo />
       </header>
 
       {mobileOpen && (

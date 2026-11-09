@@ -6,7 +6,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { signOut } from "@/lib/signOut";
-import { Wordmark } from "@/components/shell/Logo";
+import { Logo } from "@/components/shell/Logo";
 import { NAV_GROUPS, SETTINGS_ITEM, activeHref, type NavItem } from "@/components/shell/nav";
 
 type Props = {
@@ -71,11 +71,11 @@ export function Sidebar({ collapsed, onToggleCollapsed, mobileOpen }: Props) {
         mobileOpen ? "translate-x-0" : "-translate-x-[130%]",
       )}
     >
-      {/* The name, and the button that folds the rail. Folded, the name is hidden and the button
-          that unfolds it takes the row (there is no logo mark to show until the owner sends one). */}
+      {/* The logo, and the button that folds the rail. Folded, the logo is hidden and the button
+          that unfolds it takes the row. */}
       <div className="flex h-16 shrink-0 items-center px-4">
         <Label collapsed={collapsed}>
-          <Wordmark />
+          <Logo />
         </Label>
         {collapsed ? (
           <button

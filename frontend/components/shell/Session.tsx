@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { apiFetch } from "@/lib/api";
 import { createLocalStore } from "@/lib/localStore";
+import { PREFERENCES_KEY } from "@/lib/storage";
 import { DEFAULT_FONT, isFontChoice } from "@/lib/fonts";
 import { applyTheme, DARK_QUERY, DEFAULT_THEME, isThemeChoice, resolveTheme, type ResolvedTheme } from "@/lib/theme";
 import type { FontChoice, Preferences } from "@/lib/types";
@@ -29,7 +30,7 @@ const deviceIsDarkOnServer = () => false;
 
 // The cached copy of the preferences. app/layout.tsx reads the same key before first paint.
 const preferencesStore = createLocalStore<Preferences>(
-  "moneyangle.prefs",
+  PREFERENCES_KEY,
   (raw) => {
     try {
       return raw ? parsePreferences(JSON.parse(raw)) : DEFAULT_PREFS;
