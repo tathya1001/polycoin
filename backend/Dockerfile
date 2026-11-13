@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.15-slim
 
 # numpy's OpenBLAS starts one thread per host CPU it sees (16 locally, likely more on Render), and
 # idle threads keep spinning after each call. Under Render's 0.1 CPU quota that spinning cost ~15x
