@@ -56,7 +56,7 @@ def names(client) -> list[str] | int:
 
 
 def recovery_key_of(email="new@example.com") -> str:
-    body = {"email": email, "password": PASSWORD, "birth_date": "1990-06-15"}
+    body = {"email": email, "password": PASSWORD, "birth_date": "1990-06-15", "accept_privacy_policy": True}
     response = APIClient().post("/api/accounts/register/", body, format="json")
     assert response.status_code == 201
     return response.data["recovery_key"]

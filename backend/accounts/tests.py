@@ -46,7 +46,7 @@ def csrf_header(client):
 
 
 def test_register_creates_user_without_leaking_secrets(client, db):
-    r = client.post(REGISTER, {"email": "new@example.com", "password": PASSWORD, "birth_date": ADULT}, format="json", **csrf_header(client))
+    r = client.post(REGISTER, {"email": "new@example.com", "password": PASSWORD, "birth_date": ADULT, "accept_privacy_policy": True}, format="json", **csrf_header(client))
     assert r.status_code == 201
     # The recovery key is the one secret it returns, on purpose: shown once (Phase 12.1).
     assert set(r.json()) == {"id", "email", "recovery_key"}
@@ -54,12 +54,12 @@ def test_register_creates_user_without_leaking_secrets(client, db):
 
 
 def test_register_rejects_duplicate_email_case_insensitively(client, user):
-    r = client.post(REGISTER, {"email": EMAIL.upper(), "password": PASSWORD, "birth_date": ADULT}, format="json", **csrf_header(client))
+    r = client.post(REGISTER, {"email": EMAIL.upper(), "password": PASSWORD, "birth_date": ADULT, "accept_privacy_policy": True}, format="json", **csrf_header(client))
     assert r.status_code == 400
 
 
 def test_register_rejects_weak_password(client, db):
-    r = client.post(REGISTER, {"email": "weak@example.com", "password": "12345678", "birth_date": ADULT}, format="json", **csrf_header(client))
+    r = client.post(REGISTER, {"email": "weak@example.com", "password": "12345678", "birth_date": ADULT, "accept_privacy_policy": True}, format="json", **csrf_header(client))
     assert r.status_code == 400
     assert not User.objects.filter(email="weak@example.com").exists()
 
@@ -124,7 +124,7 @@ def test_stale_access_cookie_does_not_break_public_endpoints(client, db):
     """An expired/garbage access cookie must be treated as anonymous, not as an error."""
     client.cookies["access"] = "not-a-jwt"
     assert client.get("/api/health/").status_code == 200
-    r = client.post(REGISTER, {"email": "stale@example.com", "password": PASSWORD, "birth_date": ADULT}, format="json", **csrf_header(client))
+    r = client.post(REGISTER, {"email": "stale@example.com", "password": PASSWORD, "birth_date": ADULT, "accept_privacy_policy": True}, format="json", **csrf_header(client))
     assert r.status_code == 201
 
 

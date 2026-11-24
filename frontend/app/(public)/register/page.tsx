@@ -7,13 +7,21 @@ import { apiFetch } from "@/lib/api";
 import { AuthLayout } from "@/components/auth/AuthLayout";
 import { RecoveryKeyPanel } from "@/components/auth/RecoveryKeyPanel";
 import { Button } from "@/components/ui/Button";
-import { Field, Input } from "@/components/ui/Field";
+import { Checkbox, Field, Input } from "@/components/ui/Field";
 import { ErrorNote } from "@/components/ui/Feedback";
 import { BIRTH_DATE_HINT, EARLIEST_BIRTH_DATE } from "@/lib/birthDate";
+import { PRIVACY_POLICY_PATH } from "@/lib/legal";
 
 // DRF returns validation errors as { field: ["msg", ...] }; show each under its own field.
-type FieldErrors = { email?: string; password?: string; birth_date?: string; other?: string };
-const FIELDS = ["email", "password", "birth_date"] as const;
+type FieldErrors = {
+  email?: string;
+  password?: string;
+  birth_date?: string;
+  accept_privacy_policy?: string;
+  other?: string;
+};
+const FIELDS = ["email", "password", "birth_date", "accept_privacy_policy"] as const;
+const MUST_ACCEPT_POLICY = "You must accept the Privacy Policy to create an account.";
 
 function readFieldErrors(data: unknown): FieldErrors {
   if (typeof data !== "object" || data === null) return { other: "Registration failed." };
@@ -31,6 +39,8 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [birthDate, setBirthDate] = useState(""); // YYYY-MM-DD, from the date input
+  // Never ticked for the user: consent must be their own clear action. The server checks it too.
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [loading, setLoading] = useState(false);
   // Set once the account exists: shown before anything else happens (it is shown only once).
@@ -51,13 +61,17 @@ export default function Register() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!acceptedPolicy) {
+      setErrors({ accept_privacy_policy: MUST_ACCEPT_POLICY });
+      return;
+    }
     setErrors({});
     setLoading(true);
 
     try {
       const res = await apiFetch("/api/accounts/register/", {
         method: "POST",
-        body: JSON.stringify({ email, password, birth_date: birthDate }),
+        body: JSON.stringify({ email, password, birth_date: birthDate, accept_privacy_policy: acceptedPolicy }),
       });
 
       if (res.status === 429) {
@@ -141,6 +155,38 @@ export default function Register() {
             required
           />
         </Field>
+        <div className="space-y-1.5">
+          <Checkbox
+            checked={acceptedPolicy}
+            onChange={(checked) => {
+              setAcceptedPolicy(checked);
+              if (checked) setErrors((current) => ({ ...current, accept_privacy_policy: undefined }));
+            }}
+            aria-invalid={!!errors.accept_privacy_policy}
+            aria-describedby={errors.accept_privacy_policy ? "privacy-policy-error" : undefined}
+            label={
+              <span>
+                I have read and agree to the{" "}
+                {/* A new tab, so the form keeps what was typed. */}
+                <Link
+                  href={PRIVACY_POLICY_PATH}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-ink underline underline-offset-4"
+                >
+                  Privacy Policy
+                  <span className="sr-only"> (opens in a new tab)</span>
+                </Link>
+                .
+              </span>
+            }
+          />
+          {errors.accept_privacy_policy && (
+            <p id="privacy-policy-error" role="alert" className="text-xs font-medium text-neg">
+              {errors.accept_privacy_policy}
+            </p>
+          )}
+        </div>
         {errors.other && <ErrorNote>{errors.other}</ErrorNote>}
         <Button type="submit" variant="primary" loading={loading} className="w-full">
           {loading ? "Creating…" : "Create account"}

@@ -39,6 +39,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     # returned by the API and not in backups. NULL: not given yet, so accounts.permissions.
     # AgeConfirmed lets the account do nothing but give it, log out or delete itself.
     birth_date_enc = models.BinaryField(null=True, editable=False)
+    # Proof of consent: which Privacy Policy the user accepted at sign-up, and when. Empty for
+    # accounts made before the policy existed. Not editable: a record of consent is never rewritten.
+    privacy_policy_version = models.CharField(max_length=20, default="", editable=False)
+    privacy_policy_accepted_at = models.DateTimeField(null=True, editable=False)
 
     objects = UserManager()
 

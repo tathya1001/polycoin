@@ -18,6 +18,7 @@ OPEN_ENDPOINTS = {
         "email": "new@example.com",
         "password": PASSWORD,
         "birth_date": "1990-06-15",
+        "accept_privacy_policy": True,
     },
     "/api/accounts/recover/": {
         "email": "alice@example.com",

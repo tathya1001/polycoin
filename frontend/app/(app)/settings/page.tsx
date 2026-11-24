@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { Check, Gem, KeyRound, LifeBuoy, LogOut, Trash2, UserX, Zap } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { FONT_OPTIONS, fontFamilyOf, type FontKind } from "@/lib/fonts";
+import { PRIVACY_POLICY_PATH } from "@/lib/legal";
 import { signOut } from "@/lib/signOut";
 import { THEME_OPTIONS, type ResolvedTheme, type ThemeChoice } from "@/lib/theme";
 import type { ChartQuality, Preferences } from "@/lib/types";
@@ -183,6 +185,12 @@ export default function Settings() {
           </Button>
         </Card>
         <DeleteAccountDialog open={confirmingAccountDelete} onClose={() => setConfirmingAccountDelete(false)} />
+        <p className="mt-6 text-sm text-ink-2">
+          How we collect, protect and use your data:{" "}
+          <Link href={PRIVACY_POLICY_PATH} className="font-semibold text-ink underline underline-offset-4">
+            Privacy Policy
+          </Link>
+        </p>
       </section>
     </>
   );

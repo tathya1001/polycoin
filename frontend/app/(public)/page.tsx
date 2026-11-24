@@ -4,6 +4,7 @@ import { DeletedNotice } from "@/components/auth/DeletedNotice";
 import { DashboardPreview } from "@/components/home/DashboardPreview";
 import { Logo } from "@/components/shell/Logo";
 import { buttonClass } from "@/components/ui/Button";
+import { PRIVACY_POLICY_PATH } from "@/lib/legal";
 
 // What the app promises about the user's data, said once, at the foot of the page.
 const PROMISES = ["Encrypted with your password", "AI runs on your own computer", "Delete everything, any time"];
@@ -37,14 +38,19 @@ export default function Home() {
 
       <DashboardPreview />
 
-      <ul className="mt-10 flex flex-wrap gap-x-8 gap-y-2 border-t-[1.5px] border-hairline py-6 text-sm text-ink-2">
-        {PROMISES.map((promise) => (
-          <li key={promise} className="flex items-center gap-2.5">
-            <span aria-hidden className="size-1.5 rounded-full bg-ink" />
-            {promise}
-          </li>
-        ))}
-      </ul>
+      <footer className="mt-10 flex flex-wrap items-center justify-between gap-x-8 gap-y-3 border-t-[1.5px] border-hairline py-6 text-sm text-ink-2">
+        <ul className="flex flex-wrap gap-x-8 gap-y-2">
+          {PROMISES.map((promise) => (
+            <li key={promise} className="flex items-center gap-2.5">
+              <span aria-hidden className="size-1.5 rounded-full bg-ink" />
+              {promise}
+            </li>
+          ))}
+        </ul>
+        <Link href={PRIVACY_POLICY_PATH} className="underline underline-offset-4 hover:text-ink">
+          Privacy Policy
+        </Link>
+      </footer>
     </main>
   );
 }

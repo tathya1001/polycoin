@@ -51,7 +51,7 @@ def add_row(user, amount="100.00", day=date(2026, 1, 5), kind="debit", **extra):
 def test_registering_gives_the_user_one_source(client, db):
     response = client.post(
         "/api/accounts/register/",
-        {"email": "new@example.com", "password": "a-long-Passw0rd-here", "birth_date": "1990-06-15"},
+        {"email": "new@example.com", "password": "a-long-Passw0rd-here", "birth_date": "1990-06-15", "accept_privacy_policy": True},
         content_type="application/json",
     )
     assert response.status_code == 201

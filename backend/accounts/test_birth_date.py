@@ -38,7 +38,7 @@ def fixed_today(monkeypatch):
 
 
 def register(birth_date, email="new@example.com"):
-    body = {"email": email, "password": PASSWORD}
+    body = {"email": email, "password": PASSWORD, "accept_privacy_policy": True}
     if birth_date is not None:
         body["birth_date"] = birth_date
     return APIClient().post(REGISTER, body, format="json")

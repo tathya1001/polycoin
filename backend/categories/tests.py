@@ -39,7 +39,7 @@ def bob():
 
 
 def test_registration_seeds_defaults():
-    s = RegisterSerializer(data={"email": "new@example.com", "password": "S3cure-pass-998", "birth_date": "1990-06-15"})
+    s = RegisterSerializer(data={"email": "new@example.com", "password": "S3cure-pass-998", "birth_date": "1990-06-15", "accept_privacy_policy": True})
     s.is_valid(raise_exception=True)
     user = s.save()
     cats = Category.objects.filter(user=user)
@@ -140,7 +140,7 @@ def terms(category):
 
 
 def test_registration_seeds_the_starter_keywords_but_not_for_others():
-    s = RegisterSerializer(data={"email": "kw@example.com", "password": "S3cure-pass-998", "birth_date": "1990-06-15"})
+    s = RegisterSerializer(data={"email": "kw@example.com", "password": "S3cure-pass-998", "birth_date": "1990-06-15", "accept_privacy_policy": True})
     s.is_valid(raise_exception=True)
     user = s.save()
 

@@ -27,7 +27,7 @@ def alice():
 
 @pytest.mark.parametrize("password, ok", [("Elevenchar1", False), ("Twelvechars1", True)])
 def test_a_password_needs_twelve_characters(password, ok):
-    body = {"email": "new@example.com", "password": password, "birth_date": "1990-06-15"}
+    body = {"email": "new@example.com", "password": password, "birth_date": "1990-06-15", "accept_privacy_policy": True}
     response = APIClient().post("/api/accounts/register/", body, format="json")
     assert (response.status_code == 201) is ok
     if not ok:

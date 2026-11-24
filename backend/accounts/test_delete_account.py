@@ -107,7 +107,7 @@ def test_the_other_users_data_is_never_touched(alice):
 
 def test_the_email_can_sign_up_again_as_a_new_account(alice):
     delete(signed_in(alice))
-    body = {"email": "alice@example.com", "password": PASSWORD, "birth_date": "1990-06-15"}
+    body = {"email": "alice@example.com", "password": PASSWORD, "birth_date": "1990-06-15", "accept_privacy_policy": True}
     assert APIClient().post("/api/accounts/register/", body, format="json").status_code == 201
 
 

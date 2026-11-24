@@ -15,7 +15,9 @@ class UserAdmin(BaseUserAdmin):
         (None, {"fields": ("email", "password")}),
         ("Permissions", {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")}),
         ("Important dates", {"fields": ("last_login", "date_joined")}),
+        ("Consent", {"fields": ("privacy_policy_version", "privacy_policy_accepted_at")}),
     )
+    readonly_fields = ("date_joined", "privacy_policy_version", "privacy_policy_accepted_at")
 
     add_fieldsets = (
         (None, {"classes": ("wide",), "fields": ("email", "password1", "password2")}),

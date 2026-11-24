@@ -199,6 +199,11 @@ AUTH_COOKIE_REFRESH_PATH = "/api/accounts/"
 AUTH_COOKIE_VAULT = "vault"
 AUTH_COOKIE_VAULT_PATH = "/api/"
 
+# The Privacy Policy in force, named by its "last updated" date. Each new account records the
+# version it accepted. Must equal PRIVACY_POLICY_VERSION in frontend/lib/legal.ts, where the text
+# lives: change both whenever the policy text changes.
+PRIVACY_POLICY_VERSION = "2026-11-24"
+
 
 CSRF_TRUSTED_ORIGINS = os.environ["CSRF_TRUSTED_ORIGINS"].split(",")
 

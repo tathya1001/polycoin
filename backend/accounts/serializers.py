@@ -1,6 +1,8 @@
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
+from django.utils import timezone
 from rest_framework import serializers
 
 from categories.services import seed_default_categories
@@ -18,10 +20,18 @@ def _adult_birth_date(value):
     return value
 
 
+MUST_ACCEPT_POLICY = "You must accept the Privacy Policy to create an account."
+
+
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
     birth_date = serializers.DateField(write_only=True)  # YYYY-MM-DD; 18+ only
+    # The sign-up form's Privacy Policy box. Consent must be a clear yes: a missing or false value
+    # is refused, never assumed. The accepted version and the time are recorded on the user.
+    accept_privacy_policy = serializers.BooleanField(
+        write_only=True, error_messages={"required": MUST_ACCEPT_POLICY}
+    )
 
     def validate_email(self, value):
         value = User.objects.normalize_email(value)
@@ -36,10 +46,20 @@ class RegisterSerializer(serializers.Serializer):
     def validate_birth_date(self, value):
         return _adult_birth_date(value)
 
+    def validate_accept_privacy_policy(self, value):
+        if value is not True:
+            raise serializers.ValidationError(MUST_ACCEPT_POLICY)
+        return value
+
     def create(self, validated_data):
         birth_date = validated_data.pop("birth_date")
+        validated_data.pop("accept_privacy_policy")
         with transaction.atomic():  # a user must never exist without a key
-            user = User.objects.create_user(**validated_data)
+            user = User.objects.create_user(
+                **validated_data,
+                privacy_policy_version=settings.PRIVACY_POLICY_VERSION,
+                privacy_policy_accepted_at=timezone.now(),
+            )
             # Locked with the password and a recovery key (Phase 12.1). The view shows the
             # recovery key once; it is never stored in a form that could show it again.
             self.recovery_key = create_user_key(user, validated_data["password"])
